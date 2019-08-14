@@ -12,6 +12,8 @@ pub fn check_expr(expr: &Expr, expected: &Type) -> Result<(), String> {
         Expr::Binary(a, _, b) =>
             check_expr(a, expected)
                 .and_then(|_| check_expr(b, expected)),
+        Expr::Unary(_, a) =>
+            check_expr(a, expected) // TODO Write tests!!!
     }
 }
 

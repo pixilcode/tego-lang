@@ -4,6 +4,7 @@ use std::ops;
 #[derive(Debug, PartialEq)]
 pub enum Value {
     Int(i32),
+    Bool(bool),
     Unit,
     Error(String)
 }
@@ -16,6 +17,7 @@ impl Value {
     pub fn type_(&self) -> Type {
         match self {
             Value::Int(_) => Type::Int,
+            Value::Bool(_) => Type::Bool,
             Value::Unit => Type::Unit,
             Value::Error(_) => Type::Error,
         }
@@ -147,12 +149,29 @@ impl ops::Rem for Value {
     }
 }
 
+impl ops::Neg for Value {
+    type Output = Self;
+    fn neg(self) -> Self {
+        if let Value::Error(_) = self {
+            self
+        } else {
+            match self {
+                Value::Int(a) => Value::Int(-a),
+                Value::Error(_) => unreachable!(),
+                _ => Value::Error(
+                    format!("Can't negate (integer) '{}'", self.type_()))
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     
     macro_rules! operator_test {
         ( $name:ident $actual:expr => $expected:expr) => {
+            #[allow(clippy::eq_op)]
             #[test]
             fn $name() {
                 assert_eq!($expected, $actual)
@@ -169,31 +188,31 @@ mod tests {
     operator_test!(
         add_int_unit
         Value::Int(1) + Value::Unit =>
-            op_error("add", "Int", "Unit")
+            binary_op_error("add", "Int", "Unit")
     );
     
     operator_test!(
         add_unit_int
         Value::Unit + Value::Int(1) =>
-            op_error("add", "Unit", "Int")
+            binary_op_error("add", "Unit", "Int")
     );
     
     operator_test!(
         add_unit_unit
         Value::Unit + Value::Unit =>
-            op_error("add", "Unit", "Unit")
+            binary_op_error("add", "Unit", "Unit")
     );
     
     operator_test!(
         add_deep_error_left
         (Value::Int(1) + Value::Unit) + Value::Int(2) =>
-            op_error("add", "Int", "Unit")
+            binary_op_error("add", "Int", "Unit")
     );
     
     operator_test!(
         add_deep_error_right
         Value::Int(1) + (Value::Int(2) + Value::Unit) =>
-            op_error("add", "Int", "Unit")
+            binary_op_error("add", "Int", "Unit")
     );
     
     // SUBTRACTION TESTS
@@ -205,31 +224,32 @@ mod tests {
     operator_test!(
         sub_int_unit
         Value::Int(3) - Value::Unit =>
-            op_error("subtract", "Int", "Unit")
+            binary_op_error("subtract", "Int", "Unit")
     );
     
     operator_test!(
         sub_unit_int
         Value::Unit - Value::Int(2) =>
-            op_error("subtract", "Unit", "Int")
+            binary_op_error("subtract", "Unit", "Int")
     );
+    
     
     operator_test!(
         sub_unit_unit
         Value::Unit - Value::Unit =>
-            op_error("subtract", "Unit", "Unit")
+            binary_op_error("subtract", "Unit", "Unit")
     );
     
     operator_test!(
         sub_deep_error_left
         (Value::Int(1) + Value::Unit) - Value::Int(2) =>
-            op_error("add", "Int", "Unit")
+            binary_op_error("add", "Int", "Unit")
     );
     
     operator_test!(
         sub_deep_error_right
         Value::Int(3) - (Value::Int(1) + Value::Unit) =>
-            op_error("add", "Int", "Unit")
+            binary_op_error("add", "Int", "Unit")
     );
     
     // MULTIPLICATION TESTS
@@ -241,31 +261,31 @@ mod tests {
     operator_test!(
         mul_int_unit
         Value::Int(2) * Value::Unit =>
-            op_error("multiply", "Int", "Unit")
+            binary_op_error("multiply", "Int", "Unit")
     );
     
     operator_test!(
         mul_unit_int
         Value::Unit * Value::Int(3) =>
-            op_error("multiply", "Unit", "Int")
+            binary_op_error("multiply", "Unit", "Int")
     );
     
     operator_test!(
         mul_unit_unit
         Value::Unit * Value::Unit =>
-            op_error("multiply", "Unit", "Unit")
+            binary_op_error("multiply", "Unit", "Unit")
     );
     
     operator_test!(
         mul_deep_error_left
         (Value::Int(1) + Value::Unit) * Value::Int(3) =>
-            op_error("add", "Int", "Unit")
+            binary_op_error("add", "Int", "Unit")
     );
     
     operator_test!(
         mul_deep_error_right
         Value::Int(2) * (Value::Int(1) + Value::Unit) =>
-            op_error("add", "Int", "Unit")
+            binary_op_error("add", "Int", "Unit")
     );
     
     // DIVISION TESTS
@@ -277,31 +297,31 @@ mod tests {
     operator_test!(
         div_int_unit
         Value::Int(3) / Value::Unit =>
-            op_error("divide", "Int", "Unit")
+            binary_op_error("divide", "Int", "Unit")
     );
     
     operator_test!(
         div_unit_int
         Value::Unit / Value::Int(2) =>
-            op_error("divide", "Unit", "Int")
+            binary_op_error("divide", "Unit", "Int")
     );
     
     operator_test!(
         div_unit_unit
         Value::Unit / Value::Unit =>
-            op_error("divide", "Unit", "Unit")
+            binary_op_error("divide", "Unit", "Unit")
     );
     
     operator_test!(
         div_deep_error_left
         (Value::Int(1) + Value::Unit) / Value::Int(2) =>
-            op_error("add", "Int", "Unit")
+            binary_op_error("add", "Int", "Unit")
     );
     
     operator_test!(
         div_deep_error_right
         Value::Int(3) / (Value::Int(1) + Value::Unit) =>
-            op_error("add", "Int", "Unit")
+            binary_op_error("add", "Int", "Unit")
     );
     
     // MODULO TESTS
@@ -313,38 +333,60 @@ mod tests {
     operator_test!(
         mod_int_unit
         Value::Int(3) % Value::Unit =>
-            op_error("modulo", "Int", "Unit")
+            binary_op_error("modulo", "Int", "Unit")
     );
     
     operator_test!(
         mod_unit_int
         Value::Unit % Value::Int(2) =>
-            op_error("modulo", "Unit", "Int")
+            binary_op_error("modulo", "Unit", "Int")
     );
     
     operator_test!(
         mod_unit_unit
         Value::Unit % Value::Unit =>
-            op_error("modulo", "Unit", "Unit")
+            binary_op_error("modulo", "Unit", "Unit")
     );
     
     operator_test!(
         mod_deep_error_left
         (Value::Int(1) + Value::Unit) % Value::Int(2) =>
-            op_error("add", "Int", "Unit")
+            binary_op_error("add", "Int", "Unit")
     );
     
     operator_test!(
         mod_deep_error_right
         Value::Int(3) % (Value::Int(1) + Value::Unit) =>
-            op_error("add", "Int", "Unit")
+            binary_op_error("add", "Int", "Unit")
     );
     
-    fn op_error(op: &str, type_a: &str, type_b: &str) -> Value {
+    // INTEGER NEGATION TESTS
+    operator_test!(
+        i_neg_int
+        -Value::Int(1) => Value::Int(-1)
+    );
+    
+    operator_test!(
+        i_neg_unit
+        -Value::Unit =>
+            unary_op_error("negate (integer)", "Unit")
+    );
+    
+    operator_test!(
+        i_neg_deep_error
+        -(Value::Int(1) + Value::Unit) =>
+            binary_op_error("add", "Int", "Unit")
+    );
+    
+    fn binary_op_error(op: &str, type_a: &str, type_b: &str) -> Value {
         Value::Error(format!("Can't {} '{}' and '{}'",
             op,
             type_a,
             type_b)
         )
+    }
+    
+    fn unary_op_error(op: &str, type_: &str) -> Value {
+        Value::Error(format!("Can't {} '{}'", op, type_))
     }
 }

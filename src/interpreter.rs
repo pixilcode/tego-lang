@@ -3,6 +3,7 @@ use jest_lang::value::Value;
 
 pub fn eval_expr(expr: Expr) -> Value {
     match expr {
+        Expr::Unary(op, a) => op.eval(eval_expr(*a)),
         Expr::Binary(a, op, b) => op.eval(eval_expr(*a), eval_expr(*b)),
         Expr::Literal(val) => val
     }
