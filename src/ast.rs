@@ -25,13 +25,15 @@ impl Expr {
 }
 
 pub enum UnaryOp {
-    Negate
+    Negate,
+    Not
 }
 
 impl UnaryOp {
     pub fn eval(&self, a: Value) -> Value {
         match self {
-            UnaryOp::Negate => -a
+            UnaryOp::Negate => -a,
+            UnaryOp::Not => !a
         }
     }
 }
@@ -42,6 +44,9 @@ pub enum BinaryOp {
     Multiply,
     Divide,
     Modulo,
+    And,
+    Or,
+    Xor
     // Tuplate // ',' operator, creates a tuple
 }
 
@@ -52,7 +57,10 @@ impl BinaryOp {
             BinaryOp::Minus => a - b,
             BinaryOp::Multiply => a * b,
             BinaryOp::Divide => a / b,
-            BinaryOp::Modulo => a % b
+            BinaryOp::Modulo => a % b,
+            BinaryOp::And => a & b,
+            BinaryOp::Or => a,
+            BinaryOp::Xor => a
         }
     }
 }

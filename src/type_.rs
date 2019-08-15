@@ -5,6 +5,7 @@ pub enum Type {
     Int,
     Bool,
     Unit,
+    Tuple(Vec<Type>),
     Error
 }
 
@@ -12,10 +13,52 @@ impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}",
             match self {
-                Type::Int => "Int",
-                Type::Bool => "Bool",
-                Type::Unit => "Unit",
-                Type::Error => "Error"
+                Type::Int => "Int".to_string(),
+                Type::Bool => "Bool".to_string(),
+                Type::Unit => "Unit".to_string(),
+                Type::Tuple(types) => {
+                    let result = types.iter()
+                        .map(|t| format!("{}", t))
+                        .fold(String::new(), |a, s| a + &s + ", ");
+                    let result = &result[..result.len()-2]; // Get rid of the last ", "
+                    format!("({})", result)
+                }
+                Type::Error => "Error".to_string()
             })
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    basic_test!(
+        int
+        &format!("{}", Type::Int) => "Int"
+    );
+    
+    basic_test!(
+        boolean
+        &format!("{}", Type::Bool) => "Bool"
+    );
+    
+    basic_test!(
+        unit
+        &format!("{}", Type::Unit) => "Unit"
+    );
+    
+    basic_test!(
+        tuple
+        &format!("{}", Type::Tuple(vec![
+                Type::Int,
+                Type::Unit,
+                Type::Bool
+            ])
+        ) => "(Int, Unit, Bool)"
+    );
+    
+    basic_test!(
+        error
+        &format!("{}", Type::Error) => "Error"
+    );
 }

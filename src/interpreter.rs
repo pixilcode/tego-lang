@@ -12,7 +12,7 @@ pub fn eval_expr(expr: Expr) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jest_lang::ast::BinaryOp;
+    use jest_lang::ast::{BinaryOp, UnaryOp};
     
     #[test]
     fn eval_literal() {
@@ -29,6 +29,18 @@ mod tests {
                 Expr::int(1),
                 BinaryOp::Plus,
                 Expr::int(2)
+            )
+        );
+        assert_eq!(expected, actual);
+    }
+    
+    #[test]
+    fn eval_unary() {
+        let expected = Value::Int(-3);
+        let actual = eval_expr(
+            Expr::unary(
+                UnaryOp::Negate,
+                Expr::int(3)
             )
         );
         assert_eq!(expected, actual);
