@@ -25,6 +25,34 @@ impl Value {
             Value::Error(_) => Type::Error,
         }
     }
+    
+    pub fn tuplate(self, other: Self) -> Self {
+        if let Value::Error(_) = self {
+            self
+        } else if let Value::Error(_) = other {
+            other
+        } else {
+            match (self, other) {
+                (Value::Tuple(mut a_vals), Value::Tuple(mut b_vals)) =>
+                    Value::Tuple({
+                        a_vals.append(&mut b_vals);
+                        a_vals
+                    }),
+                (Value::Tuple(mut a_vals), b) =>
+                    Value::Tuple({
+                        a_vals.push(b);
+                        a_vals
+                    }),
+                (a, Value::Tuple(mut b_vals)) =>
+                    Value::Tuple({
+                        b_vals.insert(0, a);
+                        b_vals
+                    }),
+                (a, b) =>
+                    Value::Tuple(vec![a, b])
+            }
+        }
+    }
 }
 
 macro_rules! impl_op {
