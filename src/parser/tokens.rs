@@ -9,7 +9,8 @@ use nom::{
     bytes::complete::tag
 };
 
-fn token<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
+// TODO Make `token` function private (see below)
+pub fn token<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
 where F: Fn(&'a str) -> IResult<&'a str, O> {
     preceded(multispace0, parser)
 }
@@ -36,6 +37,8 @@ reserved!(not, "not");
 reserved!(unit, "unit");
 reserved!(true_val, "true");
 reserved!(false_val, "false");
+
+// TODO Create literal parser here and make `token` function private
 
 #[cfg(test)]
 mod tests {

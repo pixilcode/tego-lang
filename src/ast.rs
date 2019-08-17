@@ -1,6 +1,6 @@
 use crate::value::Value;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinaryOp, Box<Expr>),
@@ -45,7 +45,7 @@ impl Expr {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum UnaryOp {
     Negate,
     Not
@@ -73,7 +73,7 @@ impl From<&str> for UnaryOp {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum BinaryOp {
     Plus,
     Minus,

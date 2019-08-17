@@ -1,7 +1,8 @@
 extern crate jest_lang;
 
 mod interpreter;
+mod repl;
 
 fn main() {
-    println!("Working!");
+    repl::run();
 }

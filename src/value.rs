@@ -1,7 +1,8 @@
 use crate::type_::Type;
 use std::ops;
+use std::fmt;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     Int(i32),
     Bool(bool),
@@ -52,6 +53,30 @@ impl Value {
                     Value::Tuple(vec![a, b])
             }
         }
+    }
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}",
+            match self {
+                Value::Int(i) => i32::to_string(i),
+                Value::Bool(b) => bool::to_string(b),
+                Value::Unit => "unit".to_string(),
+                Value::Tuple(vals) => {
+                    let result = vals.iter()
+                        .map(|v| format!("{}", v))
+                        .fold(
+                            String::new(),
+                            |a, s| a + &s + ", "
+                        );
+                    // Get rid of the last ", "
+                    let result = &result[..result.len()-2];
+                    format!("({})", result)
+                },
+                Value::Error(error) =>
+                    format!("Error: {}", error)
+            })
     }
 }
 
