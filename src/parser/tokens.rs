@@ -37,6 +37,12 @@ reserved!(not, "not");
 reserved!(unit, "unit");
 reserved!(true_val, "true");
 reserved!(false_val, "false");
+reserved!(equal, "==");
+reserved!(not_equal, "/=");
+reserved!(less_than, "<");
+reserved!(greater_than, ">");
+reserved!(less_than_equal, "<=");
+reserved!(greater_than_equal, ">=");
 
 // TODO Create literal parser here and make `token` function private
 

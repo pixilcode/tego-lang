@@ -11,75 +11,6 @@ pub enum Value {
     Error(String)
 }
 
-impl Value {
-    pub fn is_type(&self, t: &Type) -> bool {
-        t == &self.type_()
-    }
-    
-    pub fn type_(&self) -> Type {
-        match self {
-            Value::Int(_) => Type::Int,
-            Value::Bool(_) => Type::Bool,
-            Value::Unit => Type::Unit,
-            Value::Tuple(vals) =>
-                Type::Tuple(vals.iter().map(|v| v.type_()).collect()),
-            Value::Error(_) => Type::Error,
-        }
-    }
-    
-    pub fn tuplate(self, other: Self) -> Self {
-        if let Value::Error(_) = self {
-            self
-        } else if let Value::Error(_) = other {
-            other
-        } else {
-            match (self, other) {
-                (Value::Tuple(mut a_vals), Value::Tuple(mut b_vals)) =>
-                    Value::Tuple({
-                        a_vals.append(&mut b_vals);
-                        a_vals
-                    }),
-                (Value::Tuple(mut a_vals), b) =>
-                    Value::Tuple({
-                        a_vals.push(b);
-                        a_vals
-                    }),
-                (a, Value::Tuple(mut b_vals)) =>
-                    Value::Tuple({
-                        b_vals.insert(0, a);
-                        b_vals
-                    }),
-                (a, b) =>
-                    Value::Tuple(vec![a, b])
-            }
-        }
-    }
-}
-
-impl fmt::Display for Value {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}",
-            match self {
-                Value::Int(i) => i32::to_string(i),
-                Value::Bool(b) => bool::to_string(b),
-                Value::Unit => "unit".to_string(),
-                Value::Tuple(vals) => {
-                    let result = vals.iter()
-                        .map(|v| format!("{}", v))
-                        .fold(
-                            String::new(),
-                            |a, s| a + &s + ", "
-                        );
-                    // Get rid of the last ", "
-                    let result = &result[..result.len()-2];
-                    format!("({})", result)
-                },
-                Value::Error(error) =>
-                    format!("Error: {}", error)
-            })
-    }
-}
-
 macro_rules! impl_op {
     ($op:ty, $func:ident, $name:expr => $( $type_:pat = $new_val:expr ),+) => {
         impl $op for Value {
@@ -116,6 +47,116 @@ macro_rules! impl_op {
             }
         }
     };
+    
+    ($func:ident, $name:expr => $( $type_:pat = $new_val:expr ),+) => {
+        pub fn $func(self) -> Self {
+            let error = || unary_op_error($name, self.type_());
+            if let Value::Error(_) = self {
+                self
+            } else {
+                match self {
+                    $( $type_ => $new_val, )+
+                    _ => error()
+                }
+            }
+        }
+    };
+    
+    ($func:ident, $name:expr => $( $type_a:pat, $type_b:pat = $new_val:expr ),+) => {
+        #[allow(unreachable_patterns)]
+        pub fn $func(self, other: Self) -> Self {
+            // For now, won't work because of matching later
+            //let error = || binary_op_error($name, self.type_(), other.type_());
+            let error = binary_op_error($name, self.type_(), other.type_());
+            if let Value::Error(_) = self {
+                self
+            } else if let Value::Error(_) = other {
+                other
+            } else {
+                match (self, other) {
+                    $( ($type_a, $type_b) => $new_val, )+
+                    _ => error
+                }
+            }
+        }
+    };
+}
+
+impl Value {
+    pub fn is_type(&self, t: &Type) -> bool {
+        t == &self.type_()
+    }
+    
+    pub fn type_(&self) -> Type {
+        match self {
+            Value::Int(_) => Type::Int,
+            Value::Bool(_) => Type::Bool,
+            Value::Unit => Type::Unit,
+            Value::Tuple(vals) =>
+                Type::Tuple(vals.iter().map(|v| v.type_()).collect()),
+            Value::Error(_) => Type::Error,
+        }
+    }
+    
+    impl_op!(join, "join" =>
+        Value::Tuple(mut a_vals), Value::Tuple(mut b_vals) =
+            Value::Tuple({
+                a_vals.append(&mut b_vals);
+                a_vals
+            }),
+        Value::Tuple(mut a_vals), b =
+            Value::Tuple({
+                a_vals.push(b);
+                a_vals
+            }),
+        a, Value::Tuple(mut b_vals) =
+            Value::Tuple({
+                b_vals.insert(0, a);
+                b_vals
+            }),
+        a, b =
+            Value::Tuple(vec![a, b])
+    );
+    
+    impl_op!(less_than, "less than" =>
+        Value::Int(a), Value::Int(b) = Value::Bool(a < b)
+    );
+    
+    impl_op!(greater_than, "greater than" =>
+        Value::Int(a), Value::Int(b) = Value::Bool(a > b)
+    );
+    
+    impl_op!(less_than_equal, "less than/equal to" =>
+        Value::Int(a), Value::Int(b) = Value::Bool(a <= b)
+    );
+    
+    impl_op!(greater_than_equal, "greater than/equal to" =>
+        Value::Int(a), Value::Int(b) = Value::Bool(a >= b)
+    );
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}",
+            match self {
+                Value::Int(i) => i32::to_string(i),
+                Value::Bool(b) => bool::to_string(b),
+                Value::Unit => "unit".to_string(),
+                Value::Tuple(vals) => {
+                    let result = vals.iter()
+                        .map(|v| format!("{}", v))
+                        .fold(
+                            String::new(),
+                            |a, s| a + &s + ", "
+                        );
+                    // Get rid of the last ", "
+                    let result = &result[..result.len()-2];
+                    format!("({})", result)
+                },
+                Value::Error(error) =>
+                    format!("Error: {}", error)
+            })
+    }
 }
 
 impl_op! {

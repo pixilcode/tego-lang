@@ -16,12 +16,75 @@ impl Expr {
         Expr::unary(UnaryOp::from(op), a)
     }
     
+    pub fn negate(a: Self) -> Self {
+        Expr::unary(UnaryOp::Negate, a)
+    }
+    
+    pub fn not(a: Self) -> Self {
+        Expr::unary(UnaryOp::Not, a)
+    }
+    
     pub fn binary(a: Self, op: BinaryOp, b: Self) -> Self {
         Expr::Binary(Box::new(a), op, Box::new(b))
     }
     
     pub fn binary_from_str(a: Self, op: &str, b: Self) -> Self {
         Expr::binary(a, BinaryOp::from(op), b)
+    }
+    
+    pub fn plus(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::Plus, b)
+    }
+    
+    pub fn minus(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::Minus, b)
+    }
+    
+    pub fn multiply(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::Multiply, b)
+    }
+    
+    pub fn divide(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::Divide, b)
+    }
+    
+    pub fn modulo(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::Modulo, b)
+    }
+    
+    pub fn and(a: Self, b: Self) -> Self {
+        Expr::binary(a, BinaryOp::And, b)
+    }
+    
+    pub fn or(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::Or, b)
+    }
+    
+    pub fn xor(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::Xor, b)
+    }
+    
+    pub fn join(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::Join, b)
+    }
+    
+    pub fn equal(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::Equal, b)
+    }
+    pub fn not_equal(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::NotEqual, b)
+    }
+    pub fn less_than(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::LessThan, b)
+    }
+    pub fn greater_than(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::GreaterThan, b)
+    }
+    pub fn less_than_equal(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::LessThanEqual, b)
+    }
+    pub fn greater_than_equal(a: Self, b:Self) -> Self {
+        Expr::binary(a, BinaryOp::GreaterThanEqual, b)
     }
     
     pub fn int(i: i32) -> Self {
@@ -83,7 +146,13 @@ pub enum BinaryOp {
     And,
     Or,
     Xor,
-    Tuplate // ',' operator, creates a tuple
+    Join, // ',' operator, creates a tuple
+    Equal,
+    NotEqual,
+    LessThan,
+    GreaterThan,
+    LessThanEqual,
+    GreaterThanEqual
 }
 
 impl BinaryOp {
@@ -97,7 +166,13 @@ impl BinaryOp {
             BinaryOp::And => a & b,
             BinaryOp::Or => a | b,
             BinaryOp::Xor => a ^ b,
-            BinaryOp::Tuplate => Value::tuplate(a, b)
+            BinaryOp::Join => Value::join(a, b),
+            BinaryOp::Equal => Value::Bool(a == b),
+            BinaryOp::NotEqual => Value::Bool(a != b),
+            BinaryOp::LessThan => a.less_than(b),
+            BinaryOp::GreaterThan => a.greater_than(b),
+            BinaryOp::LessThanEqual => a.less_than_equal(b),
+            BinaryOp::GreaterThanEqual => a.greater_than_equal(b)
         }
     }
 }
@@ -113,7 +188,13 @@ impl From<&str> for BinaryOp {
             "and" => BinaryOp::And,
             "or" => BinaryOp::Or,
             "xor" => BinaryOp::Xor,
-            "," => BinaryOp::Tuplate,
+            "," => BinaryOp::Join,
+            "==" => BinaryOp::Equal,
+            "/=" => BinaryOp::NotEqual,
+            "<" => BinaryOp::LessThan,
+            ">" => BinaryOp::GreaterThan,
+            "<=" => BinaryOp::LessThanEqual,
+            ">=" => BinaryOp::GreaterThanEqual,
             other => panic!(
                 "Binary op {} has not been defined!",
                 other
