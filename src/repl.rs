@@ -16,7 +16,7 @@ pub fn run() {
         
         let code = code.trim();
         
-        if code == ":quit" {
+        if code == ":quit"|| code == ":q" {
             break;
         }
         
