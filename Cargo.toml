@@ -1,5 +1,5 @@
 [package]
-name = "jest-lang"
+name = "tego-lang"
 version = "0.1.1"
 authors = ["Brendon Bown <bhbochikens@gmail.com>"]
 edition = "2018"

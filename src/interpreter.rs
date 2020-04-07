@@ -1,5 +1,5 @@
-use jest_lang::ast::Expr;
-use jest_lang::value::Value;
+use tego_lang::ast::Expr;
+use tego_lang::value::Value;
 
 pub fn eval_expr(expr: Expr) -> Value {
     match expr {
@@ -12,7 +12,7 @@ pub fn eval_expr(expr: Expr) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jest_lang::ast::{BinaryOp, UnaryOp};
+    use tego_lang::ast::{BinaryOp, UnaryOp};
     
     #[test]
     fn eval_literal() {

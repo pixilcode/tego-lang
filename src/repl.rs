@@ -1,10 +1,10 @@
 use std::io::{self, Write};
-use jest_lang::parser::expr;
+use tego_lang::parser::expr;
 use crate::interpreter;
 use nom::combinator::all_consuming;
 
 pub fn run() {
-    println!("Welcome to Jest!");
+    println!("Welcome to Tego!");
     println!();
     
     loop {

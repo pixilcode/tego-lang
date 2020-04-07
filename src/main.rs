@@ -1,4 +1,4 @@
-extern crate jest_lang;
+extern crate tego_lang;
 
 mod interpreter;
 mod repl;
