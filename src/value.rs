@@ -141,7 +141,7 @@ impl fmt::Display for Value {
             match self {
                 Value::Int(i) => i32::to_string(i),
                 Value::Bool(b) => bool::to_string(b),
-                Value::Unit => "unit".to_string(),
+                Value::Unit => "()".to_string(),
                 Value::Tuple(vals) => {
                     let result = vals.iter()
                         .map(|v| format!("{}", v))

@@ -15,7 +15,7 @@ impl fmt::Display for Type {
             match self {
                 Type::Int => "Int".to_string(),
                 Type::Bool => "Bool".to_string(),
-                Type::Unit => "Unit".to_string(),
+                Type::Unit => "()".to_string(),
                 Type::Tuple(types) => {
                     let result = types.iter()
                         .map(|t| format!("{}", t))
@@ -44,7 +44,7 @@ mod tests {
     
     basic_test!(
         unit
-        &format!("{}", Type::Unit) => "Unit"
+        &format!("{}", Type::Unit) => "()"
     );
     
     basic_test!(
@@ -54,7 +54,7 @@ mod tests {
                 Type::Unit,
                 Type::Bool
             ])
-        ) => "(Int, Unit, Bool)"
+        ) => "(Int, (), Bool)"
     );
     
     basic_test!(

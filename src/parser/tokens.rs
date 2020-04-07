@@ -34,7 +34,7 @@ reserved!(and, "and");
 reserved!(or, "or");
 reserved!(xor, "xor");
 reserved!(not, "not");
-reserved!(unit, "unit");
+reserved!(unit, "()");
 reserved!(true_val, "true");
 reserved!(false_val, "false");
 reserved!(equal, "==");
@@ -43,6 +43,8 @@ reserved!(less_than, "<");
 reserved!(greater_than, ">");
 reserved!(less_than_equal, "<=");
 reserved!(greater_than_equal, ">=");
+reserved!(left_paren, "(");
+reserved!(right_paren, ")");
 
 // TODO Create literal parser here and make `token` function private
 
@@ -66,7 +68,10 @@ mod tests {
     parser_test!(or_test (or): "or" => "or");
     parser_test!(xor_test (xor): "xor" => "xor");
     parser_test!(not_test (not): "not" => "not");
-    parser_test!(unit_test (unit): "unit" => "unit");
+    parser_test!(unit_test (unit): "()" => "()");
     parser_test!(true_test (true_val): "true" => "true");
     parser_test!(false_test (false_val): "false" => "false");
+    parser_test!(left_paren_test (left_paren): "(" => "(");
+    parser_test!(right_paren_test (right_paren): ")" => ")");
+    
 }
