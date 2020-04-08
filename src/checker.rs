@@ -13,14 +13,18 @@ pub fn check_expr(expr: &Expr, expected: &Type) -> Result<(), String> {
             check_expr(a, expected)
                 .and_then(|_| check_expr(b, expected)),
         Expr::Unary(_, a) =>
-            check_expr(a, expected) // TODO Write tests!!!
+            check_expr(a, expected), // TODO Write tests!!!
+        Expr::If(cond, t, f) =>
+            check_expr(cond, &Type::Bool)
+                .and_then(|_| check_expr(t, expected))
+                .and_then(|_| check_expr(f, expected))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::BinaryOp;
+    use crate::ast::{BinaryOp, UnaryOp};
     
     #[test]
     fn literal_check() {
@@ -76,6 +80,29 @@ mod tests {
                 Expr::unit()
             ),
             &Type::Int
+        );
+        assert_eq!(expected, actual);
+    }
+    
+    #[test]
+    fn unary_check() {
+        let expected = Ok(());
+        let actual = check_expr(
+            &Expr::unary(
+                UnaryOp::Not,
+                Expr::bool(true)
+            ),
+            &Type::Bool
+        );
+        assert_eq!(expected, actual);
+        
+        let expected = error(Type::Bool, Type::Unit);
+        let actual = check_expr(
+            &Expr::unary(
+                UnaryOp::Not,
+                Expr::unit()
+            ),
+            &Type::Bool
         );
         assert_eq!(expected, actual);
     }

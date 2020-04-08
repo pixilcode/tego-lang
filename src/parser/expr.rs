@@ -3,7 +3,7 @@ use crate::parser::tokens::*;
 
 use nom::{
     IResult,
-    sequence::{pair, terminated},
+    sequence::{separated_pair, pair, terminated},
     combinator::opt,
     branch::alt,
     character::complete::digit1,
@@ -46,8 +46,33 @@ macro_rules! unary_expr {
 }
 
 pub fn expr(input: &'_ str) -> IResult<&'_ str, Expr> {
-    join_expr(input)
+    if_expr(input)
 }
+
+pub fn if_expr(input: &'_ str) -> IResult<&'_ str, Expr> {
+    match opt(if_)(input) {
+        Ok((input, Some(_))) => 
+            match pair(join_expr, alt((then, q_mark)))(input) {
+                Ok((input, (cond, "then"))) => 
+                    separated_pair(expr, else_, expr)(input)
+                    .map(
+                        |(input, (t, f))|
+                        (input, Expr::if_expr(cond, t, f))
+                    ),
+                Ok((input, (cond, "?"))) =>
+                    separated_pair(expr, colon, expr)(input)
+                    .map(
+                        |(input, (t, f))|
+                        (input, Expr::if_expr(cond, t, f))
+                    ),
+                Ok(_) => unreachable!(),
+                Err(error) => Err(error)
+            },
+        Ok((input, None)) => join_expr(input),
+        Err(error) => Err(error)
+    }
+}
+
 binary_expr!(join_expr, comma, or_expr);
 binary_expr!(or_expr, or, xor_expr);
 binary_expr!(xor_expr, xor, and_expr);
@@ -67,11 +92,11 @@ unary_expr!(negate_expr, minus, not_expr);
 unary_expr!(not_expr, not, grouping);
 
 fn grouping(input: &'_ str) -> IResult<&'_ str, Expr> {
-    match opt(token(left_paren))(input) {
+    match opt(left_paren)(input) {
         Ok((input, Some(_))) =>
             terminated(
                 opt(expr),
-                token(right_paren)
+                right_paren
             )(input)
             .map(|(input, opt_exp)|
                 (input, opt_exp.unwrap_or_else(Expr::unit))
@@ -250,5 +275,19 @@ mod tests {
                             Expr::int(6)),
                         Expr::int(7))),
                 Expr::int(8))
+    }
+    
+    parser_test! {
+        if_else_test
+        (if_expr): "if true then 1 else 2" =>
+            Expr::if_expr(
+                Expr::bool(true),
+                Expr::int(1),
+                Expr::int(2));
+        (if_expr): "if true ? 1 : 2" =>
+            Expr::if_expr(
+                Expr::bool(true),
+                Expr::int(1),
+                Expr::int(2))
     }
 }

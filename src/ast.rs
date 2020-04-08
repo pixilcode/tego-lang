@@ -2,12 +2,17 @@ use crate::value::Value;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
+    If(Box<Expr>, Box<Expr>, Box<Expr>),
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinaryOp, Box<Expr>),
     Literal(Value)
 }
 
 impl Expr {
+    pub fn if_expr(cond: Self, t: Self, f: Self) -> Self {
+        Expr::If(Box::new(cond), Box::new(t), Box::new(f))
+    }
+    
     pub fn unary(op: UnaryOp, a: Self) -> Self {
         Expr::Unary(op, Box::new(a))
     }

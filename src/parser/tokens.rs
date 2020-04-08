@@ -45,6 +45,11 @@ reserved!(less_than_equal, "<=");
 reserved!(greater_than_equal, ">=");
 reserved!(left_paren, "(");
 reserved!(right_paren, ")");
+reserved!(if_, "if");
+reserved!(then, "then");
+reserved!(q_mark, "?");
+reserved!(else_, "else");
+reserved!(colon, ":");
 
 // TODO Create literal parser here and make `token` function private
 
@@ -73,5 +78,14 @@ mod tests {
     parser_test!(false_test (false_val): "false" => "false");
     parser_test!(left_paren_test (left_paren): "(" => "(");
     parser_test!(right_paren_test (right_paren): ")" => ")");
+    parser_test!(if_test (if_): "if" => "if");
+    parser_test!(then_test (then): "then" => "then");
+    parser_test!(q_mark_test (q_mark): "?" => "?");
+    parser_test!(else_test (else_): "else" => "else");
+    parser_test!(colon_test (colon): ":" => ":");
+    
+    // Use find and replace
+    // Find: reserved!\(([a-z_]+), ("[^"]+")\);
+    // Replace: parser_test!(\1_test (\1): \2 => \2);
     
 }
