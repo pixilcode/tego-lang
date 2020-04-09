@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * If expression
   * `if <expr> then <expr> else <expr>`
   * `if <expr> ? <expr> : <expr>`
+* Environment structure: used in multiple contexts
+  * Track variables in interpreter
+  * Track types in type checker
 
 ## [0.1.1]
 ### Added
