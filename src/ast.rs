@@ -3,6 +3,7 @@ use crate::value::Value;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     If(Box<Expr>, Box<Expr>, Box<Expr>),
+    Variable(String),
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinaryOp, Box<Expr>),
     Literal(Value)

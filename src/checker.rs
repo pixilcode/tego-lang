@@ -17,7 +17,9 @@ pub fn check_expr(expr: &Expr, expected: &Type) -> Result<(), String> {
         Expr::If(cond, t, f) =>
             check_expr(cond, &Type::Bool)
                 .and_then(|_| check_expr(t, expected))
-                .and_then(|_| check_expr(f, expected))
+                .and_then(|_| check_expr(f, expected)),
+        Expr::Variable(ident) =>
+            unimplemented!()
     }
 }
 

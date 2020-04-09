@@ -10,7 +10,8 @@ pub fn eval_expr(expr: Expr) -> Value {
             Value::Bool(true) => eval_expr(*a),
             Value::Bool(false) => eval_expr(*b),
             _ => error("If condition must return a boolean")
-        }
+        },
+        Expr::Variable(ident) => unimplemented!()
     }
 }
 
