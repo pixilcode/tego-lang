@@ -13,19 +13,21 @@ use nom::{
 macro_rules! binary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
         fn $name(input: &'_ str) -> IResult<&'_ str, Expr> {
-            match pair(
+            pair(
                 $next_precedence,
-                opt(
-                    many1(pair($op_func, $next_precedence))
-                )
-            )(input) {
-                Ok((input, (a, Some(others)))) =>
-                    Ok((input, others.into_iter().fold(
-                        a,
-                        |a, (op, b)| Expr::binary(a, BinaryOp::from(op), b)))),
-                Ok((input, (a, None))) => Ok((input, a)),
-                Err(error) => Err(error)
-            }
+                opt(many1(pair($op_func, $next_precedence)))
+            )(input).and_then(
+                |(input, (a, other))|
+                match other {
+                    // Operators found (left to right)
+                    Some(others) =>
+                        Ok((input, others.into_iter().fold(
+                            a,
+                            |a, (op, b)| Expr::binary(a, BinaryOp::from(op), b)
+                        ))),
+                    // No operators found
+                    None => Ok((input, a))
+                })
         }
     };
 }
@@ -33,14 +35,17 @@ macro_rules! binary_expr {
 macro_rules! unary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
         fn $name(input: &'_ str) -> IResult<&'_ str, Expr> {
-            match opt(pair($op_func, $name))(input) {
-                Ok((input, Some((op, a)))) =>
-                    Ok((input, Expr::unary(
-                        UnaryOp::from(op),
-                        a))),
-                Ok((input, None)) => $next_precedence(input),
-                Err(error) => Err(error)
-            }
+            opt(pair($op_func, $name))(input).and_then(
+                |(input, unary_op)|
+                match unary_op {
+                    Some((op, a)) =>
+                        Ok((input, Expr::unary(
+                            UnaryOp::from(op),
+                            a
+                        ))),
+                    None => $next_precedence(input)
+                }
+            )
         }
     }
 }
@@ -50,27 +55,25 @@ pub fn expr(input: &'_ str) -> IResult<&'_ str, Expr> {
 }
 
 pub fn if_expr(input: &'_ str) -> IResult<&'_ str, Expr> {
-    match opt(if_)(input) {
-        Ok((input, Some(_))) => 
-            match pair(join_expr, alt((then, q_mark)))(input) {
-                Ok((input, (cond, "then"))) => 
-                    separated_pair(expr, else_, expr)(input)
-                    .map(
+    opt(if_)(input).and_then(
+        |(input, if_token)|
+        match if_token {
+            Some(_) => pair(join_expr, alt((then, q_mark)))(input).and_then(
+                |(input, (cond, symbol))| {
+                    let next_symbol = match symbol {
+                        "then" => else_,
+                        "?" => colon,
+                        _ => unreachable!()
+                    };
+                    separated_pair(expr, next_symbol, expr)(input).map(
                         |(input, (t, f))|
                         (input, Expr::if_expr(cond, t, f))
-                    ),
-                Ok((input, (cond, "?"))) =>
-                    separated_pair(expr, colon, expr)(input)
-                    .map(
-                        |(input, (t, f))|
-                        (input, Expr::if_expr(cond, t, f))
-                    ),
-                Ok(_) => unreachable!(),
-                Err(error) => Err(error)
-            },
-        Ok((input, None)) => join_expr(input),
-        Err(error) => Err(error)
-    }
+                    )
+                }
+            ),
+            None => join_expr(input)
+        }
+    )
 }
 
 binary_expr!(join_expr, comma, or_expr);
@@ -92,39 +95,42 @@ unary_expr!(negate_expr, minus, not_expr);
 unary_expr!(not_expr, not, grouping);
 
 fn grouping(input: &'_ str) -> IResult<&'_ str, Expr> {
-    match opt(left_paren)(input) {
-        Ok((input, Some(_))) =>
-            terminated(
-                opt(expr),
-                right_paren
-            )(input)
-            .map(|(input, opt_exp)|
-                (input, opt_exp.unwrap_or_else(Expr::unit))
-            ), // If the parens are empty, is a unit expression
-        Ok((input, None)) => literal(input),
-        Err(error) => Err(error)
-    }
+    opt(left_paren)(input).and_then(
+        |(input, paren_token)|
+        match paren_token {
+            Some(_) =>
+                terminated(
+                    opt(expr),
+                    right_paren
+                )(input)
+                .map(|(input, opt_exp)|
+                    (input, opt_exp.unwrap_or_else(Expr::unit))
+                ),
+            None => literal(input)
+        }
+    )
 }
 
 fn literal(input: &'_ str) -> IResult<&'_ str, Expr> {
-    match token(alt((true_val, false_val, unit, digit1)))(input) {
-        Ok((input, "true")) => Ok((input, Expr::bool(true))),
-        Ok((input, "false")) => Ok((input, Expr::bool(false))),
-        Ok((input, lexeme)) => {
-            if let Ok(i) = lexeme.parse::<i32>() {
-                Ok((input, Expr::int(i)))
-            } else {
-                Ok((
-                    input,
-                    Expr::error(&format!(
-                        "Couldn't parse lexeme: {}",
-                        lexeme
-                    )) // TODO Return a nom error here instead
-                ))
-            }
-        },
-        Err(error) => Err(error)
-    }
+    alt((true_val, false_val, token(digit1)))(input).and_then(
+        |(input, token)|
+        match token {
+            "true" => Ok((input, Expr::bool(true))),
+            "false" => Ok((input, Expr::bool(false))),
+            lexeme =>
+                if let Ok(i) = lexeme.parse::<i32>() {
+                    Ok((input, Expr::int(i)))
+                } else {
+                    Ok((
+                        input,
+                        Expr::error(&format!(
+                            "Couldn't parse lexeme: {}",
+                            lexeme
+                        )) // TODO Return a nom error here instead
+                    ))
+                }
+        }
+    )
 }
 
 #[cfg(test)]

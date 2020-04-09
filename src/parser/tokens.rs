@@ -34,7 +34,6 @@ reserved!(and, "and");
 reserved!(or, "or");
 reserved!(xor, "xor");
 reserved!(not, "not");
-reserved!(unit, "()");
 reserved!(true_val, "true");
 reserved!(false_val, "false");
 reserved!(equal, "==");
@@ -73,7 +72,6 @@ mod tests {
     parser_test!(or_test (or): "or" => "or");
     parser_test!(xor_test (xor): "xor" => "xor");
     parser_test!(not_test (not): "not" => "not");
-    parser_test!(unit_test (unit): "()" => "()");
     parser_test!(true_test (true_val): "true" => "true");
     parser_test!(false_test (false_val): "false" => "false");
     parser_test!(left_paren_test (left_paren): "(" => "(");
