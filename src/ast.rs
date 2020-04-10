@@ -109,6 +109,10 @@ impl Expr {
         Expr::Literal(Value::Tuple(vals))
     }
     
+    pub fn variable(ident: &str) -> Self {
+        Expr::Variable(ident.to_string())
+    }
+    
     pub fn error(err: &str) -> Self {
         Expr::Literal(Value::Error(err.to_string()))
     }

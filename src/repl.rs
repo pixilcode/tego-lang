@@ -1,11 +1,13 @@
 use std::io::{self, Write};
 use tego_lang::parser::expr;
-use crate::interpreter;
+use crate::interpreter::{self, new_env};
 use nom::combinator::all_consuming;
 
 pub fn run() {
     println!("Welcome to Tego!");
     println!();
+    
+    let env = new_env();
     
     loop {
         print!(">> ");
@@ -21,7 +23,7 @@ pub fn run() {
         }
         
         let result = match all_consuming(expr::expr)(&code) {
-            Ok((_, e)) => interpreter::eval_expr(e),
+            Ok((_, e)) => interpreter::eval_expr(e, &env),
             Err(error) => {
                 println!("{:?}", error);
                 continue;
