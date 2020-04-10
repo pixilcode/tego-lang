@@ -4,15 +4,16 @@ use nom::{
         preceded,
     },
     character::complete::{
-        multispace0,
+        space0,
+        digit1,
+        alpha1
     },
     bytes::complete::tag
 };
 
-// TODO Make `token` function private (see below)
-pub fn token<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
+fn token<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
 where F: Fn(&'a str) -> IResult<&'a str, O> {
-    preceded(multispace0, parser)
+    preceded(space0, parser)
 }
 
 macro_rules! reserved {
@@ -22,6 +23,14 @@ macro_rules! reserved {
             token(tag($lexeme_str))(input)
         }
     };
+}
+
+pub fn number(input: &'_ str) -> IResult<&'_ str, &'_ str> {
+    token(digit1)(input)
+}
+
+pub fn identifier(input: &'_ str) -> IResult<&'_ str, &'_ str> {
+    token(alpha1)(input)
 }
 
 reserved!(comma, ",");
@@ -49,8 +58,9 @@ reserved!(then, "then");
 reserved!(q_mark, "?");
 reserved!(else_, "else");
 reserved!(colon, ":");
-
-// TODO Create literal parser here and make `token` function private
+reserved!(let_, "let");
+reserved!(in_, "in");
+reserved!(assign, "=");
 
 #[cfg(test)]
 mod tests {
@@ -59,7 +69,7 @@ mod tests {
     #[test]
     fn token_parser_test() {
         let parser = token(tag("abc"));
-        assert_eq!(parser(" \t\nabc"), Ok(("", "abc")));
+        assert_eq!(parser(" \tabc"), Ok(("", "abc")));
     }
     
     parser_test!(comma_test (comma): "," => ",");
@@ -81,6 +91,11 @@ mod tests {
     parser_test!(q_mark_test (q_mark): "?" => "?");
     parser_test!(else_test (else_): "else" => "else");
     parser_test!(colon_test (colon): ":" => ":");
+    parser_test!(number_test (number): "12" => "12");
+    parser_test!(identifier_test (identifier): "aBc" => "aBc");
+    parser_test!(let_test (let_): "let" => "let");
+    parser_test!(in_test (in_): "in" => "in");
+    parser_test!(assign_test (assign): "=" => "=");
     
     // Use find and replace
     // Find: reserved!\(([a-z_]+), ("[^"]+")\);

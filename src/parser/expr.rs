@@ -1,12 +1,12 @@
 use crate::ast::{Expr, BinaryOp, UnaryOp};
 use crate::parser::tokens::*;
+use crate::parser::match_::*;
 
 use nom::{
     IResult,
     sequence::{separated_pair, pair, terminated},
     combinator::opt,
     branch::alt,
-    character::complete::digit1,
     multi::many1
 };
 
@@ -51,7 +51,32 @@ macro_rules! unary_expr {
 }
 
 pub fn expr(input: &'_ str) -> IResult<&'_ str, Expr> {
-    if_expr(input)
+    let_expr(input)
+}
+
+pub fn let_expr(input: &'_ str) -> IResult<&'_ str, Expr> {
+    opt(let_)(input).and_then(
+        |(input, let_token)|
+        match let_token {
+            Some(_) =>
+                separated_pair(
+                    separated_pair(
+                        match_,
+                        assign,
+                        join_expr
+                    ),
+                    in_,
+                    expr
+                )(input).and_then(
+                    |(input, ((ident, value), inner))|
+                    Ok((
+                        input,
+                        Expr::let_expr(ident, value, inner)
+                    ))
+                ),
+            None => if_expr(input)
+        }
+    )
 }
 
 pub fn if_expr(input: &'_ str) -> IResult<&'_ str, Expr> {
@@ -112,7 +137,7 @@ fn grouping(input: &'_ str) -> IResult<&'_ str, Expr> {
 }
 
 fn literal(input: &'_ str) -> IResult<&'_ str, Expr> {
-    alt((true_val, false_val, token(digit1)))(input).and_then(
+    alt((true_val, false_val, number, identifier))(input).and_then(
         |(input, token)|
         match token {
             "true" => Ok((input, Expr::bool(true))),
@@ -121,13 +146,7 @@ fn literal(input: &'_ str) -> IResult<&'_ str, Expr> {
                 if let Ok(i) = lexeme.parse::<i32>() {
                     Ok((input, Expr::int(i)))
                 } else {
-                    Ok((
-                        input,
-                        Expr::error(&format!(
-                            "Couldn't parse lexeme: {}",
-                            lexeme
-                        )) // TODO Return a nom error here instead
-                    ))
+                    Ok((input, Expr::variable(lexeme)))
                 }
         }
     )
@@ -136,18 +155,19 @@ fn literal(input: &'_ str) -> IResult<&'_ str, Expr> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ast::Match;
     
     parser_test! {
         literal_test
-        (literal): "1" => Expr::int(1);
-        (literal): "true" => Expr::bool(true);
-        (literal): "false" => Expr::bool(false);
-        (grouping): "()" => Expr::unit()
+        (expr): "1" => Expr::int(1);
+        (expr): "true" => Expr::bool(true);
+        (expr): "false" => Expr::bool(false);
+        (expr): "()" => Expr::unit()
     }
     
     parser_test! {
         or_test
-        (or_expr): "true or false" =>
+        (expr): "true or false" =>
             Expr::or(
                 Expr::bool(true),
                 Expr::bool(false))
@@ -155,7 +175,7 @@ mod tests {
     
     parser_test! {
         and_test
-        (and_expr): "true and false" =>
+        (expr): "true and false" =>
             Expr::and(
                 Expr::bool(true),
                 Expr::bool(false))
@@ -163,7 +183,7 @@ mod tests {
     
     parser_test! {
         plus_test
-        (add_expr): "1 + 2" =>
+        (expr): "1 + 2" =>
             Expr::plus(
                 Expr::int(1),
                 Expr::int(2))
@@ -171,7 +191,7 @@ mod tests {
     
     parser_test! {
         minus_test
-        (add_expr): "1 - 2" =>
+        (expr): "1 - 2" =>
             Expr::minus(
                 Expr::int(1),
                 Expr::int(2))
@@ -179,7 +199,7 @@ mod tests {
     
     parser_test! {
         multiply_test
-        (mult_expr): "1 * 2" =>
+        (expr): "1 * 2" =>
             Expr::multiply(
                 Expr::int(1),
                 Expr::int(2))
@@ -187,7 +207,7 @@ mod tests {
     
     parser_test! {
         divide_test
-        (mult_expr): "1 / 2" =>
+        (expr): "1 / 2" =>
             Expr::divide(
                 Expr::int(1),
                 Expr::int(2))
@@ -195,7 +215,7 @@ mod tests {
     
     parser_test! {
         modulo_test
-        (mult_expr): "1 % 2" =>
+        (expr): "1 % 2" =>
             Expr::modulo(
                 Expr::int(1),
                 Expr::int(2))
@@ -203,7 +223,7 @@ mod tests {
     
     parser_test! {
         equal_test
-        (equal_expr): "1 == 2" =>
+        (expr): "1 == 2" =>
             Expr::equal(
                 Expr::int(1),
                 Expr::int(2))
@@ -211,14 +231,14 @@ mod tests {
     
     parser_test! {
         negate_test
-        (negate_expr): "-1" =>
+        (expr): "-1" =>
             Expr::negate(
                 Expr::int(1))
     }
     
     parser_test! {
         not_test
-        (not_expr): "not true" =>
+        (expr): "not true" =>
             Expr::not(
                 Expr::bool(true))
     }
@@ -285,15 +305,37 @@ mod tests {
     
     parser_test! {
         if_else_test
-        (if_expr): "if true then 1 else 2" =>
+        (expr): "if true then 1 else 2" =>
             Expr::if_expr(
                 Expr::bool(true),
                 Expr::int(1),
                 Expr::int(2));
-        (if_expr): "if true ? 1 : 2" =>
+        (expr): "if true ? 1 : 2" =>
             Expr::if_expr(
                 Expr::bool(true),
                 Expr::int(1),
                 Expr::int(2))
+    }
+    
+    parser_test! {
+        variable_test
+        (expr): "abc" =>
+            Expr::variable("abc")
+    }
+    
+    parser_test! {
+        let_test
+        (expr): "let a = 1 in true" =>
+            Expr::let_expr(
+                Match::ident("a"),
+                Expr::int(1),
+                Expr::bool(true));
+        (expr): "let a = 1 in 2" =>
+            Expr::let_expr(
+                Match::ident("a"),
+                Expr::int(1),
+                Expr::int(2)
+            )
+
     }
 }

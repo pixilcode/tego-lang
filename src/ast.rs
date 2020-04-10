@@ -3,6 +3,7 @@ use crate::value::Value;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     If(Box<Expr>, Box<Expr>, Box<Expr>),
+    Let(Match, Box<Expr>, Box<Expr>),
     Variable(String),
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinaryOp, Box<Expr>),
@@ -10,6 +11,10 @@ pub enum Expr {
 }
 
 impl Expr {
+    pub fn let_expr(ident: Match, value: Self, inner: Self) -> Self {
+        Expr::Let(ident, Box::new(value), Box::new(inner))
+    }
+    
     pub fn if_expr(cond: Self, t: Self, f: Self) -> Self {
         Expr::If(Box::new(cond), Box::new(t), Box::new(f))
     }
@@ -115,6 +120,17 @@ impl Expr {
     
     pub fn error(err: &str) -> Self {
         Expr::Literal(Value::Error(err.to_string()))
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Match {
+    Ident(String)
+}
+
+impl Match {
+    pub fn ident(lexeme: &str) -> Match {
+        Match::Ident(lexeme.to_string())
     }
 }
 

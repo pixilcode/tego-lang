@@ -1,33 +1,40 @@
+use std::fmt::Debug;
 use std::rc::Rc;
+use crate::ast::Match;
 
-pub enum Env<V> {
+#[derive(Debug)]
+pub enum Env<V>
+where V: Clone + Debug {
     Empty,
     Entry {
-        ident: String,
+        ident: Match,
         value: V,
         parent: Rc<Env<V>>
     }
 }
 
-impl<V> Env<V> {
-    pub fn empty() -> Self {
-        Env::Empty
+impl<V> Env<V> 
+where V: Clone + Debug {
+    pub fn empty() -> Rc<Self> {
+        Rc::new(Env::Empty)
     }
     
-    pub fn associate(ident: &str, value: V, parent: Env<V>) -> Self {
-        let ident = ident.to_string();
-        let parent = Rc::new(parent);
-        Env::Entry { ident, value, parent }
+    pub fn associate(ident: Match, value: V, parent: &Rc<Env<V>>) -> Rc<Self> {
+        let parent = Rc::clone(parent);
+        Rc::new(Env::Entry { ident, value, parent })
     }
     
-    pub fn get(&self, ident: &str) -> Option<&V> {
+    pub fn get(&self, ident: &str) -> Option<V> {
         match self {
             Env::Empty => None,
             Env::Entry { ident: id, value, parent } =>
-                if ident == id {
-                    Some(value)
-                } else {
-                    parent.get(ident)
+                match id {
+                    Match::Ident(id) =>
+                        if ident == id {
+                            Some(value.clone())
+                        } else {
+                            parent.get(ident)
+                        }
                 }
         }
     }
@@ -39,20 +46,20 @@ mod tests {
     
     basic_test! {
         no_parent_test
-        Env::associate("a", 1, Env::empty()).get("a") => Some(&1);
-        Env::associate("a", 1, Env::empty()).get("b") => None
+        Env::associate(Match::ident("a"), 1, &Env::empty()).get("a") => Some(1);
+        Env::associate(Match::ident("a"), 1, &Env::empty()).get("b") => None
     }
     
     basic_test! {
         with_parent_test
-        Env::associate("a", 1,
-            Env::associate("b", 2, Env::empty()))
-            .get("a") => Some(&1);
-        Env::associate("a", 1,
-            Env::associate("b", 2, Env::empty()))
-            .get("b") => Some(&2);
-        Env::associate("a", 1,
-            Env::associate("b", 2, Env::empty()))
+        Env::associate(Match::ident("a"), 1,
+            &Env::associate(Match::ident("b"), 2, &Env::empty()))
+            .get("a") => Some(1);
+        Env::associate(Match::ident("a"), 1,
+            &Env::associate(Match::ident("b"), 2, &Env::empty()))
+            .get("b") => Some(2);
+        Env::associate(Match::ident("a"), 1,
+            &Env::associate(Match::ident("b"), 2, &Env::empty()))
             .get("c") => None
     }
 }
