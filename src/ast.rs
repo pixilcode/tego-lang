@@ -125,12 +125,31 @@ impl Expr {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Match {
-    Ident(String)
+    Ident(String),
+    Tuple(Vec<Match>)
 }
 
 impl Match {
     pub fn ident(lexeme: &str) -> Match {
         Match::Ident(lexeme.to_string())
+    }
+    
+    pub fn tuple(a: Match, b: Match) -> Match {
+        match (a, b) {
+            (Match::Tuple(mut a), Match::Tuple(mut b)) => {
+                a.append(&mut b);
+                Match::Tuple(a)
+            },
+            (Match::Tuple(mut a), b) => {
+                a.push(b);
+                Match::Tuple(a)
+            },
+            (a, Match::Tuple(mut b)) => {
+                b.insert(0, a);
+                Match::Tuple(b)
+            },
+            (a, b) => Match::Tuple(vec![a, b])
+        }
     }
 }
 

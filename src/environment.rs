@@ -34,7 +34,9 @@ where V: Clone + Debug {
                             Some(value.clone())
                         } else {
                             parent.get(ident)
-                        }
+                        },
+                    Match::Tuple(matches) =>
+                        unimplemented!()
                 }
         }
     }
@@ -43,23 +45,58 @@ where V: Clone + Debug {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::value::Value;
     
     basic_test! {
         no_parent_test
-        Env::associate(Match::ident("a"), 1, &Env::empty()).get("a") => Some(1);
-        Env::associate(Match::ident("a"), 1, &Env::empty()).get("b") => None
+        Env::associate(
+            Match::ident("a"),
+            Value::Int(1),
+            &Env::empty()
+        ).get("a") => Some(Value::Int(1));
+        Env::associate(
+            Match::ident("a"),
+            Value::Int(1),
+            &Env::empty()
+        ).get("b") => None
     }
     
     basic_test! {
         with_parent_test
-        Env::associate(Match::ident("a"), 1,
-            &Env::associate(Match::ident("b"), 2, &Env::empty()))
-            .get("a") => Some(1);
-        Env::associate(Match::ident("a"), 1,
-            &Env::associate(Match::ident("b"), 2, &Env::empty()))
-            .get("b") => Some(2);
-        Env::associate(Match::ident("a"), 1,
-            &Env::associate(Match::ident("b"), 2, &Env::empty()))
+        Env::associate(Match::ident("a"), Value::Int(1),
+            &Env::associate(Match::ident("b"), Value::Int(2), &Env::empty()))
+            .get("a") => Some(Value::Int(1));
+        Env::associate(Match::ident("a"), Value::Int(1),
+            &Env::associate(Match::ident("b"), Value::Int(2), &Env::empty()))
+            .get("b") => Some(Value::Int(2));
+        Env::associate(Match::ident("a"), Value::Int(1),
+            &Env::associate(Match::ident("b"), Value::Int(2), &Env::empty()))
             .get("c") => None
+    }
+    
+    basic_test! {
+        with_tuple_test
+        Env::associate(
+            Match::tuple(
+                Match::ident("a"),
+                Match::ident("b")
+            ),
+            Value::Tuple(vec![
+                Value::Int(1),
+                Value::Int(2)
+            ]),
+            &Env::empty()
+        ).get("a") => Some(Value::Int(1));
+        Env::associate(
+            Match::tuple(
+                Match::ident("a"),
+                Match::ident("b")
+            ),
+            Value::Tuple(vec![
+                Value::Int(1),
+                Value::Int(2)
+            ]),
+            &Env::empty()
+        ).get("b") => Some(Value::Int(2))
     }
 }
