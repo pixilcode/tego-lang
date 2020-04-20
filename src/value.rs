@@ -1,4 +1,6 @@
 use crate::type_::Type;
+use crate::environment::EnvVal;
+use crate::ast::Match;
 use std::ops;
 use std::fmt;
 
@@ -133,6 +135,51 @@ impl Value {
     impl_op!(greater_than_equal, "greater than/equal to" =>
         Value::Int(a), Value::Int(b) = Value::Bool(a >= b)
     );
+}
+
+impl EnvVal for Value {
+    fn unwrap_matches(&self, pattern: &Match) -> Result<Vec<(String, Self)>, String> {
+        match (pattern, self) {
+            (Match::Ident(ident), val) => Ok(vec![(ident.to_string(), val.clone())]),
+            (Match::Tuple(tup_match), Value::Tuple(tup_val)) =>
+                unwrap_tuple(&tup_match, &tup_val),
+            (pattern, value) => match_error(pattern, value)
+        }
+    }
+}
+
+fn unwrap_tuple(tup_match: &[Match], tup_val: &[Value]) -> Result<Vec<(String, Value)>, String> {
+    let match_len = tup_match.len();
+    let val_len = tup_val.len();
+    match (match_len, val_len) {
+        (0, 0) => Ok(vec![]),
+        (0, _) => Err("Tried to match non-empty tuple against '()'".to_string()),
+        (_, 0) => Err("Not enough elements to match tuple".to_string()),
+        (1, 1) => tup_val[0].unwrap_matches(&tup_match[0]),
+        (1, _) => Value::Tuple(tup_val.to_vec())
+                .unwrap_matches(&tup_match[0]),
+        _ => tup_val[0].unwrap_matches(&tup_match[0])
+            .and_then(
+                |mut vals|
+                unwrap_tuple(&tup_match[1..], &tup_val[1..])
+                .and_then(
+                    |mut rest| {
+                        vals.append(&mut rest);
+                        Ok(vals)
+                    }
+                )
+            )
+    }
+}
+
+fn match_error(expected: &Match, found: &Value) -> Result<Vec<(String, Value)>, String> {
+    Err(format!("Expected {}, found {}", 
+        match expected {
+            Match::Ident(_) => "value",
+            Match::Tuple(_) => "tuple",
+        },
+        found.type_()
+    ))
 }
 
 impl fmt::Display for Value {
@@ -609,5 +656,77 @@ mod tests {
         not_deep_error
         !(Value::Int(1) + Value::Unit) =>
             binary_op_error("add", Type::Int, Type::Unit)
+    );
+    
+    // UNWRAP TESTS
+    basic_test!(
+        unwrap_ident
+        Value::Int(1).unwrap_matches(&Match::ident("a")) =>
+            Ok(vec![("a".to_string(), Value::Int(1))]);
+        Value::Tuple(vec![Value::Int(1), Value::Int(2)])
+            .unwrap_matches(&Match::ident("a")) =>
+                Ok(vec![
+                    ("a".to_string(), Value::Tuple(vec![
+                        Value::Int(1),
+                        Value::Int(2)
+                    ]))
+                ])
+    );
+    
+    basic_test!(
+        unwrap_tuple
+        Value::Tuple(
+            vec![Value::Int(1), Value::Int(2), Value::Int(3)]
+        ).unwrap_matches(
+            &Match::tuple(
+                Match::ident("a"),
+                Match::tuple(Match::ident("b"), Match::ident("c"))
+            )
+        ) =>
+            Ok(vec![
+                ("a".to_string(), Value::Int(1)),
+                ("b".to_string(), Value::Int(2)),
+                ("c".to_string(), Value::Int(3))
+            ]);
+        
+        Value::Tuple(
+            vec![Value::Int(1), Value::Int(2), Value::Int(3)]
+        ).unwrap_matches(
+            &Match::tuple(
+                Match::ident("a"),
+                Match::ident("b")
+            )
+        ) =>
+            Ok(vec![
+                ("a".to_string(), Value::Int(1)),
+                ("b".to_string(), Value::Tuple(vec![Value::Int(2), Value::Int(3)]))
+            ]);
+        
+        Value::Tuple(
+            vec![Value::Int(1), Value::Int(2)]
+        ).unwrap_matches(
+            &Match::tuple(
+                Match::ident("a"),
+                Match::tuple(Match::ident("b"), Match::ident("c"))
+            )
+        ) =>
+            Err("Not enough elements to match tuple".to_string());
+        
+        Value::Tuple(vec![]).unwrap_matches(
+            &Match::Tuple(vec![])
+        ) =>
+            Ok(vec![]);
+        
+        Value::Tuple(
+            vec![Value::Int(1), Value::Int(2)]
+        ).unwrap_matches(
+            &Match::Tuple(vec![])
+        ) => Err("Tried to match non-empty tuple against '()'".to_string());
+            
+        
+        Value::Int(1).unwrap_matches(
+            &Match::tuple(Match::ident("a"), Match::ident("b"))
+        ) =>
+            Err("Expected tuple, found Int".to_string())
     );
 }

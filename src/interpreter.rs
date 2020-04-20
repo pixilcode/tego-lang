@@ -29,14 +29,15 @@ pub fn eval_expr(expr: Expr, env: &Rc<VarEnv>) -> Value {
                 error(&format!("Variable '{}' is not declared", ident))
         },
         Expr::Let(ident, value, inner) =>
-            eval_expr(
-                *inner,
-                &VarEnv::associate(
-                    ident,
-                    eval_expr(*value, env),
-                    env
-                )
-            )
+            match VarEnv::associate(
+                ident,
+                eval_expr(*value, env),
+                env
+            ) {
+                Ok(env) => eval_expr(*inner, &env),
+                Err(error) => Value::Error(error)
+            }
+            
     }
 }
 
@@ -116,7 +117,7 @@ mod tests {
                 Match::ident("a"),
                 Value::Int(1),
                 &VarEnv::empty()
-            )
+            ).unwrap()
         ) => Value::Int(1);
         eval_expr(
             Expr::variable("b"),
@@ -124,7 +125,7 @@ mod tests {
                 Match::ident("a"),
                 Value::Int(1),
                 &VarEnv::empty()
-            )
+            ).unwrap()
         ) => Value::Error("Variable 'b' is not declared".to_string())
     }
     

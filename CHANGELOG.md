@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+* Pattern-matching over tuples
+  * `let a, b = 1, 2 in ...`
+  * Parentheses in matching and/or expression are optional
+    * `let (a, b) = 1, 2 in ...`
+    * `let a, b = (1, 2) in ...`
+    * `let (a, b) = (1, 2) in ...`
+  * Note that grouping doesn't create tuples in tuples
+     * `a, (b, c)` == `(a, b), c` == `a, b, c`
 
 ## [0.2.0]
 ### Added
@@ -46,6 +55,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   * Boolean arithmetic operators: `and`, `or`, `xor`
   * Comparison operators: `==`, `/=`, `<=`, `>=`, `<`, `>`
   * Tuple operator: `,`
+    * Note that the tuple operator does not create tuples in tuples
+    * `a, (b, c)` == `(a, b), c` == `a, b, c`
 * Types
   * Integer
   * Boolean
