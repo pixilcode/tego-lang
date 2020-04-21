@@ -8,7 +8,10 @@ use nom::{
         digit1,
         alpha1
     },
-    bytes::complete::tag
+    bytes::complete::{
+        tag,
+        take_till1
+    }
 };
 
 const KEYWORDS: &[&str; 12] = &[
@@ -45,7 +48,7 @@ pub fn number(input: &'_ str) -> IResult<&'_ str, &'_ str> {
 }
 
 pub fn identifier(input: &'_ str) -> IResult<&'_ str, &'_ str> {
-    token(alpha1)(input)
+    token(take_till1(|c: char| !c.is_ascii_alphabetic() && c != '\''))(input)
 }
 
 reserved!(comma, ",");
@@ -115,7 +118,7 @@ mod tests {
     parser_test!(else_test (else_): "else" => "else");
     parser_test!(colon_test (colon): ":" => ":");
     parser_test!(number_test (number): "12" => "12");
-    parser_test!(identifier_test (identifier): "aBc" => "aBc");
+    parser_test!(identifier_test (identifier): "aBc'" => "aBc'");
     parser_test!(let_test (let_): "let" => "let");
     parser_test!(in_test (in_): "in" => "in");
     parser_test!(assign_test (assign): "=" => "=");
