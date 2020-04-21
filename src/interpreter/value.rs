@@ -1,6 +1,7 @@
 use crate::type_::Type;
 use crate::environment::EnvVal;
 use crate::ast::Match;
+use crate::ast::MatchVal;
 use crate::ast::Expr;
 use crate::interpreter::VarEnv;
 use std::ops;
@@ -152,6 +153,18 @@ impl EnvVal for Value {
             (Match::Ident(ident), val) => Ok(vec![(ident.to_string(), val.clone())]),
             (Match::Tuple(tup_match), Value::Tuple(tup_val)) =>
                 unwrap_tuple(&tup_match, &tup_val),
+            (Match::Value(MatchVal::Int(a)), Value::Int(b)) =>
+                if a == b {
+                    Ok(vec![])
+                } else {
+                    Err(format!("Expected '{}', found '{}'", a, b))
+                },
+            (Match::Value(MatchVal::Bool(a)), Value::Bool(b)) =>
+                if a == b {
+                    Ok(vec![])
+                } else {
+                    Err(format!("Expected '{}', found '{}'", a, b))
+                },
             (pattern, value) => match_error(pattern, value)
         }
     }
@@ -184,8 +197,9 @@ fn unwrap_tuple(tup_match: &[Match], tup_val: &[Value]) -> Result<Vec<(String, V
 fn match_error(expected: &Match, found: &Value) -> Result<Vec<(String, Value)>, String> {
     Err(format!("Expected {}, found {}", 
         match expected {
-            Match::Ident(_) => "value",
-            Match::Tuple(_) => "tuple",
+            Match::Ident(_) => "value".to_string(),
+            Match::Tuple(_) => "tuple".to_string(),
+            Match::Value(v) => format!("'{}'", v)
         },
         found.type_()
     ))

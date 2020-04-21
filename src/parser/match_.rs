@@ -1,3 +1,4 @@
+use nom::branch::alt;
 use crate::parser::tokens::*;
 use crate::ast::Match;
 
@@ -7,14 +8,17 @@ use nom::{
         pair,
         terminated
     },
-    combinator::opt
+    combinator::opt,
+    error::ErrorKind
 };
 
-pub fn match_(input: &'_ str) -> IResult<&'_ str, Match> {
+type MatchResult<'a> = IResult<&'a str, Match>;
+
+pub fn match_(input: &'_ str) -> MatchResult<'_> {
     tuple(input)
 }
 
-pub fn tuple(input: &'_ str) -> IResult<&'_ str, Match> {
+pub fn tuple(input: &'_ str) -> MatchResult<'_> {
     pair(grouping, opt(comma))(input).and_then(
         |(input, (a, comma))|
         match comma {
@@ -27,20 +31,30 @@ pub fn tuple(input: &'_ str) -> IResult<&'_ str, Match> {
     )
 }
 
-pub fn grouping(input: &'_ str) -> IResult<&'_ str, Match> {
+pub fn grouping(input: &'_ str) -> MatchResult<'_> {
     opt(left_paren)(input).and_then(
         |(input, left_paren)|
         match left_paren {
             Some(_) => terminated(match_, right_paren)(input),
-            None => ident(input)
+            None => atom(input)
         }
     )
 }
 
-pub fn ident(input: &'_ str) -> IResult<&'_ str, Match> {
-    identifier(input).map(
-        |(input, ident)|
-        (input, Match::ident(ident))
+pub fn atom(input: &'_ str) -> MatchResult<'_> {
+    alt((true_val, false_val, number, identifier))(input).and_then(
+        |(new_input, token)|
+        match token {
+            "true" => Ok((new_input, Match::bool(true))),
+            "false" => Ok((new_input, Match::bool(false))),
+            lexeme if is_keyword(lexeme) =>
+                Err(nom::Err::Error((input, ErrorKind::Tag))),
+            lexeme => if let Ok(i) = lexeme.parse::<i32>() {
+                    Ok((new_input, Match::int(i)))
+                } else {
+                    Ok((new_input, Match::ident(lexeme)))
+                }
+        }
     )
 }
 
@@ -81,5 +95,19 @@ mod tests {
                     Match::ident("c")
                 )
             )
+    }
+    
+    parser_test! {
+        value_test
+        (match_): "1" =>
+            Match::int(1);
+        (match_): "true" =>
+            Match::bool(true)
+    }
+    
+    basic_test! {
+        keyword
+        match_("let") =>
+            Err(nom::Err::Error(("let", ErrorKind::Tag)))
     }
 }

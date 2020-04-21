@@ -7,10 +7,8 @@
 * Add type inference
 * Add enums (`|` operator)
 * Add named tuples
-* Add functions
 * Add `,,` operator
 * Error management
-* Add value pattern for pattern matching
 * Add function pattern for pattern matching
 * Add `.` composition/application(?) operator
 * Integers can be applied as functions
