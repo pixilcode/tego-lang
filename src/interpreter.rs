@@ -40,8 +40,9 @@ pub fn eval_expr(expr: Expr, env: &Rc<VarEnv>) -> Value {
                 Err(error) => Value::Error(error)
             },
         Expr::Fn_(param, body) =>
-            Value::fn_(param, body, Rc::clone(env))
-            
+            Value::fn_(param, body, Rc::clone(env)),
+        Expr::FnApp(function, arg) => 
+            unimplemented!()
     }
 }
 

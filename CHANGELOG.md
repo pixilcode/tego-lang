@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
     * `let (a, b) = (1, 2) in ...`
   * Note that grouping doesn't create tuples in tuples
      * `a, (b, c)` == `(a, b), c` == `a, b, c`
+* Lambda function expressions
+  * `fn <match> -> <expr>`
 
 ## [0.2.0]
 ### Added

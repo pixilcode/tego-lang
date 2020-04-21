@@ -7,12 +7,15 @@ use nom::{
     sequence::{separated_pair, pair, terminated},
     combinator::opt,
     branch::alt,
-    multi::many1
+    multi::many1,
+    error::ErrorKind
 };
+
+type ExprResult<'a> = IResult<&'a str, Expr>;
 
 macro_rules! binary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
-        fn $name(input: &'_ str) -> IResult<&'_ str, Expr> {
+        fn $name(input: &'_ str) -> ExprResult<'_> {
             pair(
                 $next_precedence,
                 opt(many1(pair($op_func, $next_precedence)))
@@ -34,7 +37,7 @@ macro_rules! binary_expr {
 
 macro_rules! unary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
-        fn $name(input: &'_ str) -> IResult<&'_ str, Expr> {
+        fn $name(input: &'_ str) -> ExprResult<'_> {
             opt(pair($op_func, $name))(input).and_then(
                 |(input, unary_op)|
                 match unary_op {
@@ -50,11 +53,11 @@ macro_rules! unary_expr {
     }
 }
 
-pub fn expr(input: &'_ str) -> IResult<&'_ str, Expr> {
+pub fn expr(input: &'_ str) -> ExprResult<'_> {
     let_expr(input)
 }
 
-pub fn let_expr(input: &'_ str) -> IResult<&'_ str, Expr> {
+pub fn let_expr(input: &'_ str) -> ExprResult<'_> {
     opt(let_)(input).and_then(
         |(input, let_token)|
         match let_token {
@@ -79,7 +82,7 @@ pub fn let_expr(input: &'_ str) -> IResult<&'_ str, Expr> {
     )
 }
 
-pub fn if_expr(input: &'_ str) -> IResult<&'_ str, Expr> {
+pub fn if_expr(input: &'_ str) -> ExprResult<'_> {
     opt(if_)(input).and_then(
         |(input, if_token)|
         match if_token {
@@ -117,9 +120,33 @@ binary_expr!(add_expr, alt((plus, minus)), mult_expr);
 binary_expr!(mult_expr, alt((star, slash, modulo)), negate_expr);
 
 unary_expr!(negate_expr, minus, not_expr);
-unary_expr!(not_expr, not, grouping);
+unary_expr!(not_expr, not, fn_expr);
 
-fn grouping(input: &'_ str) -> IResult<&'_ str, Expr> {
+fn fn_expr(input: &'_ str) -> ExprResult<'_> {
+    opt(fn_)(input).and_then(
+        |(input, paren_token)|
+        match paren_token {
+            Some(_) =>
+                separated_pair(match_, arrow, expr)(input).map(
+                    |(input, (param, body))|
+                    (input, Expr::fn_expr(param, body))
+                ),
+            None => fn_application(input)
+        }
+    )
+}
+
+fn fn_application(input: &'_ str) -> ExprResult<'_> {
+    pair(grouping, opt(grouping))(input).and_then(
+        |(input, (val, arg))|
+        match arg {
+            Some(arg) => Ok((input, Expr::fn_app(val, arg))),
+            None => Ok((input, val))
+        }
+    )
+}
+
+fn grouping(input: &'_ str) -> ExprResult<'_> {
     opt(left_paren)(input).and_then(
         |(input, paren_token)|
         match paren_token {
@@ -131,36 +158,24 @@ fn grouping(input: &'_ str) -> IResult<&'_ str, Expr> {
                 .map(|(input, opt_exp)|
                     (input, opt_exp.unwrap_or_else(Expr::unit))
                 ),
-            None => fn_expr(input)
-        }
-    )
-}
-
-fn fn_expr(input: &'_ str) -> IResult<&'_ str, Expr> {
-    opt(fn_)(input).and_then(
-        |(input, paren_token)|
-        match paren_token {
-            Some(_) =>
-                separated_pair(match_, arrow, expr)(input).map(
-                    |(input, (param, body))|
-                    (input, Expr::fn_expr(param, body))
-                ),
             None => literal(input)
         }
     )
 }
 
-fn literal(input: &'_ str) -> IResult<&'_ str, Expr> {
+fn literal(input: &'_ str) -> ExprResult<'_> {
     alt((true_val, false_val, number, identifier))(input).and_then(
-        |(input, token)|
+        |(new_input, token)|
         match token {
-            "true" => Ok((input, Expr::bool(true))),
-            "false" => Ok((input, Expr::bool(false))),
+            "true" => Ok((new_input, Expr::bool(true))),
+            "false" => Ok((new_input, Expr::bool(false))),
+            lexeme if is_keyword(lexeme) =>
+                Err(nom::Err::Error((input, ErrorKind::Tag))),
             lexeme =>
                 if let Ok(i) = lexeme.parse::<i32>() {
-                    Ok((input, Expr::int(i)))
+                    Ok((new_input, Expr::int(i)))
                 } else {
-                    Ok((input, Expr::variable(lexeme)))
+                    Ok((new_input, Expr::variable(lexeme)))
                 }
         }
     )
@@ -365,5 +380,21 @@ mod tests {
                 Expr::plus(
                     Expr::variable("a"),
                     Expr::int(1)))
+    }
+    
+    parser_test! {
+        fn_application_test
+        (expr): "a 1" =>
+            Expr::fn_app(
+                Expr::variable("a"),
+                Expr::int(1));
+        (expr): "a (1, 2)" =>
+            Expr::fn_app(
+                Expr::variable("a"),
+                Expr::join(
+                    Expr::int(1),
+                    Expr::int(2)
+                )
+            )
     }
 }

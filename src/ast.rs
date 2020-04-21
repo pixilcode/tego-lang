@@ -5,6 +5,7 @@ pub enum Expr {
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     Let(Match, Box<Expr>, Box<Expr>),
     Fn_(Match, Box<Expr>),
+    FnApp(Box<Expr>, Box<Expr>),
     Variable(String),
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinaryOp, Box<Expr>),
@@ -22,6 +23,10 @@ impl Expr {
     
     pub fn fn_expr(param: Match, body: Self) -> Self {
         Expr::Fn_(param, Box::new(body))
+    }
+    
+    pub fn fn_app(function: Self, arg: Self) -> Self {
+        Expr::FnApp(Box::new(function), Box::new(arg))
     }
     
     pub fn unary(op: UnaryOp, a: Self) -> Self {

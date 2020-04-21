@@ -11,6 +11,21 @@ use nom::{
     bytes::complete::tag
 };
 
+const KEYWORDS: &[&str; 12] = &[
+    "and",
+    "or",
+    "xor",
+    "not",
+    "true",
+    "false",
+    "if",
+    "then",
+    "else",
+    "let",
+    "in",
+    "fn"
+];
+
 fn token<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
 where F: Fn(&'a str) -> IResult<&'a str, O> {
     preceded(space0, parser)
@@ -63,6 +78,12 @@ reserved!(in_, "in");
 reserved!(assign, "=");
 reserved!(fn_, "fn");
 reserved!(arrow, "->");
+
+pub fn is_keyword(lexeme: &str) -> bool {
+    KEYWORDS.iter().any(
+        |keyword| keyword == &lexeme
+    )
+}
 
 #[cfg(test)]
 mod tests {
