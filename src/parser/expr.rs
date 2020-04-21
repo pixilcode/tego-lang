@@ -7,7 +7,9 @@ use nom::{
     sequence::{separated_pair, pair, terminated},
     combinator::opt,
     branch::alt,
-    multi::many1,
+    multi::{
+        many1,
+        fold_many0},
     error::ErrorKind
 };
 
@@ -137,13 +139,17 @@ fn fn_expr(input: &'_ str) -> ExprResult<'_> {
 }
 
 fn fn_application(input: &'_ str) -> ExprResult<'_> {
-    pair(grouping, opt(grouping))(input).and_then(
+    grouping(input).and_then(
+        |(input, val)|
+        fold_many0(grouping, val, Expr::fn_app)(input)
+    )
+    /*pair(grouping, opt(grouping))(input).and_then(
         |(input, (val, arg))|
         match arg {
             Some(arg) => Ok((input, Expr::fn_app(val, arg))),
             None => Ok((input, val))
         }
-    )
+    )*/
 }
 
 fn grouping(input: &'_ str) -> ExprResult<'_> {
@@ -395,6 +401,12 @@ mod tests {
                     Expr::int(1),
                     Expr::int(2)
                 )
-            )
+            );
+        (expr): "a 1 2" =>
+            Expr::fn_app(
+                Expr::fn_app(
+                    Expr::variable("a"),
+                    Expr::int(1)),
+                Expr::int(2))
     }
 }

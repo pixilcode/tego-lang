@@ -15,6 +15,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
      * `a, (b, c)` == `(a, b), c` == `a, b, c`
 * Lambda function expressions
   * `fn <match> -> <expr>`
+  * Lambda functions can only take 1 argument
+* Function application
+  * Arguments can now be applied to functions to get results
+  * `(fn a -> a + 1) 1` == `2 : Int`
+  * `(fn a, b -> a + b) (1 , 2)` == `3 : Int`
+  * Function application has high precedence
+    * `fn a -> a 1` is a function that takes a function as an argument and applies 1 as an argument; it can be read as `fn a -> (a 1)`
+    * `(fn a, b -> a + b) 1, 2` is an error because the argument, which is only `1`, can't be unwrapped into a tuple; it can be read as `((fn a, b -> a + b) 1), 2`
 
 ## [0.2.0]
 ### Added

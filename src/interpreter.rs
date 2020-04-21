@@ -41,8 +41,24 @@ pub fn eval_expr(expr: Expr, env: &Rc<VarEnv>) -> Value {
             },
         Expr::Fn_(param, body) =>
             Value::fn_(param, body, Rc::clone(env)),
-        Expr::FnApp(function, arg) => 
-            unimplemented!()
+        Expr::FnApp(function, arg) => {
+                let function = eval_expr(*function, env);
+                match function {
+                    Value::Fn_(param, body, fn_env) =>
+                        match VarEnv::associate(
+                            param,
+                            eval_expr(*arg, env),
+                            &fn_env
+                        ) {
+                            Ok(fn_env) => eval_expr(*body, &fn_env),
+                            Err(error) => Value::Error(error),
+                        },
+                    _ => error(&format!(
+                            "Can't apply argument to type '{}'",
+                            function.type_()
+                         ))
+                }
+            }
     }
 }
 
@@ -149,6 +165,20 @@ mod tests {
                 Match::ident("a"),
                 Expr::int(1),
                 Expr::variable("a")
+            ),
+            &VarEnv::empty()
+        ) => Value::Int(1)
+    }
+    
+    basic_test! {
+        eval_fn_application
+        eval_expr(
+            Expr::fn_app(
+                Expr::fn_expr(
+                    Match::ident("a"),
+                    Expr::variable("a")
+                ),
+                Expr::int(1)
             ),
             &VarEnv::empty()
         ) => Value::Int(1)

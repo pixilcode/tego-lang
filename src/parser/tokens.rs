@@ -6,7 +6,6 @@ use nom::{
     character::complete::{
         space0,
         digit1,
-        alpha1
     },
     bytes::complete::{
         tag,
