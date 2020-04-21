@@ -12,7 +12,7 @@ macro_rules! basic_test {
 }
 
 pub mod parser;
-pub mod ast;
-pub mod value;
-pub mod environment;
+pub mod interpreter;
+mod ast;
+mod environment;
 mod type_;

@@ -1,9 +1,10 @@
-use crate::value::Value;
+use crate::interpreter::value::Value;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     Let(Match, Box<Expr>, Box<Expr>),
+    Fn_(Match, Box<Expr>),
     Variable(String),
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinaryOp, Box<Expr>),
@@ -17,6 +18,10 @@ impl Expr {
     
     pub fn if_expr(cond: Self, t: Self, f: Self) -> Self {
         Expr::If(Box::new(cond), Box::new(t), Box::new(f))
+    }
+    
+    pub fn fn_expr(param: Match, body: Self) -> Self {
+        Expr::Fn_(param, Box::new(body))
     }
     
     pub fn unary(op: UnaryOp, a: Self) -> Self {

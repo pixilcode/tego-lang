@@ -11,7 +11,6 @@ macro_rules! basic_test {
     };
 }
 
-mod interpreter;
 mod repl;
 
 fn main() {

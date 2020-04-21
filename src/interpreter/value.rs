@@ -1,8 +1,11 @@
 use crate::type_::Type;
 use crate::environment::EnvVal;
 use crate::ast::Match;
+use crate::ast::Expr;
+use crate::interpreter::VarEnv;
 use std::ops;
 use std::fmt;
+use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
@@ -10,6 +13,7 @@ pub enum Value {
     Bool(bool),
     Unit,
     Tuple(Vec<Value>),
+    Fn_(Match, Box<Expr>, Rc<VarEnv>), // Probably need to add stuff here for that
     Error(String)
 }
 
@@ -96,8 +100,13 @@ impl Value {
             Value::Unit => Type::Unit,
             Value::Tuple(vals) =>
                 Type::Tuple(vals.iter().map(|v| v.type_()).collect()),
+            Value::Fn_(_, _, _) => Type::Fn_,
             Value::Error(_) => Type::Error,
         }
+    }
+    
+    pub fn fn_(param: Match, body: Box<Expr>, env: Rc<VarEnv>) -> Self {
+        Value::Fn_(param, body, env)
     }
     
     impl_op!(join, "join" =>
@@ -200,6 +209,7 @@ impl fmt::Display for Value {
                     let result = &result[..result.len()-2];
                     format!("({})", result)
                 },
+                Value::Fn_(_, _, _) => "<fn>".to_string(),
                 Value::Error(error) =>
                     format!("Error: {}", error)
             })

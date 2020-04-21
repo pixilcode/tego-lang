@@ -67,12 +67,12 @@ pub fn let_expr(input: &'_ str) -> IResult<&'_ str, Expr> {
                     ),
                     in_,
                     expr
-                )(input).and_then(
+                )(input).map(
                     |(input, ((ident, value), inner))|
-                    Ok((
+                    (
                         input,
                         Expr::let_expr(ident, value, inner)
-                    ))
+                    )
                 ),
             None => if_expr(input)
         }
@@ -130,6 +130,20 @@ fn grouping(input: &'_ str) -> IResult<&'_ str, Expr> {
                 )(input)
                 .map(|(input, opt_exp)|
                     (input, opt_exp.unwrap_or_else(Expr::unit))
+                ),
+            None => fn_expr(input)
+        }
+    )
+}
+
+fn fn_expr(input: &'_ str) -> IResult<&'_ str, Expr> {
+    opt(fn_)(input).and_then(
+        |(input, paren_token)|
+        match paren_token {
+            Some(_) =>
+                separated_pair(match_, arrow, expr)(input).map(
+                    |(input, (param, body))|
+                    (input, Expr::fn_expr(param, body))
                 ),
             None => literal(input)
         }
@@ -337,5 +351,19 @@ mod tests {
                 Expr::int(2)
             )
 
+    }
+    
+    parser_test! {
+        fn_test
+        (expr): "fn a -> a" =>
+            Expr::fn_expr(
+                Match::ident("a"),
+                Expr::variable("a"));
+        (expr): "fn a -> a + 1" =>
+            Expr::fn_expr(
+                Match::ident("a"),
+                Expr::plus(
+                    Expr::variable("a"),
+                    Expr::int(1)))
     }
 }

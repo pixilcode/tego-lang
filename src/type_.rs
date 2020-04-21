@@ -6,6 +6,7 @@ pub enum Type {
     Bool,
     Unit,
     Tuple(Vec<Type>),
+    Fn_,
     Error
 }
 
@@ -22,7 +23,8 @@ impl fmt::Display for Type {
                         .fold(String::new(), |a, s| a + &s + ", ");
                     let result = &result[..result.len()-2]; // Get rid of the last ", "
                     format!("({})", result)
-                }
+                },
+                Type::Fn_ => "Fn".to_string(),
                 Type::Error => "Error".to_string()
             })
     }
@@ -55,6 +57,11 @@ mod tests {
                 Type::Bool
             ])
         ) => "(Int, (), Bool)"
+    );
+    
+    basic_test!(
+        fn_
+        &format!("{}", Type::Fn_) => "Fn"
     );
     
     basic_test!(

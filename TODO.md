@@ -12,3 +12,4 @@
 * Error management
 * Add value pattern for pattern matching
 * Add function pattern for pattern matching
+* Add `.` composition/application(?) operator

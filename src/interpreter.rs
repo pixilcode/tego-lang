@@ -1,7 +1,9 @@
-use tego_lang::ast::Expr;
-use tego_lang::value::Value;
-use tego_lang::environment::Env;
+use crate::ast::Expr;
+use crate::environment::Env;
+use crate::interpreter::value::Value;
 use std::rc::Rc;
+
+pub mod value;
 
 type VarEnv = Env<Value>;
 
@@ -36,7 +38,9 @@ pub fn eval_expr(expr: Expr, env: &Rc<VarEnv>) -> Value {
             ) {
                 Ok(env) => eval_expr(*inner, &env),
                 Err(error) => Value::Error(error)
-            }
+            },
+        Expr::Fn_(param, body) =>
+            Value::fn_(param, body, Rc::clone(env))
             
     }
 }
@@ -48,7 +52,7 @@ fn error(message: &str) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tego_lang::ast::{BinaryOp, UnaryOp, Match};
+    use crate::ast::{BinaryOp, UnaryOp, Match};
     
     #[test]
     fn eval_literal() {

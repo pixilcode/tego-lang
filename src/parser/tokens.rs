@@ -61,6 +61,8 @@ reserved!(colon, ":");
 reserved!(let_, "let");
 reserved!(in_, "in");
 reserved!(assign, "=");
+reserved!(fn_, "fn");
+reserved!(arrow, "->");
 
 #[cfg(test)]
 mod tests {
@@ -96,6 +98,8 @@ mod tests {
     parser_test!(let_test (let_): "let" => "let");
     parser_test!(in_test (in_): "in" => "in");
     parser_test!(assign_test (assign): "=" => "=");
+    parser_test!(fn_test (fn_): "fn" => "fn");
+    parser_test!(arrow_test (arrow): "->" => "->");
     
     // Use find and replace
     // Find: reserved!\(([a-z_]+), ("[^"]+")\);
