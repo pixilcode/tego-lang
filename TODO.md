@@ -1,8 +1,7 @@
 # TODO
 * Build compiler (maybe use craftinginterpreters.com?)
-* Add pattern matching capabilities (`match` expression)
+* **Add pattern matching capabilities (`match` expression)**
 * Be able to read and run files
-* Turn `()` from first-class into tuple
 * Add lists
 * Add type inference
 * Add enums (`|` operator)

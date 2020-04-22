@@ -118,7 +118,7 @@ impl Expr {
     }
     
     pub fn unit() -> Self {
-        Expr::Literal(Value::Unit)
+        Expr::Literal(Value::unit())
     }
     
     pub fn tuple(vals: Vec<Value>) -> Self {
@@ -265,6 +265,10 @@ impl Match {
     
     pub fn bool(b: bool) -> Self {
         Match::Value(MatchVal::Bool(b))
+    }
+    
+    pub fn unit() -> Self {
+        Match::Tuple(vec![])
     }
 }
 

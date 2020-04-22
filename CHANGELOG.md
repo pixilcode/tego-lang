@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   * `let 1 = 1 in ...`
   * `let true = true in ...`
 
+### Changed
+* Unit (`()`) is now (completely) a zero-element tuple instead of a first-class type
+* While it was changed in some places so that it functioned like that, the vestigal parts of code were completely removed
+
 ## [0.2.1]
 ### Added
 * Pattern-matching over tuples

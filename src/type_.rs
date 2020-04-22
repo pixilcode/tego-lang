@@ -4,10 +4,15 @@ use std::fmt;
 pub enum Type {
     Int,
     Bool,
-    Unit,
     Tuple(Vec<Type>),
     Fn_,
     Error
+}
+
+impl Type {
+    pub fn unit() -> Self {
+        Type::Tuple(vec![])
+    }
 }
 
 impl fmt::Display for Type {
@@ -16,7 +21,6 @@ impl fmt::Display for Type {
             match self {
                 Type::Int => "Int".to_string(),
                 Type::Bool => "Bool".to_string(),
-                Type::Unit => "()".to_string(),
                 Type::Tuple(types) => {
                     let result = types.iter()
                         .map(|t| format!("{}", t))
@@ -45,15 +49,10 @@ mod tests {
     );
     
     basic_test!(
-        unit
-        &format!("{}", Type::Unit) => "()"
-    );
-    
-    basic_test!(
         tuple
         &format!("{}", Type::Tuple(vec![
                 Type::Int,
-                Type::Unit,
+                Type::unit(),
                 Type::Bool
             ])
         ) => "(Int, (), Bool)"

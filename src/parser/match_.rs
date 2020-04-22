@@ -35,7 +35,12 @@ pub fn grouping(input: &'_ str) -> MatchResult<'_> {
     opt(left_paren)(input).and_then(
         |(input, left_paren)|
         match left_paren {
-            Some(_) => terminated(match_, right_paren)(input),
+            Some(_) =>
+                terminated(opt(match_), right_paren)(input).map(
+                    |(input, pattern)|
+                    (input,
+                    pattern.unwrap_or_else(Match::unit))
+                ),
             None => atom(input)
         }
     )
@@ -103,6 +108,12 @@ mod tests {
             Match::int(1);
         (match_): "true" =>
             Match::bool(true)
+    }
+    
+    parser_test! {
+        unit_test
+        (match_): "()" =>
+            Match::Tuple(vec![])
     }
     
     basic_test! {
