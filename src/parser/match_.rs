@@ -47,11 +47,12 @@ pub fn grouping(input: &'_ str) -> MatchResult<'_> {
 }
 
 pub fn atom(input: &'_ str) -> MatchResult<'_> {
-    alt((true_val, false_val, number, identifier))(input).and_then(
+    alt((true_val, false_val, underscore, number, identifier))(input).and_then(
         |(new_input, token)|
         match token {
             "true" => Ok((new_input, Match::bool(true))),
             "false" => Ok((new_input, Match::bool(false))),
+            "_" => Ok((new_input, Match::ignore())),
             lexeme if is_keyword(lexeme) =>
                 Err(nom::Err::Error((input, ErrorKind::Tag))),
             lexeme => if let Ok(i) = lexeme.parse::<i32>() {

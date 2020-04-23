@@ -238,7 +238,8 @@ impl From<&str> for BinaryOp {
 pub enum Match {
     Ident(String),
     Tuple(Vec<Match>),
-    Value(MatchVal)
+    Value(MatchVal),
+    Ignore
 }
 
 impl Match {
@@ -274,6 +275,10 @@ impl Match {
     
     pub fn unit() -> Self {
         Match::Tuple(vec![])
+    }
+    
+    pub fn ignore() -> Self {
+        Match::Ignore
     }
 }
 

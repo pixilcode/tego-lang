@@ -167,6 +167,7 @@ impl EnvVal for Value {
                 } else {
                     Err(format!("Expected '{}', found '{}'", a, b))
                 },
+            (Match::Ignore, _) => Ok(vec![]),
             (pattern, value) => match_error(pattern, value)
         }
     }
@@ -201,7 +202,8 @@ fn match_error(expected: &Match, found: &Value) -> Result<Vec<(String, Value)>, 
         match expected {
             Match::Ident(_) => "value".to_string(),
             Match::Tuple(_) => "tuple".to_string(),
-            Match::Value(v) => format!("'{}'", v)
+            Match::Value(v) => format!("'{}'", v),
+            Match::Ignore => "anything".to_string(),
         },
         found.type_()
     ))

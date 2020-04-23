@@ -15,5 +15,6 @@
   * Applied on tuples, they return the item in the 0-indexed position in the tuple
   * `1 (true, 2, false)` => `2`
 * Add documentation to all functions/enums/structs
-* Value's become Rc's?
+* Values become Rc's?
 * Add optional new lines to expressions
+* REPL can expect multiple lines

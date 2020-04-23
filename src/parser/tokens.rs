@@ -98,6 +98,7 @@ reserved!(arrow, "->");
 reserved!(match_kw, "match");
 reserved!(to, "to");
 reserved!(bar, "|");
+reserved!(underscore, "_");
 
 pub fn is_keyword(lexeme: &str) -> bool {
     KEYWORDS.iter().any(
@@ -144,6 +145,7 @@ mod tests {
     parser_test!(match_kw_test (match_kw): "match" => "match");
     parser_test!(to_test (to): "to" => "to");
     parser_test!(bar_test (bar): "|" => "|");
+    parser_test!(underscore_test (underscore): "_" => "_");
     
     // Use find and replace
     // Find: reserved!\(([a-z_]+), ("[^"]+")\);
