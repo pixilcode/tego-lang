@@ -7,6 +7,7 @@ pub enum Expr {
     Let(Match, Box<Expr>, Box<Expr>),
     Fn_(Match, Box<Expr>),
     FnApp(Box<Expr>, Box<Expr>),
+    Match(Box<Expr>, Vec<(Match, Expr)>),
     Variable(String),
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinaryOp, Box<Expr>),
@@ -28,6 +29,10 @@ impl Expr {
     
     pub fn fn_app(function: Self, arg: Self) -> Self {
         Expr::FnApp(Box::new(function), Box::new(arg))
+    }
+    
+    pub fn match_(val: Self, patterns: Vec<(Match, Self)>) -> Self {
+        Expr::Match(Box::new(val), patterns)
     }
     
     pub fn unary(op: UnaryOp, a: Self) -> Self {

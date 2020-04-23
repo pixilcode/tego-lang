@@ -52,10 +52,9 @@ mod tests {
         tuple
         &format!("{}", Type::Tuple(vec![
                 Type::Int,
-                Type::unit(),
                 Type::Bool
             ])
-        ) => "(Int, (), Bool)"
+        ) => "(Int, Bool)"
     );
     
     basic_test!(

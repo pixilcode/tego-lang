@@ -59,6 +59,17 @@ pub fn eval_expr(expr: Expr, env: &Rc<VarEnv>) -> Value {
                          ))
                 }
             }
+        Expr::Match(val, patterns) => {
+            let val = eval_expr(*val, env);
+            match patterns.into_iter().find_map(
+                |(pattern, expr)|
+                VarEnv::associate(pattern, val.clone(), env)
+                .map(|env| Some((env, expr))).unwrap_or(None)
+            ) {
+                Some((env, expr)) => eval_expr(expr, &env),
+                None => error("Value didn't match any patterns")
+            }
+        }
     }
 }
 
@@ -182,5 +193,25 @@ mod tests {
             ),
             &VarEnv::empty()
         ) => Value::Int(1)
+    }
+    
+    basic_test! {
+        match_expr
+        eval_expr(
+            Expr::match_(Expr::int(1), vec![
+                (Match::int(0), Expr::int(0)),
+                (Match::int(1), Expr::int(1)),
+                (Match::ident("a"), Expr::int(2))
+            ]),
+            &VarEnv::empty()
+        ) => Value::Int(1);
+        eval_expr(
+            Expr::match_(Expr::int(3), vec![
+                (Match::int(0), Expr::int(0)),
+                (Match::int(1), Expr::int(1)),
+                (Match::int(2), Expr::int(2))
+            ]),
+            &VarEnv::empty()
+        ) => Value::Error("Value didn't match any patterns".to_string())
     }
 }

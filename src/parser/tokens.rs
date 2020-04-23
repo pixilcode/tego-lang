@@ -2,10 +2,13 @@ use nom::{
     IResult,
     sequence::{
         preceded,
+        terminated
     },
     character::complete::{
         space0,
         digit1,
+        multispace0,
+        multispace1
     },
     bytes::complete::{
         tag,
@@ -13,7 +16,7 @@ use nom::{
     }
 };
 
-const KEYWORDS: &[&str; 12] = &[
+const KEYWORDS: &[&str; 14] = &[
     "and",
     "or",
     "xor",
@@ -25,8 +28,20 @@ const KEYWORDS: &[&str; 12] = &[
     "else",
     "let",
     "in",
-    "fn"
+    "fn",
+    "match",
+    "to"
 ];
+
+pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
+where F: Fn(&'a str) -> IResult<&'a str, O> {
+    terminated(parser, multispace0)
+}
+
+pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
+where F: Fn(&'a str) -> IResult<&'a str, O> {
+    terminated(parser, multispace1)
+}
 
 fn token<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
 where F: Fn(&'a str) -> IResult<&'a str, O> {
@@ -80,6 +95,9 @@ reserved!(in_, "in");
 reserved!(assign, "=");
 reserved!(fn_, "fn");
 reserved!(arrow, "->");
+reserved!(match_kw, "match");
+reserved!(to, "to");
+reserved!(bar, "|");
 
 pub fn is_keyword(lexeme: &str) -> bool {
     KEYWORDS.iter().any(
@@ -123,6 +141,9 @@ mod tests {
     parser_test!(assign_test (assign): "=" => "=");
     parser_test!(fn_test (fn_): "fn" => "fn");
     parser_test!(arrow_test (arrow): "->" => "->");
+    parser_test!(match_kw_test (match_kw): "match" => "match");
+    parser_test!(to_test (to): "to" => "to");
+    parser_test!(bar_test (bar): "|" => "|");
     
     // Use find and replace
     // Find: reserved!\(([a-z_]+), ("[^"]+")\);

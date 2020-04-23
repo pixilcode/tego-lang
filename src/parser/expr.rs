@@ -1,15 +1,20 @@
-use crate::ast::{Expr, BinaryOp, UnaryOp};
+use crate::ast::{Expr, BinaryOp, UnaryOp, Match};
 use crate::parser::tokens::*;
 use crate::parser::match_::*;
 
 use nom::{
     IResult,
-    sequence::{separated_pair, pair, terminated},
+    sequence::{
+        separated_pair,
+        pair,
+        terminated,
+        preceded},
     combinator::opt,
     branch::alt,
     multi::{
         many1,
-        fold_many0},
+        fold_many0
+    },
     error::ErrorKind
 };
 
@@ -101,9 +106,29 @@ pub fn if_expr(input: &'_ str) -> ExprResult<'_> {
                     )
                 }
             ),
-            None => join_expr(input)
+            None => match_expr(input)
         }
     )
+}
+
+pub fn match_expr(input: &'_ str) -> ExprResult<'_> {
+    opt(match_kw)(input).and_then(
+        |(input, match_token)|
+        match match_token {
+            Some(_) => opt_nl(terminated(join_expr, to))(input).and_then(
+                |(input, val)|
+                many1(opt_nl(match_arm))(input).and_then(
+                    |(input, patterns)|
+                    Ok((input, Expr::match_(val, patterns)))
+                )
+            ),
+            None => join_expr(input),
+        }
+    )
+}
+
+pub fn match_arm(input: &'_ str) -> IResult<&'_ str, (Match, Expr)> {
+    preceded(bar, separated_pair(match_, arrow, expr))(input)
 }
 
 binary_expr!(join_expr, comma, or_expr);
@@ -143,13 +168,6 @@ fn fn_application(input: &'_ str) -> ExprResult<'_> {
         |(input, val)|
         fold_many0(grouping, val, Expr::fn_app)(input)
     )
-    /*pair(grouping, opt(grouping))(input).and_then(
-        |(input, (val, arg))|
-        match arg {
-            Some(arg) => Ok((input, Expr::fn_app(val, arg))),
-            None => Ok((input, val))
-        }
-    )*/
 }
 
 fn grouping(input: &'_ str) -> ExprResult<'_> {
@@ -408,5 +426,14 @@ mod tests {
                     Expr::variable("a"),
                     Expr::int(1)),
                 Expr::int(2))
+    }
+    
+    parser_test! {
+        match_expr_test
+        (expr): "match 1 to\n| 1 -> true\n| a -> false" =>
+            Expr::match_(Expr::int(1), vec![
+                (Match::int(1), Expr::bool(true)),
+                (Match::ident("a"), Expr::bool(false))
+            ])
     }
 }

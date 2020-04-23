@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   * Can now match integers and bools
   * `let 1 = 1 in ...`
   * `let true = true in ...`
+* Match expression
+  * Syntax:
+    ```
+    match <expr> to
+    | <match> -> <expr>
+    | <match> -> <expr>
+    | ...
+    ```
 
 ### Changed
 * Unit (`()`) is now (completely) a zero-element tuple instead of a first-class type

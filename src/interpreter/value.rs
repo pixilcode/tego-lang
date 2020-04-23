@@ -312,33 +312,15 @@ mod tests {
     );
     
     basic_test!(
-        add_int_unit
-        Value::Int(1) + Value::unit() =>
-            binary_op_error("add", Type::Int, Type::unit())
-    );
-    
-    basic_test!(
-        add_unit_int
-        Value::unit() + Value::Int(1) =>
-            binary_op_error("add", Type::unit(), Type::Int)
-    );
-    
-    basic_test!(
-        add_unit_unit
-        Value::unit() + Value::unit() =>
-            binary_op_error("add", Type::unit(), Type::unit())
-    );
-    
-    basic_test!(
         add_deep_error_left
-        (Value::Int(1) + Value::unit()) + Value::Int(2) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        (Value::Int(1) + Value::Bool(true)) + Value::Int(2) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     basic_test!(
         add_deep_error_right
-        Value::Int(1) + (Value::Int(2) + Value::unit()) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        Value::Int(1) + (Value::Int(2) + Value::Bool(true)) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     // SUBTRACTION TESTS
@@ -348,34 +330,15 @@ mod tests {
     );
     
     basic_test!(
-        sub_int_unit
-        Value::Int(3) - Value::unit() =>
-            binary_op_error("subtract", Type::Int, Type::unit())
-    );
-    
-    basic_test!(
-        sub_unit_int
-        Value::unit() - Value::Int(2) =>
-            binary_op_error("subtract", Type::unit(), Type::Int)
-    );
-    
-    
-    basic_test!(
-        sub_unit_unit
-        Value::unit() - Value::unit() =>
-            binary_op_error("subtract", Type::unit(), Type::unit())
-    );
-    
-    basic_test!(
         sub_deep_error_left
-        (Value::Int(1) + Value::unit()) - Value::Int(2) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        (Value::Int(1) + Value::Bool(true)) - Value::Int(2) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     basic_test!(
         sub_deep_error_right
-        Value::Int(3) - (Value::Int(1) + Value::unit()) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        Value::Int(3) - (Value::Int(1) + Value::Bool(true)) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     // MULTIPLICATION TESTS
@@ -385,33 +348,15 @@ mod tests {
     );
     
     basic_test!(
-        mul_int_unit
-        Value::Int(2) * Value::unit() =>
-            binary_op_error("multiply", Type::Int, Type::unit())
-    );
-    
-    basic_test!(
-        mul_unit_int
-        Value::unit() * Value::Int(3) =>
-            binary_op_error("multiply", Type::unit(), Type::Int)
-    );
-    
-    basic_test!(
-        mul_unit_unit
-        Value::unit() * Value::unit() =>
-            binary_op_error("multiply", Type::unit(), Type::unit())
-    );
-    
-    basic_test!(
         mul_deep_error_left
-        (Value::Int(1) + Value::unit()) * Value::Int(3) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        (Value::Int(1) + Value::Bool(true)) * Value::Int(3) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     basic_test!(
         mul_deep_error_right
-        Value::Int(2) * (Value::Int(1) + Value::unit()) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        Value::Int(2) * (Value::Int(1) + Value::Bool(true)) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     // DIVISION TESTS
@@ -421,33 +366,15 @@ mod tests {
     );
     
     basic_test!(
-        div_int_unit
-        Value::Int(3) / Value::unit() =>
-            binary_op_error("divide", Type::Int, Type::unit())
-    );
-    
-    basic_test!(
-        div_unit_int
-        Value::unit() / Value::Int(2) =>
-            binary_op_error("divide", Type::unit(), Type::Int)
-    );
-    
-    basic_test!(
-        div_unit_unit
-        Value::unit() / Value::unit() =>
-            binary_op_error("divide", Type::unit(), Type::unit())
-    );
-    
-    basic_test!(
         div_deep_error_left
-        (Value::Int(1) + Value::unit()) / Value::Int(2) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        (Value::Int(1) + Value::Bool(true)) / Value::Int(2) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     basic_test!(
         div_deep_error_right
-        Value::Int(3) / (Value::Int(1) + Value::unit()) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        Value::Int(3) / (Value::Int(1) + Value::Bool(true)) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     // MODULO TESTS
@@ -457,33 +384,15 @@ mod tests {
     );
     
     basic_test!(
-        mod_int_unit
-        Value::Int(3) % Value::unit() =>
-            binary_op_error("modulo", Type::Int, Type::unit())
-    );
-    
-    basic_test!(
-        mod_unit_int
-        Value::unit() % Value::Int(2) =>
-            binary_op_error("modulo", Type::unit(), Type::Int)
-    );
-    
-    basic_test!(
-        mod_unit_unit
-        Value::unit() % Value::unit() =>
-            binary_op_error("modulo", Type::unit(), Type::unit())
-    );
-    
-    basic_test!(
         mod_deep_error_left
-        (Value::Int(1) + Value::unit()) % Value::Int(2) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        (Value::Int(1) + Value::Bool(true)) % Value::Int(2) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     basic_test!(
         mod_deep_error_right
-        Value::Int(3) % (Value::Int(1) + Value::unit()) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        Value::Int(3) % (Value::Int(1) + Value::Bool(true)) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     // AND TESTS
@@ -511,33 +420,15 @@ mod tests {
     );
     
     basic_test!(
-        and_int_unit
-        Value::Int(5) & Value::unit() =>
-            binary_op_error("and", Type::Int, Type::unit())
-    );
-    
-    basic_test!(
-        and_unit_int
-        Value::unit() & Value::Int(2) =>
-            binary_op_error("and", Type::unit(), Type::Int)
-    );
-    
-    basic_test!(
-        and_unit_unit
-        Value::unit() & Value::unit() =>
-            binary_op_error("and", Type::unit(), Type::unit())
-    );
-    
-    basic_test!(
         and_deep_error_left
-        (Value::Int(1) + Value::unit()) & Value::Int(2) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        (Value::Int(1) + Value::Bool(true)) & Value::Int(2) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     basic_test!(
         and_deep_error_right
-        Value::Int(3) & (Value::Int(1) + Value::unit()) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        Value::Int(3) & (Value::Int(1) + Value::Bool(true)) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     // OR TESTS
@@ -565,33 +456,15 @@ mod tests {
     );
     
     basic_test!(
-        or_int_unit
-        Value::Int(5) | Value::unit() =>
-            binary_op_error("or", Type::Int, Type::unit())
-    );
-    
-    basic_test!(
-        or_unit_int
-        Value::unit() | Value::Int(2) =>
-            binary_op_error("or", Type::unit(), Type::Int)
-    );
-    
-    basic_test!(
-        or_unit_unit
-        Value::unit() | Value::unit() =>
-            binary_op_error("or", Type::unit(), Type::unit())
-    );
-    
-    basic_test!(
         or_deep_error_left
-        (Value::Int(1) + Value::unit()) | Value::Int(2) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        (Value::Int(1) + Value::Bool(true)) | Value::Int(2) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     basic_test!(
         or_deep_error_right
-        Value::Int(3) | (Value::Int(1) + Value::unit()) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        Value::Int(3) | (Value::Int(1) + Value::Bool(true)) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     // XOR TESTS
@@ -619,33 +492,15 @@ mod tests {
     );
     
     basic_test!(
-        xor_int_unit
-        Value::Int(5) ^ Value::unit() =>
-            binary_op_error("xor", Type::Int, Type::unit())
-    );
-    
-    basic_test!(
-        xor_unit_int
-        Value::unit() ^ Value::Int(2) =>
-            binary_op_error("xor", Type::unit(), Type::Int)
-    );
-    
-    basic_test!(
-        xor_unit_unit
-        Value::unit() ^ Value::unit() =>
-            binary_op_error("xor", Type::unit(), Type::unit())
-    );
-    
-    basic_test!(
         xor_deep_error_left
-        (Value::Int(1) + Value::unit()) ^ Value::Int(2) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        (Value::Int(1) + Value::Bool(true)) ^ Value::Int(2) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     basic_test!(
         xor_deep_error_right
-        Value::Int(3) ^ (Value::Int(1) + Value::unit()) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        Value::Int(3) ^ (Value::Int(1) + Value::Bool(true)) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     // NEGATION TESTS
@@ -655,15 +510,9 @@ mod tests {
     );
     
     basic_test!(
-        neg_unit
-        -Value::unit() =>
-            unary_op_error("negate", Type::unit())
-    );
-    
-    basic_test!(
         neg_deep_error
-        -(Value::Int(1) + Value::unit()) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        -(Value::Int(1) + Value::Bool(true)) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     // NOT TESTS
@@ -679,8 +528,8 @@ mod tests {
     
     basic_test!(
         not_deep_error
-        !(Value::Int(1) + Value::unit()) =>
-            binary_op_error("add", Type::Int, Type::unit())
+        !(Value::Int(1) + Value::Bool(true)) =>
+            binary_op_error("add", Type::Int, Type::Bool)
     );
     
     // UNWRAP TESTS
