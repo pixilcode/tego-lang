@@ -1,4 +1,5 @@
-use crate::ast::{Expr, BinaryOp, UnaryOp, Match};
+use crate::ast::expr::{Expr, BinaryOp, UnaryOp};
+use crate::ast::match_::Match;
 use crate::parser::tokens::*;
 use crate::parser::match_::*;
 
@@ -208,7 +209,7 @@ fn literal(input: &'_ str) -> ExprResult<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::Match;
+    use crate::ast::match_::Match;
     
     parser_test! {
         literal_test

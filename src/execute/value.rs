@@ -1,9 +1,8 @@
 use crate::type_::Type;
 use crate::environment::EnvVal;
-use crate::ast::Match;
-use crate::ast::MatchVal;
-use crate::ast::Expr;
-use crate::interpreter::VarEnv;
+use crate::ast::match_::{Match, MatchVal};
+use crate::ast::expr::Expr;
+use crate::execute::interpreter::VarEnv;
 use std::ops;
 use std::fmt;
 use std::rc::Rc;

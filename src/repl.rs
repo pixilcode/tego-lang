@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 use tego_lang::parser::expr;
-use tego_lang::interpreter::{self, new_env};
+use tego_lang::execute::interpreter::{self, new_env};
 use nom::combinator::all_consuming;
 use std::rc::Rc;
 

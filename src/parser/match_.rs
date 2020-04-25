@@ -1,6 +1,6 @@
 use nom::branch::alt;
 use crate::parser::tokens::*;
-use crate::ast::Match;
+use crate::ast::match_::Match;
 
 use nom::{
     IResult,
@@ -18,7 +18,7 @@ pub fn match_(input: &'_ str) -> MatchResult<'_> {
     tuple(input)
 }
 
-pub fn tuple(input: &'_ str) -> MatchResult<'_> {
+fn tuple(input: &'_ str) -> MatchResult<'_> {
     pair(grouping, opt(comma))(input).and_then(
         |(input, (a, comma))|
         match comma {
@@ -46,7 +46,7 @@ pub fn grouping(input: &'_ str) -> MatchResult<'_> {
     )
 }
 
-pub fn atom(input: &'_ str) -> MatchResult<'_> {
+fn atom(input: &'_ str) -> MatchResult<'_> {
     alt((true_val, false_val, underscore, number, identifier))(input).and_then(
         |(new_input, token)|
         match token {

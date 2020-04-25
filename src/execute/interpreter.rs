@@ -1,11 +1,9 @@
-use crate::ast::Expr;
+use crate::ast::expr::Expr;
 use crate::environment::Env;
-use crate::interpreter::value::Value;
+use crate::execute::value::Value;
 use std::rc::Rc;
 
-pub mod value;
-
-type VarEnv = Env<Value>;
+pub type VarEnv = Env<Value>;
 
 pub fn new_env() -> Rc<VarEnv> {
     VarEnv::empty()
@@ -80,7 +78,8 @@ fn error(message: &str) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{BinaryOp, UnaryOp, Match};
+    use crate::ast::expr::{BinaryOp, UnaryOp};
+    use crate::ast::match_::Match;
     
     #[test]
     fn eval_literal() {
