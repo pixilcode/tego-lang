@@ -13,7 +13,9 @@ use nom::{
     bytes::complete::{
         tag,
         take_till1
-    }
+    },
+    combinator::all_consuming,
+    branch::alt
 };
 
 const KEYWORDS: &[&str; 14] = &[
@@ -40,7 +42,7 @@ where F: Fn(&'a str) -> IResult<&'a str, O> {
 
 pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
 where F: Fn(&'a str) -> IResult<&'a str, O> {
-    terminated(parser, multispace1)
+    terminated(parser, alt((multispace1, all_consuming(multispace0))))
 }
 
 fn token<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>

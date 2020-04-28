@@ -11,4 +11,6 @@ macro_rules! parser_test {
 
 mod tokens;
 mod match_;
+mod decl;
+
 pub mod expr;

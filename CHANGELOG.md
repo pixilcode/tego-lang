@@ -21,6 +21,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
     | <match> -> <expr>
     | ...
     ```
+* Declarations
+  * `<ident> <match>* = <expr>`
+  * Defines `<ident>` before expression is evaluated
+  * Currently, declarations are evaluated in order; that will change
+  * If there are any match expressions, `<ident>` will be treated as a function
+  * (Soon to come, file read and evaluate)
 
 ### Changed
 * Unit (`()`) is now (completely) a zero-element tuple instead of a first-class type

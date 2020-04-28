@@ -1,19 +1,21 @@
 use crate::type_::Type;
-use crate::environment::EnvVal;
+use crate::environment::{EnvVal};
 use crate::ast::match_::{Match, MatchVal};
 use crate::ast::expr::Expr;
-use crate::execute::interpreter::VarEnv;
+use crate::execute::interpreter::{WrappedEnv, VarEnv};
+use std::rc::Weak;
+use std::cell::RefCell;
 use std::ops;
 use std::fmt;
-use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     Int(i32),
     Bool(bool),
     Tuple(Vec<Value>),
-    Fn_(Match, Box<Expr>, Rc<VarEnv>), // Probably need to add stuff here for that
-    Error(String)
+    Function(Match, Box<Expr>, StoredEnv),
+    // Delayed(Expr, StoredEnv, StoredEnv),
+    Error(String),
 }
 
 macro_rules! impl_op {
@@ -98,13 +100,17 @@ impl Value {
             Value::Bool(_) => Type::Bool,
             Value::Tuple(vals) =>
                 Type::Tuple(vals.iter().map(|v| v.type_()).collect()),
-            Value::Fn_(_, _, _) => Type::Fn_,
+            Value::Function(_, _, _) => Type::Fn_,
             Value::Error(_) => Type::Error,
         }
     }
     
-    pub fn fn_(param: Match, body: Box<Expr>, env: Rc<VarEnv>) -> Self {
-        Value::Fn_(param, body, env)
+    pub fn function(param: Match, body: Box<Expr>, env: WrappedEnv) -> Self {
+        Value::Function(param, body, StoredEnv::Expr(env))
+    }
+    
+    pub fn decl_function(param: Match, body: Box<Expr>, env: Weak<RefCell<VarEnv>>) -> Self {
+        Value::Function(param, body, StoredEnv::Decl(env))
     }
     
     pub fn unit() -> Self {
@@ -225,7 +231,7 @@ impl fmt::Display for Value {
                     let result = &result[..result.len()-2];
                     format!("({})", result)
                 },
-                Value::Fn_(_, _, _) => "<fn>".to_string(),
+                Value::Function(_, _, _) => "<fn>".to_string(),
                 Value::Error(error) =>
                     format!("Error: {}", error)
             })
@@ -300,6 +306,35 @@ fn unary_op_error(op: &str, type_: Type) -> Value {
         op.to_uppercase(),
         type_)
     )
+}
+
+#[derive(Debug, Clone)]
+pub enum StoredEnv {
+    Expr(WrappedEnv),
+    Decl(Weak<RefCell<VarEnv>>) // To avoid memory leaks
+}
+
+impl StoredEnv {
+    pub fn unwrap(self) -> WrappedEnv {
+        match self {
+            StoredEnv::Expr(env) => env,
+            StoredEnv::Decl(env) =>
+                match env.upgrade() {
+                    Some(env) => env,
+                    None => unreachable!()
+                }
+        }
+    }
+}
+
+impl PartialEq for StoredEnv {
+    fn eq(&self, rhs: &Self) -> bool {
+        match (self, rhs) {
+            (StoredEnv::Expr(a), StoredEnv::Expr(b)) => a == b,
+            (StoredEnv::Decl(a), StoredEnv::Decl(b)) => a.upgrade() == b.upgrade(),
+            (_, _) => false
+        }
+    }
 }
 
 #[cfg(test)]

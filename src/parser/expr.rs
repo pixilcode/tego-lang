@@ -26,7 +26,7 @@ macro_rules! binary_expr {
         fn $name(input: &'_ str) -> ExprResult<'_> {
             pair(
                 $next_precedence,
-                opt(many1(pair($op_func, $next_precedence)))
+                opt(many1(pair(opt_nl($op_func), $next_precedence)))
             )(input).and_then(
                 |(input, (a, other))|
                 match other {
@@ -76,7 +76,7 @@ pub fn let_expr(input: &'_ str) -> ExprResult<'_> {
                         assign,
                         join_expr
                     ),
-                    in_,
+                    opt_nl(in_),
                     expr
                 )(input).map(
                     |(input, ((ident, value), inner))|
@@ -94,14 +94,14 @@ pub fn if_expr(input: &'_ str) -> ExprResult<'_> {
     opt(if_)(input).and_then(
         |(input, if_token)|
         match if_token {
-            Some(_) => pair(join_expr, alt((then, q_mark)))(input).and_then(
+            Some(_) => pair(join_expr, opt_nl(alt((then, q_mark))))(input).and_then(
                 |(input, (cond, symbol))| {
                     let next_symbol = match symbol {
                         "then" => else_,
                         "?" => colon,
                         _ => unreachable!()
                     };
-                    separated_pair(expr, next_symbol, expr)(input).map(
+                    separated_pair(opt_nl(expr), opt_nl(next_symbol), expr)(input).map(
                         |(input, (t, f))|
                         (input, Expr::if_expr(cond, t, f))
                     )
@@ -116,7 +116,7 @@ pub fn match_expr(input: &'_ str) -> ExprResult<'_> {
     opt(match_kw)(input).and_then(
         |(input, match_token)|
         match match_token {
-            Some(_) => opt_nl(terminated(join_expr, to))(input).and_then(
+            Some(_) => terminated(join_expr, opt_nl(to))(input).and_then(
                 |(input, val)|
                 many1(opt_nl(match_arm))(input).and_then(
                     |(input, patterns)|
@@ -137,13 +137,15 @@ binary_expr!(or_expr, or, xor_expr);
 binary_expr!(xor_expr, xor, and_expr);
 binary_expr!(and_expr, and, equal_expr);
 binary_expr!(equal_expr, alt((equal, not_equal)), compare_expr);
-binary_expr!(compare_expr,
+binary_expr!(
+    compare_expr,
     alt((
         less_than_equal,
         greater_than_equal,
         less_than,
         greater_than)),
-    add_expr);
+    add_expr
+);
 binary_expr!(add_expr, alt((plus, minus)), mult_expr);
 binary_expr!(mult_expr, alt((star, slash, modulo)), negate_expr);
 
@@ -155,7 +157,7 @@ fn fn_expr(input: &'_ str) -> ExprResult<'_> {
         |(input, paren_token)|
         match paren_token {
             Some(_) =>
-                separated_pair(match_, arrow, expr)(input).map(
+                separated_pair(match_, opt_nl(arrow), expr)(input).map(
                     |(input, (param, body))|
                     (input, Expr::fn_expr(param, body))
                 ),
@@ -172,12 +174,12 @@ fn fn_application(input: &'_ str) -> ExprResult<'_> {
 }
 
 fn grouping(input: &'_ str) -> ExprResult<'_> {
-    opt(left_paren)(input).and_then(
+    opt(opt_nl(left_paren))(input).and_then(
         |(input, paren_token)|
         match paren_token {
             Some(_) =>
                 terminated(
-                    opt(expr),
+                    opt(opt_nl(expr)),
                     right_paren
                 )(input)
                 .map(|(input, opt_exp)|
@@ -221,7 +223,7 @@ mod tests {
     
     parser_test! {
         or_test
-        (expr): "true or false" =>
+        (expr): "true or\nfalse" =>
             Expr::or(
                 Expr::bool(true),
                 Expr::bool(false))
@@ -229,7 +231,7 @@ mod tests {
     
     parser_test! {
         and_test
-        (expr): "true and false" =>
+        (expr): "true and\nfalse" =>
             Expr::and(
                 Expr::bool(true),
                 Expr::bool(false))
@@ -237,7 +239,7 @@ mod tests {
     
     parser_test! {
         plus_test
-        (expr): "1 + 2" =>
+        (expr): "1 +\n2" =>
             Expr::plus(
                 Expr::int(1),
                 Expr::int(2))
@@ -245,7 +247,7 @@ mod tests {
     
     parser_test! {
         minus_test
-        (expr): "1 - 2" =>
+        (expr): "1 -\n2" =>
             Expr::minus(
                 Expr::int(1),
                 Expr::int(2))
@@ -253,7 +255,7 @@ mod tests {
     
     parser_test! {
         multiply_test
-        (expr): "1 * 2" =>
+        (expr): "1 *\n2" =>
             Expr::multiply(
                 Expr::int(1),
                 Expr::int(2))
@@ -261,7 +263,7 @@ mod tests {
     
     parser_test! {
         divide_test
-        (expr): "1 / 2" =>
+        (expr): "1 /\n2" =>
             Expr::divide(
                 Expr::int(1),
                 Expr::int(2))
@@ -269,7 +271,7 @@ mod tests {
     
     parser_test! {
         modulo_test
-        (expr): "1 % 2" =>
+        (expr): "1 %\n2" =>
             Expr::modulo(
                 Expr::int(1),
                 Expr::int(2))
@@ -277,7 +279,7 @@ mod tests {
     
     parser_test! {
         equal_test
-        (expr): "1 == 2" =>
+        (expr): "1 ==\n2" =>
             Expr::equal(
                 Expr::int(1),
                 Expr::int(2))
@@ -359,12 +361,12 @@ mod tests {
     
     parser_test! {
         if_else_test
-        (expr): "if true then 1 else 2" =>
+        (expr): "if true then\n1\nelse\n2" =>
             Expr::if_expr(
                 Expr::bool(true),
                 Expr::int(1),
                 Expr::int(2));
-        (expr): "if true ? 1 : 2" =>
+        (expr): "if true ?\n1\n:\n2" =>
             Expr::if_expr(
                 Expr::bool(true),
                 Expr::int(1),
@@ -379,12 +381,12 @@ mod tests {
     
     parser_test! {
         let_test
-        (expr): "let a = 1 in true" =>
+        (expr): "let a = 1 in\ntrue" =>
             Expr::let_expr(
                 Match::ident("a"),
                 Expr::int(1),
                 Expr::bool(true));
-        (expr): "let a = 1 in 2" =>
+        (expr): "let a = 1 in\n2" =>
             Expr::let_expr(
                 Match::ident("a"),
                 Expr::int(1),
@@ -395,11 +397,11 @@ mod tests {
     
     parser_test! {
         fn_test
-        (expr): "fn a -> a" =>
+        (expr): "fn a ->\na" =>
             Expr::fn_expr(
                 Match::ident("a"),
                 Expr::variable("a"));
-        (expr): "fn a -> a + 1" =>
+        (expr): "fn a ->\na + 1" =>
             Expr::fn_expr(
                 Match::ident("a"),
                 Expr::plus(
@@ -413,7 +415,7 @@ mod tests {
             Expr::fn_app(
                 Expr::variable("a"),
                 Expr::int(1));
-        (expr): "a (1, 2)" =>
+        (expr): "a (\n1, 2\n)" =>
             Expr::fn_app(
                 Expr::variable("a"),
                 Expr::join(

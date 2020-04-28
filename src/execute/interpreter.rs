@@ -1,15 +1,63 @@
 use crate::ast::expr::Expr;
-use crate::environment::Env;
+use crate::ast::decl::Decl;
+use crate::environment::{Env, EnvWrapper};
 use crate::execute::value::Value;
 use std::rc::Rc;
 
 pub type VarEnv = Env<Value>;
+pub type WrappedEnv = EnvWrapper<VarEnv>;
 
-pub fn new_env() -> Rc<VarEnv> {
+pub fn new_env() -> WrappedEnv {
     VarEnv::empty()
 }
 
-pub fn eval_expr(expr: Expr, env: &Rc<VarEnv>) -> Value {
+pub fn eval_expr_with_decls(expr: Expr, decls: Vec<Decl>) -> (Value, WrappedEnv) {
+    let (env, decl_ptrs) = unfilled_env(&decls);
+    let env = fill_decl_env(decls, decl_ptrs, env);
+    (eval_expr(expr, &env), env)
+}
+
+fn unfilled_env(decls: &[Decl]) -> (WrappedEnv, Vec<WrappedEnv>) {
+    decls.iter().map(
+        |decl|
+        match decl {
+            Decl::Expression(ident, _) => (ident, Value::Error(
+                format!("'{}' has not been initialized", ident)
+            ))
+        }
+    ).fold(
+        (new_env(), Vec::with_capacity(decls.len())),
+        |(parent, mut decl_ptrs), (ident, val)| {
+            let new_env = Env::associate_ident(ident.to_string(), val, parent);
+            decl_ptrs.push(Rc::clone(&new_env));
+            (new_env, decl_ptrs)
+        }
+    )
+}
+
+fn fill_decl_env(decls: Vec<Decl>, decl_ptrs: Vec<WrappedEnv>, env: WrappedEnv) -> WrappedEnv {
+    decls.into_iter().zip(decl_ptrs.into_iter()).for_each(
+        |(decl, decl_ptr)|
+        match decl {
+            Decl::Expression(_, Expr::Fn_(param, body)) =>
+                Env::set_value(&decl_ptr, Value::decl_function(
+                    param,
+                    body,
+                    Rc::downgrade(&env)
+                )),
+            Decl::Expression(_, expr) =>
+                Env::set_value(&decl_ptr, eval_expr(expr, &env)) // Need to delay this
+//                Value::delayed_decl(
+//                    expr,
+//                    Rc::downgrade(&env),
+//                    &decl_ptr
+//                ))
+        }
+    );
+    env
+}
+
+pub fn eval_expr(expr: Expr, env: &WrappedEnv) -> Value {
     match expr {
         Expr::Unary(op, a) => op.eval(eval_expr(*a, env)),
         Expr::Binary(a, op, b) =>
@@ -23,7 +71,7 @@ pub fn eval_expr(expr: Expr, env: &Rc<VarEnv>) -> Value {
             Value::Bool(false) => eval_expr(*b, env),
             _ => error("If condition must return a boolean")
         },
-        Expr::Variable(ident) => match env.get(&ident) {
+        Expr::Variable(ident) => match Env::get(env, &ident) {
             Some(val) => val.clone(),
             None =>
                 error(&format!("Variable '{}' is not declared", ident))
@@ -38,15 +86,15 @@ pub fn eval_expr(expr: Expr, env: &Rc<VarEnv>) -> Value {
                 Err(error) => Value::Error(error)
             },
         Expr::Fn_(param, body) =>
-            Value::fn_(param, body, Rc::clone(env)),
+            Value::function(param, body, Rc::clone(env)),
         Expr::FnApp(function, arg) => {
                 let function = eval_expr(*function, env);
                 match function {
-                    Value::Fn_(param, body, fn_env) =>
+                    Value::Function(param, body, fn_env) =>
                         match VarEnv::associate(
                             param,
                             eval_expr(*arg, env),
-                            &fn_env
+                            &fn_env.unwrap()
                         ) {
                             Ok(fn_env) => eval_expr(*body, &fn_env),
                             Err(error) => Value::Error(error),
@@ -212,5 +260,60 @@ mod tests {
             ]),
             &VarEnv::empty()
         ) => Value::Error("Value didn't match any patterns".to_string())
+    }
+    
+    basic_test! {
+        decl_eval
+        {
+            let decls = vec![
+                Decl::Expression(
+                    "add1".to_string(),
+                    Expr::fn_expr(
+                        Match::ident("a"),
+                        Expr::plus(Expr::variable("a"), Expr::int(1))
+                    )
+                )
+            ];
+            eval_expr_with_decls(
+                Expr::fn_app(Expr::variable("add1"), Expr::int(1)),
+                decls
+            ).0
+        } => Value::Int(2);
+        {
+            let decls = vec![
+                Decl::Expression(
+                    "a".to_string(),
+                    Expr::int(1)
+                ),
+                Decl::Expression(
+                    "b".to_string(),
+                    Expr::plus(Expr::variable("a"), Expr::int(1))
+                )
+            ];
+            eval_expr_with_decls(
+                Expr::variable("b"),
+                decls
+            ).0
+        } => Value::Int(2)
+    }
+    
+    basic_test! {
+        orderless_decl_eval
+        {
+            let decls = vec![
+                Decl::Expression(
+                    "a".to_string(),
+                    Expr::plus(Expr::variable("b"), Expr::int(1))
+                ),
+                Decl::Expression(
+                    "b".to_string(),
+                    Expr::int(2)
+                )
+            ];
+            eval_expr_with_decls(
+                Expr::variable("a"),
+                decls
+            ).0
+        } => Value::Int(3)
     }
 }
