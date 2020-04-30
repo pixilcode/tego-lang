@@ -11,6 +11,8 @@ macro_rules! basic_test {
     };
 }
 
+pub use crate::ast::decl::Decl;
+
 pub mod parser;
 pub mod execute;
 mod ast;

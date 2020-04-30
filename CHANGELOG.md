@@ -21,11 +21,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
     | <match> -> <expr>
     | ...
     ```
-* Declarations
+* Expression Declarations
   * `<ident> <match>* = <expr>`
   * Defines `<ident>` before expression is evaluated
   * Currently, declarations are evaluated in order; that will change
   * If there are any match expressions, `<ident>` will be treated as a function
+  * Declarations can be used in the REPL
   * (Soon to come, file read and evaluate)
 
 ### Changed

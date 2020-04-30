@@ -11,10 +11,9 @@ pub fn new_env() -> WrappedEnv {
     VarEnv::empty()
 }
 
-pub fn eval_expr_with_decls(expr: Expr, decls: Vec<Decl>) -> (Value, WrappedEnv) {
-    let (env, decl_ptrs) = unfilled_env(&decls);
-    let env = fill_decl_env(decls, decl_ptrs, env);
-    (eval_expr(expr, &env), env)
+pub fn env_from_decls(decls: &[Decl]) -> WrappedEnv {
+    let (env, decl_ptrs) = unfilled_env(decls);
+    fill_decl_env(decls, &decl_ptrs, env)
 }
 
 fn unfilled_env(decls: &[Decl]) -> (WrappedEnv, Vec<WrappedEnv>) {
@@ -35,18 +34,18 @@ fn unfilled_env(decls: &[Decl]) -> (WrappedEnv, Vec<WrappedEnv>) {
     )
 }
 
-fn fill_decl_env(decls: Vec<Decl>, decl_ptrs: Vec<WrappedEnv>, env: WrappedEnv) -> WrappedEnv {
-    decls.into_iter().zip(decl_ptrs.into_iter()).for_each(
+fn fill_decl_env(decls: &[Decl], decl_ptrs: &[WrappedEnv], env: WrappedEnv) -> WrappedEnv {
+    decls.iter().zip(decl_ptrs.iter()).for_each(
         |(decl, decl_ptr)|
         match decl {
             Decl::Expression(_, Expr::Fn_(param, body)) =>
-                Env::set_value(&decl_ptr, Value::decl_function(
-                    param,
-                    body,
+                Env::set_value(decl_ptr, Value::decl_function(
+                    param.clone(),
+                    body.clone(),
                     Rc::downgrade(&env)
                 )),
             Decl::Expression(_, expr) =>
-                Env::set_value(&decl_ptr, eval_expr(expr, &env)) // Need to delay this
+                Env::set_value(decl_ptr, eval_expr(expr.clone(), &env)) // Need to delay this
 //                Value::delayed_decl(
 //                    expr,
 //                    Rc::downgrade(&env),
@@ -274,10 +273,13 @@ mod tests {
                     )
                 )
             ];
-            eval_expr_with_decls(
-                Expr::fn_app(Expr::variable("add1"), Expr::int(1)),
-                decls
-            ).0
+            eval_expr(
+                Expr::fn_app(
+                    Expr::variable("add1"),
+                    Expr::int(1)
+                ),
+                &env_from_decls(&decls)
+            )
         } => Value::Int(2);
         {
             let decls = vec![
@@ -290,10 +292,10 @@ mod tests {
                     Expr::plus(Expr::variable("a"), Expr::int(1))
                 )
             ];
-            eval_expr_with_decls(
+            eval_expr(
                 Expr::variable("b"),
-                decls
-            ).0
+                &env_from_decls(&decls)
+            )
         } => Value::Int(2)
     }
     
@@ -310,10 +312,10 @@ mod tests {
                     Expr::int(2)
                 )
             ];
-            eval_expr_with_decls(
+            eval_expr(
                 Expr::variable("a"),
-                decls
-            ).0
+                &env_from_decls(&decls)
+            )
         } => Value::Int(3)
     }
 }
