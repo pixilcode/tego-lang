@@ -2,7 +2,7 @@
 * Priorities
   1. Declarations
      * Almost done, just need to add delayed evaluation so that decls evaluate correctly
-     * Also, might as well add a delayed (lazy) evaluation keyword while I'm at it
+     * Also, might as well **add a delayed** (lazy) evaluation keyword while I'm at it
   2. Read and Run Files
   3. IO Monad
   4. Type Inference
@@ -35,6 +35,8 @@
 * Add documentation to all functions/enums/structs
 * Values become Rc's?
   * Once made, they should never change ∴ can have multiple owned references
+  * Maybe Cows instead
+  * Just stop cloning the value when it's not necessary!!!
 * REPL can expect multiple lines
 * Match functions
   * `fn[ a, true -> a + 1 | a, false -> a ]`

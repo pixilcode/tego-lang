@@ -50,10 +50,32 @@ where V: EnvVal {
         }
     }
     
+    // Write tests!
+    pub fn get_evaluated_value(env: &EnvWrapper<Self>) -> Result<V, String> {
+        match *env.borrow() {
+            Env::Empty => Err("No variables are declared".to_string()),
+            Env::Entry { ref value, ..} if value.is_evaluated()
+                => Ok(value.clone()),
+            Env::Entry { .. } => Err("Variable is not evaluated".to_string())
+        }
+    }
+    
+    // Write tests!
+    pub fn with_parent(env: &EnvWrapper<Self>, env_parent: &EnvWrapper<Self>) -> EnvWrapper<Self> {
+        match *env.borrow() {
+            Env::Empty => Rc::clone(env_parent),
+            Env::Entry { ref ident, ref value, ref parent} => 
+                Rc::new(RefCell::new(Env::Entry {
+                    ident: ident.to_string(),
+                    value: value.clone(),
+                    parent: Env::with_parent(parent, env_parent)
+                }))
+        }
+    }
+    
     // Only should be used with declarations to solve recursive problem
+    // Also used with evaluation of lazy values
     // I strongly dislike the fact that I have to do this
-    // Also, write tests!!!
-    // This needs to work!!
     pub fn set_value(env: &EnvWrapper<Self>, value: V) {
         let mut inner_env = env.borrow_mut();
         let new_inner_env = match *inner_env {
@@ -71,6 +93,7 @@ where V: EnvVal {
 
 pub trait EnvVal: Clone + Debug {
     fn unwrap_matches(&self, pattern: &Match) -> Result<Vec<(String, Self)>, String>;
+    fn is_evaluated(&self) -> bool;
 }
 
 #[cfg(test)]
@@ -172,6 +195,10 @@ mod tests {
                 DummyValue::Container(a) => Ok(a.clone()),
                 DummyValue::Int(_) => Err("Int value can't be unwrapped!".to_string())
             }
+        }
+        
+        fn is_evaluated(&self) -> bool {
+            true
         }
     }
 }

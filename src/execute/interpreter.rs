@@ -45,12 +45,12 @@ fn fill_decl_env(decls: &[Decl], decl_ptrs: &[WrappedEnv], env: WrappedEnv) -> W
                     Rc::downgrade(&env)
                 )),
             Decl::Expression(_, expr) =>
-                Env::set_value(decl_ptr, eval_expr(expr.clone(), &env)) // Need to delay this
-//                Value::delayed_decl(
-//                    expr,
-//                    Rc::downgrade(&env),
-//                    &decl_ptr
-//                ))
+                Env::set_value(decl_ptr, // eval_expr(expr.clone(), &env)) // Need to delay this
+                Value::delayed_decl(
+                    expr.clone(), // Could probably fix this so it doesn't clone...
+                    Rc::downgrade(&decl_ptr),
+                    Rc::downgrade(&env)
+                ))
         }
     );
     env
@@ -64,14 +64,14 @@ pub fn eval_expr(expr: Expr, env: &WrappedEnv) -> Value {
                 eval_expr(*a, env),
                 eval_expr(*b, env)
             ),
-        Expr::Literal(val) => val,
+        Expr::Literal(val) => val.eval(Some(Rc::clone(env))),
         Expr::If(cond, a, b) => match eval_expr(*cond, env) {
             Value::Bool(true) => eval_expr(*a, env),
             Value::Bool(false) => eval_expr(*b, env),
             _ => error("If condition must return a boolean")
         },
         Expr::Variable(ident) => match Env::get(env, &ident) {
-            Some(val) => val.clone(),
+            Some(val) => val.eval(Some(Rc::clone(env))),
             None =>
                 error(&format!("Variable '{}' is not declared", ident))
         },
@@ -312,9 +312,10 @@ mod tests {
                     Expr::int(2)
                 )
             ];
+            let env = env_from_decls(&decls);
             eval_expr(
                 Expr::variable("a"),
-                &env_from_decls(&decls)
+                &env
             )
         } => Value::Int(3)
     }

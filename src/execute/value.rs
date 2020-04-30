@@ -1,8 +1,8 @@
 use crate::type_::Type;
-use crate::environment::{EnvVal};
+use crate::environment::{Env, EnvVal};
 use crate::ast::match_::{Match, MatchVal};
 use crate::ast::expr::Expr;
-use crate::execute::interpreter::{WrappedEnv, VarEnv};
+use crate::execute::interpreter::{WrappedEnv, VarEnv, eval_expr};
 use std::rc::Weak;
 use std::cell::RefCell;
 use std::ops;
@@ -14,7 +14,7 @@ pub enum Value {
     Bool(bool),
     Tuple(Vec<Value>),
     Function(Match, Box<Expr>, StoredEnv),
-    // Delayed(Expr, StoredEnv, StoredEnv),
+    Delayed { value: Box<Expr>, self_ptr: StoredEnv, outer_env: StoredEnv },
     Error(String),
 }
 
@@ -90,6 +90,25 @@ macro_rules! impl_op {
 }
 
 impl Value {
+    pub fn eval(self, env: Option<WrappedEnv>) -> Self {
+        match self {
+            Value::Delayed { value, self_ptr, outer_env } => 
+                Env::get_evaluated_value(&self_ptr.clone().unwrap())
+                    .unwrap_or_else(|_| {
+                        let val = eval_expr(
+                            *value.clone(),
+                            &Env::with_parent(
+                                &outer_env.clone().unwrap(),
+                                &env.unwrap_or_else(Env::empty)
+                            )
+                        );
+                        Env::set_value(&self_ptr.clone().unwrap(), val.clone());
+                        val
+                    }),
+            v => v.clone()
+        }
+    }
+    
     pub fn is_type(&self, t: &Type) -> bool {
         t == &self.type_()
     }
@@ -101,6 +120,7 @@ impl Value {
             Value::Tuple(vals) =>
                 Type::Tuple(vals.iter().map(|v| v.type_()).collect()),
             Value::Function(_, _, _) => Type::Fn_,
+            v @ Value::Delayed{ .. } => v.clone().eval(None).type_(),
             Value::Error(_) => Type::Error,
         }
     }
@@ -111,6 +131,22 @@ impl Value {
     
     pub fn decl_function(param: Match, body: Box<Expr>, env: Weak<RefCell<VarEnv>>) -> Self {
         Value::Function(param, body, StoredEnv::Decl(env))
+    }
+    
+    pub fn delayed(value: Expr, self_ptr: WrappedEnv, outer_env: WrappedEnv) -> Self {
+        Value::Delayed {
+            value: Box::new(value),
+            self_ptr: StoredEnv::Expr(self_ptr),
+            outer_env: StoredEnv::Expr(outer_env)
+        }
+    }
+    
+    pub fn delayed_decl(value: Expr, self_ptr: Weak<RefCell<VarEnv>>, outer_env: Weak<RefCell<VarEnv>>) -> Self {
+        Value::Delayed {
+            value: Box::new(value),
+            self_ptr: StoredEnv::Decl(self_ptr),
+            outer_env: StoredEnv::Decl(outer_env)
+        }
     }
     
     pub fn unit() -> Self {
@@ -176,6 +212,13 @@ impl EnvVal for Value {
             (pattern, value) => match_error(pattern, value)
         }
     }
+    
+    fn is_evaluated(&self) -> bool {
+        match self {
+            Value::Delayed { .. } => false,
+            _ => true
+        }
+    }
 }
 
 fn unwrap_tuple(tup_match: &[Match], tup_val: &[Value]) -> Result<Vec<(String, Value)>, String> {
@@ -232,6 +275,7 @@ impl fmt::Display for Value {
                     format!("({})", result)
                 },
                 Value::Function(_, _, _) => "<fn>".to_string(),
+                v @ Value::Delayed { .. } => format!("{}", v.clone().eval(None)),
                 Value::Error(error) =>
                     format!("Error: {}", error)
             })
