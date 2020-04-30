@@ -1,6 +1,6 @@
 [package]
 name = "tego-lang"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Brendon Bown <brendon.bown@gmail.com>"]
 edition = "2018"
 
