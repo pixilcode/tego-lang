@@ -1,59 +1,41 @@
 use nom::{
+    branch::alt,
+    bytes::complete::{tag, take_till1},
+    character::complete::{digit1, multispace0, multispace1, space0},
+    combinator::{all_consuming, verify},
+    sequence::{preceded, terminated},
     IResult,
-    sequence::{
-        preceded,
-        terminated
-    },
-    character::complete::{
-        space0,
-        digit1,
-        multispace0,
-        multispace1
-    },
-    bytes::complete::{
-        tag,
-        take_till1
-    },
-    combinator::all_consuming,
-    branch::alt
 };
 
 const KEYWORDS: &[&str; 14] = &[
-    "and",
-    "or",
-    "xor",
-    "not",
-    "true",
-    "false",
-    "if",
-    "then",
-    "else",
-    "let",
-    "in",
-    "fn",
-    "match",
-    "to"
+    "and", "or", "xor", "not", "true", "false", "if", "then", "else", "let", "in", "fn", "match",
+    "to",
 ];
 
 pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
-where F: Fn(&'a str) -> IResult<&'a str, O> {
+where
+    F: Fn(&'a str) -> IResult<&'a str, O>,
+{
     terminated(parser, multispace0)
 }
 
 pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
-where F: Fn(&'a str) -> IResult<&'a str, O> {
+where
+    F: Fn(&'a str) -> IResult<&'a str, O>,
+{
     terminated(parser, alt((multispace1, all_consuming(multispace0))))
 }
 
 fn token<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
-where F: Fn(&'a str) -> IResult<&'a str, O> {
+where
+    F: Fn(&'a str) -> IResult<&'a str, O>,
+{
     preceded(space0, parser)
 }
 
 macro_rules! reserved {
     ($lexeme:ident, $lexeme_str:literal) => {
-        pub fn $lexeme<'a>(input: &'a str) ->
-        IResult<&'a str, &'a str> {
+        pub fn $lexeme<'a>(input: &'a str) -> IResult<&'a str, &'a str> {
             token(tag($lexeme_str))(input)
         }
     };
@@ -64,7 +46,10 @@ pub fn number(input: &'_ str) -> IResult<&'_ str, &'_ str> {
 }
 
 pub fn identifier(input: &'_ str) -> IResult<&'_ str, &'_ str> {
-    token(take_till1(|c: char| !c.is_ascii_alphabetic() && c != '\''))(input)
+    verify(
+        token(take_till1(|c: char| !c.is_ascii_alphabetic() && c != '\'')),
+        |id| !is_keyword(id),
+    )(input)
 }
 
 reserved!(comma, ",");
@@ -102,22 +87,18 @@ reserved!(to, "to");
 reserved!(bar, "|");
 reserved!(underscore, "_");
 
-pub fn is_keyword(lexeme: &str) -> bool {
-    KEYWORDS.iter().any(
-        |keyword| keyword == &lexeme
-    )
+fn is_keyword(lexeme: &str) -> bool {
+    KEYWORDS.iter().any(|keyword| keyword == &lexeme)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
     #[test]
     fn token_parser_test() {
         let parser = token(tag("abc"));
         assert_eq!(parser(" \tabc"), Ok(("", "abc")));
     }
-    
     parser_test!(comma_test (comma): "," => ",");
     parser_test!(plus_test (plus): "+" => "+");
     parser_test!(minus_test (minus): "-" => "-");
@@ -148,9 +129,7 @@ mod tests {
     parser_test!(to_test (to): "to" => "to");
     parser_test!(bar_test (bar): "|" => "|");
     parser_test!(underscore_test (underscore): "_" => "_");
-    
     // Use find and replace
     // Find: reserved!\(([a-z_]+), ("[^"]+")\);
     // Replace: parser_test!(\1_test (\1): \2 => \2);
-    
 }

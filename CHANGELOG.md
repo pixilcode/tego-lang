@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 * Declarations are not evaluated until needed
   * Any declarations referencing future declarations now work
+* Checks made for keywords are now done in identifier parser
+  * Identifier parser fails if the identifier is a keyword
 
 ## [0.3.0]
 ### Added

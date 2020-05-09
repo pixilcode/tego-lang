@@ -196,8 +196,6 @@ fn literal(input: &'_ str) -> ExprResult<'_> {
         match token {
             "true" => Ok((new_input, Expr::bool(true))),
             "false" => Ok((new_input, Expr::bool(false))),
-            lexeme if is_keyword(lexeme) =>
-                Err(nom::Err::Error((input, ErrorKind::Tag))),
             lexeme =>
                 if let Ok(i) = lexeme.parse::<i32>() {
                     Ok((new_input, Expr::int(i)))
