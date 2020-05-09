@@ -1,8 +1,7 @@
 # TODO
 * Priorities
   1. Declarations
-     * Almost done, just need to add delayed evaluation so that decls evaluate correctly
-     * Also, might as well **add a delayed** (lazy) evaluation keyword while I'm at it
+      * Just need to **add a delayed** (lazy) evaluation keyword while I'm at it
   2. Read and Run Files
   3. IO Monad
   4. Type Inference
@@ -42,3 +41,6 @@
   * `fn[ a, true -> a + 1 | a, false -> a ]`
   * Creates a function that has a match expression built in
 * Check for name clashes (decls and variables)
+* The identifier parser doesn't accept keywords
+* Maybe find a way to use [De Bruijn indices](https://en.wikipedia.org/wiki/De_Bruijn_index) in the environment instead...
+* Also, maybe see if the language (or a new one) can be improved with [this](http://willcrichton.net/notes/type-level-programming/)

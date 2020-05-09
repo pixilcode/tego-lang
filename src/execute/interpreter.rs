@@ -64,7 +64,7 @@ pub fn eval_expr(expr: Expr, env: &WrappedEnv) -> Value {
                 eval_expr(*a, env),
                 eval_expr(*b, env)
             ),
-        Expr::Literal(val) => val.eval(Some(Rc::clone(env))),
+        Expr::Literal(val) => val,
         Expr::If(cond, a, b) => match eval_expr(*cond, env) {
             Value::Bool(true) => eval_expr(*a, env),
             Value::Bool(false) => eval_expr(*b, env),

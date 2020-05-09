@@ -50,7 +50,6 @@ where V: EnvVal {
         }
     }
     
-    // Write tests!
     pub fn get_evaluated_value(env: &EnvWrapper<Self>) -> Result<V, String> {
         match *env.borrow() {
             Env::Empty => Err("No variables are declared".to_string()),
@@ -60,7 +59,6 @@ where V: EnvVal {
         }
     }
     
-    // Write tests!
     pub fn with_parent(env: &EnvWrapper<Self>, env_parent: &EnvWrapper<Self>) -> EnvWrapper<Self> {
         match *env.borrow() {
             Env::Empty => Rc::clone(env_parent),
@@ -167,10 +165,81 @@ mod tests {
         assert_eq!(expected, actual);
     }
     
+    basic_test! {
+        get_value_test
+        Env::<DummyValue>::get_evaluated_value(&Env::empty())
+            => Err("No variables are declared".to_string());
+        Env::get_evaluated_value(&Env::associate_ident(
+            "a".to_string(),
+            DummyValue::Int(1),
+            Env::empty()
+        )) => Ok(DummyValue::Int(1));
+        Env::get_evaluated_value(&Env::associate_ident(
+            "a".to_string(),
+            DummyValue::Delayed(1),
+            Env::empty()
+        )) => Err("Variable is not evaluated".to_string())
+    }
+    
+    // Basically checking the (Haskell) monoidal properties
+    // of `Env`, with `EnvWrapper<Env>` as the monoid,
+    // `Env::with_parent` as the `++` operator,
+    // and `Env::empty` as `unit`
+    basic_test! {
+        with_parent_fn_test
+        Env::with_parent(&Env::empty(), &Env::empty()) =>
+            Env::<DummyValue>::empty();
+        Env::with_parent(
+            &Env::empty(),
+            &Env::associate_ident(
+                "a".to_string(),
+                DummyValue::Int(1),
+                Env::empty()
+            )
+        ) => Env::associate_ident(
+            "a".to_string(),
+            DummyValue::Int(1),
+            Env::empty()
+        );
+        Env::with_parent(
+            &Env::associate_ident(
+                "a".to_string(),
+                DummyValue::Int(1),
+                Env::empty()
+            ),
+            &Env::empty()
+        ) => Env::associate_ident(
+            "a".to_string(),
+            DummyValue::Int(1),
+            Env::empty()
+        );
+        Env::with_parent(
+            &Env::associate_ident(
+                "a".to_string(),
+                DummyValue::Int(1),
+                Env::empty()
+            ),
+            &Env::associate_ident(
+                "b".to_string(),
+                DummyValue::Int(2),
+                Env::empty()
+            )
+        ) => Env::associate_ident(
+            "a".to_string(),
+            DummyValue::Int(1),
+            Env::associate_ident(
+                "b".to_string(),
+                DummyValue::Int(2),
+                Env::empty()
+            )
+        )
+    }
+    
     #[derive(Debug, Clone, PartialEq)]
     enum DummyValue {
         Int(u32),
-        Container(Vec<(String, Self)>)
+        Container(Vec<(String, Self)>),
+        Delayed(u32)
     }
     
     impl DummyValue {
@@ -193,12 +262,16 @@ mod tests {
         fn unwrap_matches(&self, _pattern: &Match) -> Result<Vec<(String, Self)>, String> {
             match self {
                 DummyValue::Container(a) => Ok(a.clone()),
-                DummyValue::Int(_) => Err("Int value can't be unwrapped!".to_string())
+                DummyValue::Int(_) => Err("Int value can't be unwrapped!".to_string()),
+                DummyValue::Delayed(_) => Err("Int value can't be unwrapped!".to_string())
             }
         }
         
         fn is_evaluated(&self) -> bool {
-            true
+            match self {
+                DummyValue::Delayed(_) => false,
+                _ => true
+            }
         }
     }
 }
