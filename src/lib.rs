@@ -13,8 +13,8 @@ macro_rules! basic_test {
 
 pub use crate::ast::decl::Decl;
 
-pub mod parser;
-pub mod execute;
 mod ast;
 mod environment;
+pub mod execute;
+pub mod parser;
 mod type_;

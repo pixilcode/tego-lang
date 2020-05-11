@@ -2,7 +2,7 @@ use crate::ast::expr::Expr;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Decl {
-    Expression(String, Expr)
+    Expression(String, Expr),
 }
 
 impl Decl {

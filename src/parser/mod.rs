@@ -9,8 +9,8 @@ macro_rules! parser_test {
     };
 }
 
-mod tokens;
 mod match_;
+mod tokens;
 
 pub mod decl;
 pub mod expr;

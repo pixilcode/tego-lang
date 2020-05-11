@@ -1,22 +1,22 @@
-use std::io::{self, Write};
-use tego_lang::parser::{expr, decl};
-use tego_lang::Decl;
-use tego_lang::execute::interpreter::{self, new_env};
 use nom::combinator::all_consuming;
+use std::io::{self, Write};
 use std::rc::Rc;
+use tego_lang::execute::interpreter::{self, new_env};
+use tego_lang::parser::{decl, expr};
+use tego_lang::Decl;
 
 pub fn run() {
     println!("Welcome to");
     println!(
-"
+        "
    /\\
   //\\\\
  //||\\\\  _   __   ___
    ||  ||_| / || // \\\\
    ||  ||_  \\_|| \\\\_//
             \\_||       
-");
-    
+"
+    );
     println!("Type ':q' or ':quit' to exit\n");
     repl_loop(Some(new_env()), vec![]);
 }
@@ -24,16 +24,13 @@ pub fn run() {
 fn repl_loop(env: Option<interpreter::WrappedEnv>, mut decls: Vec<Decl>) {
     print!(">> ");
     io::stdout().flush().unwrap();
-    
     let mut code = String::new();
     io::stdin().read_line(&mut code).unwrap();
-    
     let code = code.trim();
-    
-    if code == ":quit"|| code == ":q" {
+
+    if code == ":quit" || code == ":q" {
         return;
     }
-    
     let (env, decls) = if let Ok((_, d)) = decl::decl(&code) {
         decls.push(d);
         (None, decls)
@@ -44,13 +41,12 @@ fn repl_loop(env: Option<interpreter::WrappedEnv>, mut decls: Vec<Decl>) {
                 let result = interpreter::eval_expr(e, &Rc::clone(&env));
                 println!("{} : {}", result, result.type_());
                 (Some(env), decls)
-            },
+            }
             Err(error) => {
                 println!("{:?}", error);
                 (env, decls)
             }
         }
     };
-    
     repl_loop(env, decls);
 }
