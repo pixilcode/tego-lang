@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+
 ## [0.3.1] - 2020-06
 ### Added
 * Delay expressions
@@ -16,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   * Any declarations referencing future declarations now work
 * Checks made for keywords are now done in identifier parser
   * Identifier parser fails if the identifier is a keyword
+
 
 ## [0.3.0] - 2020-04-30
 ### Added
@@ -47,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Unit (`()`) is now (completely) a zero-element tuple instead of a first-class type
 * While it was changed in some places so that it functioned like that, the vestigal parts of code were completely removed
 
+
 ## [0.2.1] - 2020-04-21
 ### Added
 * Pattern-matching over tuples
@@ -67,6 +72,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   * Function application has high precedence
     * `fn a -> a 1` is a function that takes a function as an argument and applies 1 as an argument; it can be read as `fn a -> (a 1)`
     * `(fn a, b -> a + b) 1, 2` is an error because the argument, which is only `1`, can't be unwrapped into a tuple; it can be read as `((fn a, b -> a + b) 1), 2`
+
 
 ## [0.2.0] - 2020-04-10
 ### Added
