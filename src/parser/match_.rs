@@ -46,6 +46,10 @@ fn atom(input: &'_ str) -> MatchResult<'_> {
     )
 }
 
+pub fn variable(input: &'_ str) -> MatchResult<'_> {
+    identifier(input).map(|(input, lexeme)| (input, Match::ident(lexeme)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -95,8 +99,13 @@ mod tests {
             Match::Tuple(vec![])
     }
     basic_test! {
-        keyword
+        keyword_test
         match_("let") =>
             Err(nom::Err::Error(("let", ErrorKind::Verify)))
+    }
+    parser_test! {
+        variable_test
+        (variable): "abc" =>
+            Match::ident("abc")
     }
 }

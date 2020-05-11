@@ -1,22 +1,14 @@
-use crate::ast::expr::{Expr, BinaryOp, UnaryOp};
+use crate::ast::expr::{BinaryOp, Expr, UnaryOp};
 use crate::ast::match_::Match;
-use crate::parser::tokens::*;
 use crate::parser::match_::*;
+use crate::parser::tokens::*;
 
 use nom::{
-    IResult,
-    sequence::{
-        separated_pair,
-        pair,
-        terminated,
-        preceded},
-    combinator::opt,
     branch::alt,
-    multi::{
-        many1,
-        fold_many0
-    },
-    error::ErrorKind
+    combinator::opt,
+    multi::{fold_many0, many1},
+    sequence::{pair, preceded, separated_pair, terminated},
+    IResult,
 };
 
 type ExprResult<'a> = IResult<&'a str, Expr>;
@@ -26,19 +18,19 @@ macro_rules! binary_expr {
         fn $name(input: &'_ str) -> ExprResult<'_> {
             pair(
                 $next_precedence,
-                opt(many1(pair(opt_nl($op_func), $next_precedence)))
-            )(input).and_then(
-                |(input, (a, other))|
-                match other {
-                    // Operators found (left to right)
-                    Some(others) =>
-                        Ok((input, others.into_iter().fold(
-                            a,
-                            |a, (op, b)| Expr::binary(a, BinaryOp::from(op), b)
-                        ))),
-                    // No operators found
-                    None => Ok((input, a))
-                })
+                opt(many1(pair(opt_nl($op_func), $next_precedence))),
+            )(input)
+            .and_then(|(input, (a, other))| match other {
+                // Operators found (left to right)
+                Some(others) => Ok((
+                    input,
+                    others
+                        .into_iter()
+                        .fold(a, |a, (op, b)| Expr::binary(a, BinaryOp::from(op), b)),
+                )),
+                // No operators found
+                None => Ok((input, a)),
+            })
         }
     };
 }
@@ -46,19 +38,12 @@ macro_rules! binary_expr {
 macro_rules! unary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
         fn $name(input: &'_ str) -> ExprResult<'_> {
-            opt(pair($op_func, $name))(input).and_then(
-                |(input, unary_op)|
-                match unary_op {
-                    Some((op, a)) =>
-                        Ok((input, Expr::unary(
-                            UnaryOp::from(op),
-                            a
-                        ))),
-                    None => $next_precedence(input)
-                }
-            )
+            opt(pair($op_func, $name))(input).and_then(|(input, unary_op)| match unary_op {
+                Some((op, a)) => Ok((input, Expr::unary(UnaryOp::from(op), a))),
+                None => $next_precedence(input),
+            })
         }
-    }
+    };
 }
 
 pub fn expr(input: &'_ str) -> ExprResult<'_> {
@@ -66,66 +51,48 @@ pub fn expr(input: &'_ str) -> ExprResult<'_> {
 }
 
 pub fn let_expr(input: &'_ str) -> ExprResult<'_> {
-    opt(let_)(input).and_then(
-        |(input, let_token)|
-        match let_token {
-            Some(_) =>
-                separated_pair(
-                    separated_pair(
-                        match_,
-                        assign,
-                        join_expr
-                    ),
-                    opt_nl(in_),
-                    expr
-                )(input).map(
-                    |(input, ((ident, value), inner))|
-                    (
-                        input,
-                        Expr::let_expr(ident, value, inner)
-                    )
-                ),
-            None => if_expr(input)
+    opt(alt((let_, delay)))(input).and_then(|(input, let_token)| match let_token {
+        Some("let") => {
+            separated_pair(separated_pair(match_, assign, join_expr), opt_nl(in_), expr)(input).map(
+                |(input, ((ident, value), inner))| (input, Expr::let_expr(ident, value, inner)),
+            )
         }
-    )
+        Some("delay") => separated_pair(
+            separated_pair(variable, assign, join_expr),
+            opt_nl(in_),
+            expr,
+        )(input)
+        .map(|(input, ((ident, value), inner))| (input, Expr::delayed(ident, value, inner))),
+        Some(_) => unreachable!(),
+        None => if_expr(input),
+    })
 }
 
 pub fn if_expr(input: &'_ str) -> ExprResult<'_> {
-    opt(if_)(input).and_then(
-        |(input, if_token)|
-        match if_token {
-            Some(_) => pair(join_expr, opt_nl(alt((then, q_mark))))(input).and_then(
-                |(input, (cond, symbol))| {
-                    let next_symbol = match symbol {
-                        "then" => else_,
-                        "?" => colon,
-                        _ => unreachable!()
-                    };
-                    separated_pair(opt_nl(expr), opt_nl(next_symbol), expr)(input).map(
-                        |(input, (t, f))|
-                        (input, Expr::if_expr(cond, t, f))
-                    )
-                }
-            ),
-            None => match_expr(input)
-        }
-    )
+    opt(if_)(input).and_then(|(input, if_token)| match if_token {
+        Some(_) => pair(join_expr, opt_nl(alt((then, q_mark))))(input).and_then(
+            |(input, (cond, symbol))| {
+                let next_symbol = match symbol {
+                    "then" => else_,
+                    "?" => colon,
+                    _ => unreachable!(),
+                };
+                separated_pair(opt_nl(expr), opt_nl(next_symbol), expr)(input)
+                    .map(|(input, (t, f))| (input, Expr::if_expr(cond, t, f)))
+            },
+        ),
+        None => match_expr(input),
+    })
 }
 
 pub fn match_expr(input: &'_ str) -> ExprResult<'_> {
-    opt(match_kw)(input).and_then(
-        |(input, match_token)|
-        match match_token {
-            Some(_) => terminated(join_expr, opt_nl(to))(input).and_then(
-                |(input, val)|
-                many1(opt_nl(match_arm))(input).and_then(
-                    |(input, patterns)|
-                    Ok((input, Expr::match_(val, patterns)))
-                )
-            ),
-            None => join_expr(input),
-        }
-    )
+    opt(match_kw)(input).and_then(|(input, match_token)| match match_token {
+        Some(_) => terminated(join_expr, opt_nl(to))(input).and_then(|(input, val)| {
+            many1(opt_nl(match_arm))(input)
+                .and_then(|(input, patterns)| Ok((input, Expr::match_(val, patterns))))
+        }),
+        None => join_expr(input),
+    })
 }
 
 pub fn match_arm(input: &'_ str) -> IResult<&'_ str, (Match, Expr)> {
@@ -139,11 +106,7 @@ binary_expr!(and_expr, and, equal_expr);
 binary_expr!(equal_expr, alt((equal, not_equal)), compare_expr);
 binary_expr!(
     compare_expr,
-    alt((
-        less_than_equal,
-        greater_than_equal,
-        less_than,
-        greater_than)),
+    alt((less_than_equal, greater_than_equal, less_than, greater_than)),
     add_expr
 );
 binary_expr!(add_expr, alt((plus, minus)), mult_expr);
@@ -153,64 +116,44 @@ unary_expr!(negate_expr, minus, not_expr);
 unary_expr!(not_expr, not, fn_expr);
 
 fn fn_expr(input: &'_ str) -> ExprResult<'_> {
-    opt(fn_)(input).and_then(
-        |(input, paren_token)|
-        match paren_token {
-            Some(_) =>
-                separated_pair(match_, opt_nl(arrow), expr)(input).map(
-                    |(input, (param, body))|
-                    (input, Expr::fn_expr(param, body))
-                ),
-            None => fn_application(input)
-        }
-    )
+    opt(fn_)(input).and_then(|(input, paren_token)| match paren_token {
+        Some(_) => separated_pair(match_, opt_nl(arrow), expr)(input)
+            .map(|(input, (param, body))| (input, Expr::fn_expr(param, body))),
+        None => fn_application(input),
+    })
 }
 
 fn fn_application(input: &'_ str) -> ExprResult<'_> {
-    grouping(input).and_then(
-        |(input, val)|
-        fold_many0(grouping, val, Expr::fn_app)(input)
-    )
+    grouping(input).and_then(|(input, val)| fold_many0(grouping, val, Expr::fn_app)(input))
 }
 
 fn grouping(input: &'_ str) -> ExprResult<'_> {
-    opt(opt_nl(left_paren))(input).and_then(
-        |(input, paren_token)|
-        match paren_token {
-            Some(_) =>
-                terminated(
-                    opt(opt_nl(expr)),
-                    right_paren
-                )(input)
-                .map(|(input, opt_exp)|
-                    (input, opt_exp.unwrap_or_else(Expr::unit))
-                ),
-            None => literal(input)
-        }
-    )
+    opt(opt_nl(left_paren))(input).and_then(|(input, paren_token)| match paren_token {
+        Some(_) => terminated(opt(opt_nl(expr)), right_paren)(input)
+            .map(|(input, opt_exp)| (input, opt_exp.unwrap_or_else(Expr::unit))),
+        None => literal(input),
+    })
 }
 
 fn literal(input: &'_ str) -> ExprResult<'_> {
-    alt((true_val, false_val, number, identifier))(input).and_then(
-        |(new_input, token)|
-        match token {
-            "true" => Ok((new_input, Expr::bool(true))),
-            "false" => Ok((new_input, Expr::bool(false))),
-            lexeme =>
-                if let Ok(i) = lexeme.parse::<i32>() {
-                    Ok((new_input, Expr::int(i)))
-                } else {
-                    Ok((new_input, Expr::variable(lexeme)))
-                }
+    alt((true_val, false_val, number, identifier))(input).and_then(|(new_input, token)| match token
+    {
+        "true" => Ok((new_input, Expr::bool(true))),
+        "false" => Ok((new_input, Expr::bool(false))),
+        lexeme => {
+            if let Ok(i) = lexeme.parse::<i32>() {
+                Ok((new_input, Expr::int(i)))
+            } else {
+                Ok((new_input, Expr::variable(lexeme)))
+            }
         }
-    )
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::ast::match_::Match;
-    
     parser_test! {
         literal_test
         (expr): "1" => Expr::int(1);
@@ -218,7 +161,6 @@ mod tests {
         (expr): "false" => Expr::bool(false);
         (expr): "()" => Expr::unit()
     }
-    
     parser_test! {
         or_test
         (expr): "true or\nfalse" =>
@@ -226,7 +168,6 @@ mod tests {
                 Expr::bool(true),
                 Expr::bool(false))
     }
-    
     parser_test! {
         and_test
         (expr): "true and\nfalse" =>
@@ -234,7 +175,6 @@ mod tests {
                 Expr::bool(true),
                 Expr::bool(false))
     }
-    
     parser_test! {
         plus_test
         (expr): "1 +\n2" =>
@@ -242,7 +182,6 @@ mod tests {
                 Expr::int(1),
                 Expr::int(2))
     }
-    
     parser_test! {
         minus_test
         (expr): "1 -\n2" =>
@@ -250,7 +189,6 @@ mod tests {
                 Expr::int(1),
                 Expr::int(2))
     }
-    
     parser_test! {
         multiply_test
         (expr): "1 *\n2" =>
@@ -258,7 +196,6 @@ mod tests {
                 Expr::int(1),
                 Expr::int(2))
     }
-    
     parser_test! {
         divide_test
         (expr): "1 /\n2" =>
@@ -266,7 +203,6 @@ mod tests {
                 Expr::int(1),
                 Expr::int(2))
     }
-    
     parser_test! {
         modulo_test
         (expr): "1 %\n2" =>
@@ -274,7 +210,6 @@ mod tests {
                 Expr::int(1),
                 Expr::int(2))
     }
-    
     parser_test! {
         equal_test
         (expr): "1 ==\n2" =>
@@ -282,21 +217,18 @@ mod tests {
                 Expr::int(1),
                 Expr::int(2))
     }
-    
     parser_test! {
         negate_test
         (expr): "-1" =>
             Expr::negate(
                 Expr::int(1))
     }
-    
     parser_test! {
         not_test
         (expr): "not true" =>
             Expr::not(
                 Expr::bool(true))
     }
-    
     parser_test! {
         grouping_test
         (expr): "1 + 2 * 3" =>
@@ -311,9 +243,7 @@ mod tests {
                     Expr::int(1),
                     Expr::int(2)),
                 Expr::int(3))
-            
     }
-    
     parser_test! {
         precedence_test
         (expr): "1 or 2 and 3 == 4 + 5 - 6 * 7 / 8 % 9" =>
@@ -356,7 +286,6 @@ mod tests {
                         Expr::int(7))),
                 Expr::int(8))
     }
-    
     parser_test! {
         if_else_test
         (expr): "if true then\n1\nelse\n2" =>
@@ -370,13 +299,11 @@ mod tests {
                 Expr::int(1),
                 Expr::int(2))
     }
-    
     parser_test! {
         variable_test
         (expr): "abc" =>
             Expr::variable("abc")
     }
-    
     parser_test! {
         let_test
         (expr): "let a = 1 in\ntrue" =>
@@ -392,7 +319,6 @@ mod tests {
             )
 
     }
-    
     parser_test! {
         fn_test
         (expr): "fn a ->\na" =>
@@ -406,7 +332,6 @@ mod tests {
                     Expr::variable("a"),
                     Expr::int(1)))
     }
-    
     parser_test! {
         fn_application_test
         (expr): "a 1" =>
@@ -428,7 +353,6 @@ mod tests {
                     Expr::int(1)),
                 Expr::int(2))
     }
-    
     parser_test! {
         match_expr_test
         (expr): "match 1 to\n| 1 -> true\n| a -> false" =>
@@ -436,5 +360,14 @@ mod tests {
                 (Match::int(1), Expr::bool(true)),
                 (Match::ident("a"), Expr::bool(false))
             ])
+    }
+    parser_test! {
+        delayed_value_test
+        (expr): "delay a = 1 in a" =>
+            Expr::delayed(
+                Match::ident("a"),
+                Expr::int(1),
+                Expr::variable("a")
+            )
     }
 }

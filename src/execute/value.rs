@@ -133,10 +133,10 @@ impl Value {
         Value::Function(param, body, StoredEnv::Decl(env))
     }
     
-    pub fn delayed(value: Expr, self_ptr: WrappedEnv, outer_env: WrappedEnv) -> Self {
+    pub fn delayed(value: Expr, self_ptr: Weak<RefCell<VarEnv>>, outer_env: WrappedEnv) -> Self {
         Value::Delayed {
             value: Box::new(value),
-            self_ptr: StoredEnv::Expr(self_ptr),
+            self_ptr: StoredEnv::Decl(self_ptr), // So it doesn't create a loop
             outer_env: StoredEnv::Expr(outer_env)
         }
     }

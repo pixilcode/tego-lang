@@ -8,6 +8,7 @@ pub enum Expr {
     Fn_(Match, Box<Expr>),
     FnApp(Box<Expr>, Box<Expr>),
     Match(Box<Expr>, Vec<(Match, Expr)>),
+    Delayed(Match, Box<Expr>, Box<Expr>),
     Variable(String),
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinaryOp, Box<Expr>),
@@ -33,6 +34,10 @@ impl Expr {
     
     pub fn match_(val: Self, patterns: Vec<(Match, Self)>) -> Self {
         Expr::Match(Box::new(val), patterns)
+    }
+
+    pub fn delayed(ident: Match, value: Self, inner: Self) -> Self {
+        Expr::Delayed(ident, Box::new(value), Box::new(inner))
     }
     
     pub fn unary(op: UnaryOp, a: Self) -> Self {

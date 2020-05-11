@@ -7,9 +7,9 @@ use nom::{
     IResult,
 };
 
-const KEYWORDS: &[&str; 14] = &[
+const KEYWORDS: &[&str; 15] = &[
     "and", "or", "xor", "not", "true", "false", "if", "then", "else", "let", "in", "fn", "match",
-    "to",
+    "to", "delay",
 ];
 
 pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
@@ -86,6 +86,7 @@ reserved!(match_kw, "match");
 reserved!(to, "to");
 reserved!(bar, "|");
 reserved!(underscore, "_");
+reserved!(delay, "delay");
 
 fn is_keyword(lexeme: &str) -> bool {
     KEYWORDS.iter().any(|keyword| keyword == &lexeme)
@@ -129,6 +130,7 @@ mod tests {
     parser_test!(to_test (to): "to" => "to");
     parser_test!(bar_test (bar): "|" => "|");
     parser_test!(underscore_test (underscore): "_" => "_");
+    parser_test!(delay_test (delay): "delay" => "delay");
     // Use find and replace
     // Find: reserved!\(([a-z_]+), ("[^"]+")\);
     // Replace: parser_test!(\1_test (\1): \2 => \2);
