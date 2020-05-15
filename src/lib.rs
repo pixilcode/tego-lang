@@ -11,10 +11,10 @@ macro_rules! basic_test {
     };
 }
 
-pub use crate::ast::decl::Decl;
-
-mod ast;
+pub mod ast;
 mod environment;
-pub mod execute;
+mod execute;
 pub mod parser;
 mod type_;
+
+pub use execute::interpreter;

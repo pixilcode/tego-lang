@@ -1,5 +1,5 @@
-use crate::ast::expr::{BinaryOp, Expr, UnaryOp};
-use crate::ast::match_::Match;
+use crate::ast::Expr;
+use crate::ast::Match;
 use crate::parser::match_::*;
 use crate::parser::tokens::*;
 
@@ -26,7 +26,7 @@ macro_rules! binary_expr {
                     input,
                     others
                         .into_iter()
-                        .fold(a, |a, (op, b)| Expr::binary(a, BinaryOp::from(op), b)),
+                        .fold(a, |a, (op, b)| Expr::binary(a, op.into(), b)),
                 )),
                 // No operators found
                 None => Ok((input, a)),
@@ -39,7 +39,7 @@ macro_rules! unary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
         fn $name(input: &'_ str) -> ExprResult<'_> {
             opt(pair($op_func, $name))(input).and_then(|(input, unary_op)| match unary_op {
-                Some((op, a)) => Ok((input, Expr::unary(UnaryOp::from(op), a))),
+                Some((op, a)) => Ok((input, Expr::unary(op.into(), a))),
                 None => $next_precedence(input),
             })
         }
@@ -52,11 +52,10 @@ pub fn expr(input: &'_ str) -> ExprResult<'_> {
 
 pub fn let_expr(input: &'_ str) -> ExprResult<'_> {
     opt(alt((let_, delay)))(input).and_then(|(input, let_token)| match let_token {
-        Some("let") => {
-            separated_pair(separated_pair(match_, assign, join_expr), opt_nl(in_), expr)(input).map(
-                |(input, ((ident, value), inner))| (input, Expr::let_expr(ident, value, inner)),
-            )
-        }
+        Some("let") => separated_pair(separated_pair(match_, assign, if_expr), opt_nl(in_), expr)(
+            input,
+        )
+        .map(|(input, ((ident, value), inner))| (input, Expr::let_expr(ident, value, inner))),
         Some("delay") => separated_pair(
             separated_pair(variable, assign, join_expr),
             opt_nl(in_),
@@ -153,7 +152,7 @@ fn literal(input: &'_ str) -> ExprResult<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::match_::Match;
+    use crate::ast::Match;
     parser_test! {
         literal_test
         (expr): "1" => Expr::int(1);

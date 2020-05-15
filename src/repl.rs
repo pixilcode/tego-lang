@@ -1,9 +1,9 @@
 use nom::combinator::all_consuming;
 use std::io::{self, Write};
 use std::rc::Rc;
-use tego_lang::execute::interpreter::{self, new_env};
-use tego_lang::parser::{decl, expr};
-use tego_lang::Decl;
+use tego_lang::ast::Decl;
+use tego_lang::interpreter;
+use tego_lang::parser;
 
 pub fn run() {
     println!("Welcome to");
@@ -18,7 +18,7 @@ pub fn run() {
 "
     );
     println!("Type ':q' or ':quit' to exit\n");
-    repl_loop(Some(new_env()), vec![]);
+    repl_loop(Some(interpreter::new_env()), vec![]);
 }
 
 fn repl_loop(env: Option<interpreter::WrappedEnv>, mut decls: Vec<Decl>) {
@@ -31,11 +31,11 @@ fn repl_loop(env: Option<interpreter::WrappedEnv>, mut decls: Vec<Decl>) {
     if code == ":quit" || code == ":q" {
         return;
     }
-    let (env, decls) = if let Ok((_, d)) = decl::decl(&code) {
+    let (env, decls) = if let Ok((_, d)) = parser::decl(&code) {
         decls.push(d);
         (None, decls)
     } else {
-        match all_consuming(expr::expr)(&code) {
+        match all_consuming(parser::expr)(&code) {
             Ok((_, e)) => {
                 let env = env.unwrap_or_else(|| interpreter::env_from_decls(&decls));
                 let result = interpreter::eval_expr(e, &Rc::clone(&env));

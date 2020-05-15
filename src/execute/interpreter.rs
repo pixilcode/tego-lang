@@ -1,11 +1,17 @@
-use crate::ast::decl::Decl;
-use crate::ast::expr::Expr;
+use crate::ast::{Decl, Expr, Prog};
 use crate::environment::{Env, EnvWrapper};
 use crate::execute::value::Value;
 use std::rc::Rc;
 
 pub type VarEnv = Env<Value>;
 pub type WrappedEnv = EnvWrapper<VarEnv>;
+
+pub fn run_prog(prog: Prog) -> Result<Value, String> {
+    match prog {
+        Prog::Binary(main, decls) => Ok(eval_expr(main, &env_from_decls(&decls))),
+        Prog::Library(_) => Err("No 'main' found in file".into()),
+    }
+}
 
 pub fn new_env() -> WrappedEnv {
     VarEnv::empty()
@@ -113,14 +119,6 @@ pub fn eval_expr(expr: Expr, env: &WrappedEnv) -> Value {
             );
             eval_expr(*inner, &new_env)
         }
-        // Decl::Expression(_, expr) => Env::set_value(
-        //     decl_ptr,
-        //     Value::delayed_decl(
-        //         expr.clone(), // Could probably fix this so it doesn't clone...
-        //         Rc::downgrade(&decl_ptr),
-        //         Rc::downgrade(&env),
-        //     ),
-        // ),
     }
 }
 
@@ -131,8 +129,7 @@ fn error(message: &str) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::expr::{BinaryOp, UnaryOp};
-    use crate::ast::match_::Match;
+    use crate::ast::Match;
     #[test]
     fn eval_literal() {
         let expected = Value::Int(1);
@@ -142,16 +139,13 @@ mod tests {
     #[test]
     fn eval_binary() {
         let expected = Value::Int(3);
-        let actual = eval_expr(
-            Expr::binary(Expr::int(1), BinaryOp::Plus, Expr::int(2)),
-            &VarEnv::empty(),
-        );
+        let actual = eval_expr(Expr::plus(Expr::int(1), Expr::int(2)), &VarEnv::empty());
         assert_eq!(expected, actual);
     }
     #[test]
     fn eval_unary() {
         let expected = Value::Int(-3);
-        let actual = eval_expr(Expr::unary(UnaryOp::Negate, Expr::int(3)), &VarEnv::empty());
+        let actual = eval_expr(Expr::negate(Expr::int(3)), &VarEnv::empty());
         assert_eq!(expected, actual);
     }
     #[test]

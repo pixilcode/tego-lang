@@ -1,0 +1,3 @@
+main = addOne 1
+
+addOne i = i + 1

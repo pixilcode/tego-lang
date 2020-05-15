@@ -1,5 +1,5 @@
-use crate::ast::decl::Decl;
-use crate::ast::expr::Expr;
+use crate::ast::Decl;
+use crate::ast::Expr;
 use crate::parser::expr::expr;
 use crate::parser::match_::match_;
 use crate::parser::tokens::*;
@@ -9,11 +9,11 @@ use nom::{multi::many0, sequence::tuple, IResult};
 type DeclResult<'a> = IResult<&'a str, Decl>;
 
 pub fn decl(input: &'_ str) -> DeclResult<'_> {
-    expression(input)
+    req_nl(expression)(input)
 }
 
 fn expression(input: &'_ str) -> DeclResult<'_> {
-    req_nl(tuple((identifier, many0(match_), assign, expr)))(input).map(
+    tuple((identifier, many0(match_), assign, expr))(input).map(
         |(input, (ident, params, _, body))| {
             (
                 input,
@@ -32,7 +32,7 @@ fn expression(input: &'_ str) -> DeclResult<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::match_::Match;
+    use crate::ast::Match;
     parser_test! {
         expression_test
         (decl): "val = 1\n" =>

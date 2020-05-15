@@ -1,5 +1,5 @@
-use crate::ast::expr::Expr;
-use crate::ast::match_::{Match, MatchVal};
+use crate::ast::Expr;
+use crate::ast::{Match, MatchVal};
 use crate::environment::{Env, EnvVal};
 use crate::execute::interpreter::{eval_expr, VarEnv, WrappedEnv};
 use crate::type_::Type;
@@ -124,6 +124,13 @@ impl Value {
             Value::Function(_, _, _) => Type::Fn_,
             v @ Value::Delayed { .. } => v.clone().eval(None).type_(),
             Value::Error(_) => Type::Error,
+        }
+    }
+
+    pub fn is_error(&self) -> bool {
+        match self {
+            Value::Error(_) => true,
+            _ => false
         }
     }
 

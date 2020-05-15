@@ -1,5 +1,3 @@
-extern crate tego_lang;
-
 #[allow(unused_macros)]
 macro_rules! basic_test {
     ( $name:ident $( $actual:expr => $expected:expr );+) => {
@@ -11,8 +9,26 @@ macro_rules! basic_test {
     };
 }
 
+use std::path::PathBuf;
+use structopt::StructOpt;
+
 mod repl;
+mod codefile;
 
 fn main() {
-    repl::run();
+    let cli = Cli::from_args();
+
+    match cli {
+        Cli::Repl => repl::run(),
+        Cli::Run { file_loc } => codefile::run(file_loc),
+    }
+}
+
+#[derive(StructOpt)]
+enum Cli {
+    Repl,
+    Run {
+        #[structopt(name = "file-path", parse(from_os_str))]
+        file_loc: PathBuf,
+    },
 }

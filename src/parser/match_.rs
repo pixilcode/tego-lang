@@ -1,4 +1,4 @@
-use crate::ast::match_::Match;
+use crate::ast::Match;
 use crate::parser::tokens::*;
 use nom::branch::alt;
 

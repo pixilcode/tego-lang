@@ -1,4 +1,4 @@
-use crate::ast::match_::Match;
+use crate::ast::Match;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;

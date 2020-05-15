@@ -9,8 +9,13 @@ macro_rules! parser_test {
     };
 }
 
+mod decl;
+mod expr;
 mod match_;
+mod prog;
 mod tokens;
 
-pub mod decl;
-pub mod expr;
+pub use decl::decl;
+pub use expr::expr;
+pub use match_::match_;
+pub use prog::prog;
