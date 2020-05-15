@@ -5,8 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.3.2] - 2020-06-15
+### Added
+* Ability to read and run files
+  * Binary now has two commands: `run` and `repl`
+  * `repl` opens up the REPL
+  * `run <code-file>` runs a code file (extension is `.tgo`) 
 
-## [0.3.1] - 2020-06
+## [0.3.1] - 2020-06-11
 ### Added
 * Delay expressions
   * Delay the evaluation of an expression until later
@@ -125,7 +131,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * REPL evaluates expressions composed by the components listed above
 * The type checker functions, though it is unintegrated and partially untested
 
-[Unreleased]: https://github.com/theDragonFire/tego-lang/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/theDragonFire/tego-lang/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/theDragonFire/tego-lang/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/theDragonFire/tego-lang/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/theDragonFire/tego-lang/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/theDragonFire/tego-lang/compare/v0.2.0...v0.2.1
