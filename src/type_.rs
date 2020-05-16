@@ -4,6 +4,7 @@ use std::fmt;
 pub enum Type {
     Int,
     Bool,
+    Char,
     Tuple(Vec<Type>),
     Fn_,
     Error,
@@ -23,17 +24,25 @@ impl fmt::Display for Type {
             match self {
                 Type::Int => "Int".into(),
                 Type::Bool => "Bool".into(),
+                Type::Char => "Char".into(),
                 Type::Tuple(types) => {
-                    let result = types
-                        .iter()
-                        .map(|t| format!("{}", t))
-                        .fold(String::new(), |a, s| a + &s + ", ");
-                    let result = if result.len() >= 2 {
-                        &result[..result.len() - 2] // Get rid of the last ", "
+                    if types.iter().all(|t| match t {
+                        Type::Char => true,
+                        _ => false
+                    }) {
+                        "String".into()
                     } else {
-                        &result
-                    };
-                    format!("({})", result)
+                        let result = types
+                            .iter()
+                            .map(|t| format!("{}", t))
+                            .fold(String::new(), |a, s| a + &s + ", ");
+                        let result = if result.len() >= 2 {
+                            &result[..result.len() - 2] // Get rid of the last ", "
+                        } else {
+                            &result
+                        };
+                        format!("({})", result)
+                    }
                 }
                 Type::Fn_ => "Fn".into(),
                 Type::Error => "Error".into(),

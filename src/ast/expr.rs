@@ -140,6 +140,10 @@ impl Expr {
         Expr::Literal(Value::Tuple(vals))
     }
 
+    pub fn string(s: &str) -> Self {
+        Expr::Literal(Value::string(s))
+    }
+
     pub fn variable(ident: &str) -> Self {
         Expr::Variable(ident.into())
     }

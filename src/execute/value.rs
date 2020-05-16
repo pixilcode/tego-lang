@@ -19,6 +19,7 @@ pub enum Value {
         self_ptr: StoredEnv,
         outer_env: StoredEnv,
     },
+    Char(char),
     Error(String),
 }
 
@@ -120,6 +121,7 @@ impl Value {
         match self {
             Value::Int(_) => Type::Int,
             Value::Bool(_) => Type::Bool,
+            Value::Char(_) => Type::Char,
             Value::Tuple(vals) => Type::Tuple(vals.iter().map(|v| v.type_()).collect()),
             Value::Function(_, _, _) => Type::Fn_,
             v @ Value::Delayed { .. } => v.clone().eval(None).type_(),
@@ -164,6 +166,10 @@ impl Value {
 
     pub fn unit() -> Self {
         Value::Tuple(vec![])
+    }
+
+    pub fn string(s: &str) -> Self {
+        Value::Tuple(s.chars().map(Value::Char).collect())
     }
 
     impl_op!(join, "join" =>
@@ -276,19 +282,36 @@ impl fmt::Display for Value {
             match self {
                 Value::Int(i) => i32::to_string(i),
                 Value::Bool(b) => bool::to_string(b),
+                Value::Char(c) => char::to_string(c),
                 Value::Tuple(vals) => {
-                    let result = vals
-                        .iter()
-                        .map(|v| format!("{}", v))
-                        .fold(String::new(), |a, s| a + &s + ", ");
+                    // If it is possible to represent it as a string, do it
+                    let string = vals.into_iter().fold(
+                        Ok(String::with_capacity(vals.len() * 4)), // Each char is at most 4 bytes long
+                        |string, value| string.and_then(|mut s|
+                            match value {
+                                Value::Char(c) => { s.push(*c); Ok(s)},
+                                _ => Err(())
+                            }
+                        )
+                    );
 
-                    let result = if result.len() >= 2 {
-                        &result[..result.len() - 2] // Get rid of the last ", "
+                    if let Ok(string) = string {
+                        format!("\"{}\"", string)
                     } else {
-                        &result
-                    };
-                    format!("({})", result)
-                }
+                        let result = vals
+                            .iter()
+                            .map(|v| format!("{}", v))
+                            .fold(String::new(), |a, s| a + &s + ", ");
+
+                        let result = if result.len() >= 2 {
+                            &result[..result.len() - 2] // Get rid of the last ", "
+                        } else {
+                            &result
+                        };
+
+                        format!("({})", result)
+                    }
+                },
                 Value::Function(_, _, _) => "<fn>".into(),
                 v @ Value::Delayed { .. } => format!("{}", v.clone().eval(None)),
                 Value::Error(error) => format!("Error: {}", error),
