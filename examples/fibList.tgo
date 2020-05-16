@@ -1,0 +1,8 @@
+main = fibList 45
+
+fibList = fibList' 0 1
+
+fibList' a b n =
+	match n to
+	| 0 -> b
+	| n -> b, fibList' b (a + b) (n - 1)

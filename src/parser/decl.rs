@@ -13,7 +13,7 @@ pub fn decl(input: &'_ str) -> DeclResult<'_> {
 }
 
 fn expression(input: &'_ str) -> DeclResult<'_> {
-    tuple((identifier, many0(match_), assign, expr))(input).map(
+    tuple((identifier, many0(match_), opt_nl(assign), expr))(input).map(
         |(input, (ident, params, _, body))| {
             (
                 input,

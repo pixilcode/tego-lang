@@ -1,0 +1,8 @@
+main = fib 5
+
+fib = fib' 0 1
+
+fib' a b n =
+	match n to
+	| 0 -> b
+	| n -> fib' b (a + b) (n - 1)

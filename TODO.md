@@ -22,7 +22,6 @@
      * They return the item in the 0-indexed position in the tuple
      * `1 (true, 2, false)` => `2`
 * Build compiler (maybe use craftinginterpreters.com?)
-* Be able to read and run files
 * Add lists -> Actually, lists are just tuples with all the same type
 * Add named tuples
 * Add `,,` operator
@@ -42,3 +41,4 @@
 * Maybe find a way to use [De Bruijn indices](https://en.wikipedia.org/wiki/De_Bruijn_index) in the environment instead...
 * Also, maybe see if the language (or a new one) can be improved with [this](http://willcrichton.net/notes/type-level-programming/)
 * Add regex expressions and regex matches using regex crate (eg. `\a+b*\`)
+* Open file in repl
