@@ -7,6 +7,6 @@ pub enum Decl {
 
 impl Decl {
     pub fn expression(ident: &str, body: Expr) -> Self {
-        Decl::Expression(ident.to_string(), body)
+        Decl::Expression(ident.into(), body)
     }
 }

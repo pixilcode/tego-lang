@@ -63,9 +63,9 @@ where
     }
     pub fn get_evaluated_value(env: &EnvWrapper<Self>) -> Result<V, String> {
         match *env.borrow() {
-            Env::Empty => Err("No variables are declared".to_string()),
+            Env::Empty => Err("No variables are declared".into()),
             Env::Entry { ref value, .. } if value.is_evaluated() => Ok(value.clone()),
-            Env::Entry { .. } => Err("Variable is not evaluated".to_string()),
+            Env::Entry { .. } => Err("Variable is not evaluated".into()),
         }
     }
     pub fn with_parent(env: &EnvWrapper<Self>, env_parent: &EnvWrapper<Self>) -> EnvWrapper<Self> {
@@ -76,7 +76,7 @@ where
                 ref value,
                 ref parent,
             } => Rc::new(RefCell::new(Env::Entry {
-                ident: ident.to_string(),
+                ident: ident.into(),
                 value: value.clone(),
                 parent: Env::with_parent(parent, env_parent),
             })),
@@ -94,7 +94,7 @@ where
                 ref parent,
                 ..
             } => Env::Entry {
-                ident: ident.to_string(),
+                ident: ident.into(),
                 value,
                 parent: Rc::clone(parent),
             },
@@ -164,7 +164,7 @@ mod tests {
     #[test]
     fn setter_test() {
         let expected = Some(DummyValue::Int(2));
-        let env = Env::associate_ident("a".to_string(), DummyValue::Int(1), Env::empty());
+        let env = Env::associate_ident("a".into(), DummyValue::Int(1), Env::empty());
         Env::set_value(&env, DummyValue::Int(2));
         let actual = Env::get(&env, "a");
         assert_eq!(expected, actual);
@@ -172,17 +172,17 @@ mod tests {
     basic_test! {
         get_value_test
         Env::<DummyValue>::get_evaluated_value(&Env::empty())
-            => Err("No variables are declared".to_string());
+            => Err("No variables are declared".into());
         Env::get_evaluated_value(&Env::associate_ident(
-            "a".to_string(),
+            "a".into(),
             DummyValue::Int(1),
             Env::empty()
         )) => Ok(DummyValue::Int(1));
         Env::get_evaluated_value(&Env::associate_ident(
-            "a".to_string(),
+            "a".into(),
             DummyValue::Delayed(1),
             Env::empty()
-        )) => Err("Variable is not evaluated".to_string())
+        )) => Err("Variable is not evaluated".into())
     }
     // Basically checking the (Haskell) monoidal properties
     // of `Env`, with `EnvWrapper<Env>` as the monoid,
@@ -195,43 +195,43 @@ mod tests {
         Env::with_parent(
             &Env::empty(),
             &Env::associate_ident(
-                "a".to_string(),
+                "a".into(),
                 DummyValue::Int(1),
                 Env::empty()
             )
         ) => Env::associate_ident(
-            "a".to_string(),
+            "a".into(),
             DummyValue::Int(1),
             Env::empty()
         );
         Env::with_parent(
             &Env::associate_ident(
-                "a".to_string(),
+                "a".into(),
                 DummyValue::Int(1),
                 Env::empty()
             ),
             &Env::empty()
         ) => Env::associate_ident(
-            "a".to_string(),
+            "a".into(),
             DummyValue::Int(1),
             Env::empty()
         );
         Env::with_parent(
             &Env::associate_ident(
-                "a".to_string(),
+                "a".into(),
                 DummyValue::Int(1),
                 Env::empty()
             ),
             &Env::associate_ident(
-                "b".to_string(),
+                "b".into(),
                 DummyValue::Int(2),
                 Env::empty()
             )
         ) => Env::associate_ident(
-            "a".to_string(),
+            "a".into(),
             DummyValue::Int(1),
             Env::associate_ident(
-                "b".to_string(),
+                "b".into(),
                 DummyValue::Int(2),
                 Env::empty()
             )
@@ -248,20 +248,20 @@ mod tests {
             DummyValue::Container(
                 contains
                     .into_iter()
-                    .map(|(ident, val)| (ident.to_string(), DummyValue::Int(val)))
+                    .map(|(ident, val)| (ident.into(), DummyValue::Int(val)))
                     .collect(),
             )
         }
         fn int(ident: &str, val: u32) -> Self {
-            DummyValue::Container(vec![(ident.to_string(), DummyValue::Int(val))])
+            DummyValue::Container(vec![(ident.into(), DummyValue::Int(val))])
         }
     }
     impl EnvVal for DummyValue {
         fn unwrap_matches(&self, _pattern: &Match) -> Result<Vec<(String, Self)>, String> {
             match self {
                 DummyValue::Container(a) => Ok(a.clone()),
-                DummyValue::Int(_) => Err("Int value can't be unwrapped!".to_string()),
-                DummyValue::Delayed(_) => Err("Int value can't be unwrapped!".to_string()),
+                DummyValue::Int(_) => Err("Int value can't be unwrapped!".into()),
+                DummyValue::Delayed(_) => Err("Int value can't be unwrapped!".into()),
             }
         }
         fn is_evaluated(&self) -> bool {

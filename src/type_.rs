@@ -21,18 +21,22 @@ impl fmt::Display for Type {
             f,
             "{}",
             match self {
-                Type::Int => "Int".to_string(),
-                Type::Bool => "Bool".to_string(),
+                Type::Int => "Int".into(),
+                Type::Bool => "Bool".into(),
                 Type::Tuple(types) => {
                     let result = types
                         .iter()
                         .map(|t| format!("{}", t))
                         .fold(String::new(), |a, s| a + &s + ", ");
-                    let result = &result[..result.len() - 2]; // Get rid of the last ", "
+                    let result = if result.len() >= 2 {
+                        &result[..result.len() - 2] // Get rid of the last ", "
+                    } else {
+                        &result
+                    };
                     format!("({})", result)
                 }
-                Type::Fn_ => "Fn".to_string(),
-                Type::Error => "Error".to_string(),
+                Type::Fn_ => "Fn".into(),
+                Type::Error => "Error".into(),
             }
         )
     }

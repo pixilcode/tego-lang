@@ -1,0 +1,17 @@
+main = primes 100
+
+primes = primes' () 2
+
+primes' ps curr n =
+	if n <= 0 then
+		ps
+	else if not (isDivisible curr ps) then
+		primes' (ps, curr) (curr + 1) (n - 1)
+	else
+		primes' ps (curr + 1) n
+
+isDivisible n primes =
+	match primes to
+	| () -> false
+	| p, px -> if n % p == 0 ? true : isDivisible n px
+	| p -> if n % p == 0 ? true : false

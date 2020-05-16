@@ -31,7 +31,7 @@ fn example_tests() -> Result<(), Box<dyn std::error::Error>> {
 			entry
 				.as_ref()
 				.map(|entry| {
-					let outfile: String = entry.file_name().to_string_lossy().to_string();
+					let outfile: String = entry.file_name().to_string_lossy().into();
 					let codefile: String =
 						entry.file_name().to_string_lossy().replace(".out", ".tgo");
 					(outfile, codefile)

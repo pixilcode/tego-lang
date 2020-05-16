@@ -130,7 +130,7 @@ impl Value {
     pub fn is_error(&self) -> bool {
         match self {
             Value::Error(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -206,7 +206,7 @@ impl Value {
 impl EnvVal for Value {
     fn unwrap_matches(&self, pattern: &Match) -> Result<Vec<(String, Self)>, String> {
         match (pattern, self) {
-            (Match::Ident(ident), val) => Ok(vec![(ident.to_string(), val.clone())]),
+            (Match::Ident(ident), val) => Ok(vec![(ident.into(), val.clone())]),
             (Match::Tuple(tup_match), Value::Tuple(tup_val)) => unwrap_tuple(&tup_match, &tup_val),
             (Match::Value(MatchVal::Int(a)), Value::Int(b)) => {
                 if a == b {
@@ -240,8 +240,8 @@ fn unwrap_tuple(tup_match: &[Match], tup_val: &[Value]) -> Result<Vec<(String, V
     let val_len = tup_val.len();
     match (match_len, val_len) {
         (0, 0) => Ok(vec![]),
-        (0, _) => Err("Tried to match non-empty tuple against '()'".to_string()),
-        (_, 0) => Err("Not enough elements to match tuple".to_string()),
+        (0, _) => Err("Tried to match non-empty tuple against '()'".into()),
+        (_, 0) => Err("Not enough elements to match tuple".into()),
         (1, 1) => tup_val[0].unwrap_matches(&tup_match[0]),
         (1, _) => Value::Tuple(tup_val.to_vec()).unwrap_matches(&tup_match[0]),
         _ => tup_val[0]
@@ -259,10 +259,10 @@ fn match_error(expected: &Match, found: &Value) -> Result<Vec<(String, Value)>, 
     Err(format!(
         "Expected {}, found {}",
         match expected {
-            Match::Ident(_) => "value".to_string(),
-            Match::Tuple(_) => "tuple".to_string(),
+            Match::Ident(_) => "value".into(),
+            Match::Tuple(_) => "tuple".into(),
             Match::Value(v) => format!("'{}'", v),
-            Match::Ignore => "anything".to_string(),
+            Match::Ignore => "anything".into(),
         },
         found.type_()
     ))
@@ -281,11 +281,15 @@ impl fmt::Display for Value {
                         .iter()
                         .map(|v| format!("{}", v))
                         .fold(String::new(), |a, s| a + &s + ", ");
-                    // Get rid of the last ", "
-                    let result = &result[..result.len() - 2];
+
+                    let result = if result.len() >= 2 {
+                        &result[..result.len() - 2] // Get rid of the last ", "
+                    } else {
+                        &result
+                    };
                     format!("({})", result)
                 }
-                Value::Function(_, _, _) => "<fn>".to_string(),
+                Value::Function(_, _, _) => "<fn>".into(),
                 v @ Value::Delayed { .. } => format!("{}", v.clone().eval(None)),
                 Value::Error(error) => format!("Error: {}", error),
             }
@@ -626,11 +630,11 @@ mod tests {
     basic_test!(
         unwrap_ident
         Value::Int(1).unwrap_matches(&Match::ident("a")) =>
-            Ok(vec![("a".to_string(), Value::Int(1))]);
+            Ok(vec![("a".into(), Value::Int(1))]);
         Value::Tuple(vec![Value::Int(1), Value::Int(2)])
             .unwrap_matches(&Match::ident("a")) =>
                 Ok(vec![
-                    ("a".to_string(), Value::Tuple(vec![
+                    ("a".into(), Value::Tuple(vec![
                         Value::Int(1),
                         Value::Int(2)
                     ]))
@@ -648,9 +652,9 @@ mod tests {
             )
         ) =>
             Ok(vec![
-                ("a".to_string(), Value::Int(1)),
-                ("b".to_string(), Value::Int(2)),
-                ("c".to_string(), Value::Int(3))
+                ("a".into(), Value::Int(1)),
+                ("b".into(), Value::Int(2)),
+                ("c".into(), Value::Int(3))
             ]);
 
         Value::Tuple(
@@ -662,8 +666,8 @@ mod tests {
             )
         ) =>
             Ok(vec![
-                ("a".to_string(), Value::Int(1)),
-                ("b".to_string(), Value::Tuple(vec![Value::Int(2), Value::Int(3)]))
+                ("a".into(), Value::Int(1)),
+                ("b".into(), Value::Tuple(vec![Value::Int(2), Value::Int(3)]))
             ]);
 
         Value::Tuple(
@@ -674,7 +678,7 @@ mod tests {
                 Match::tuple(Match::ident("b"), Match::ident("c"))
             )
         ) =>
-            Err("Not enough elements to match tuple".to_string());
+            Err("Not enough elements to match tuple".into());
 
         Value::Tuple(vec![]).unwrap_matches(
             &Match::Tuple(vec![])
@@ -685,11 +689,11 @@ mod tests {
             vec![Value::Int(1), Value::Int(2)]
         ).unwrap_matches(
             &Match::Tuple(vec![])
-        ) => Err("Tried to match non-empty tuple against '()'".to_string());
+        ) => Err("Tried to match non-empty tuple against '()'".into());
 
         Value::Int(1).unwrap_matches(
             &Match::tuple(Match::ident("a"), Match::ident("b"))
         ) =>
-            Err("Expected tuple, found Int".to_string())
+            Err("Expected tuple, found Int".into())
     );
 }

@@ -10,8 +10,9 @@ pub enum Match {
 
 impl Match {
     pub fn ident(lexeme: &str) -> Match {
-        Match::Ident(lexeme.to_string())
+        Match::Ident(lexeme.into())
     }
+
     pub fn tuple(a: Match, b: Match) -> Match {
         match (a, b) {
             (Match::Tuple(mut a), Match::Tuple(mut b)) => {
@@ -29,15 +30,19 @@ impl Match {
             (a, b) => Match::Tuple(vec![a, b]),
         }
     }
+
     pub fn int(i: i32) -> Self {
         Match::Value(MatchVal::Int(i))
     }
+
     pub fn bool(b: bool) -> Self {
         Match::Value(MatchVal::Bool(b))
     }
+
     pub fn unit() -> Self {
         Match::Tuple(vec![])
     }
+
     pub fn ignore() -> Self {
         Match::Ignore
     }

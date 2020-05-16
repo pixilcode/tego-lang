@@ -34,7 +34,7 @@ fn unfilled_env(decls: &[Decl]) -> (WrappedEnv, Vec<WrappedEnv>) {
         .fold(
             (new_env(), Vec::with_capacity(decls.len())),
             |(parent, mut decl_ptrs), (ident, val)| {
-                let new_env = Env::associate_ident(ident.to_string(), val, parent);
+                let new_env = Env::associate_ident(ident.into(), val, parent);
                 decl_ptrs.push(Rc::clone(&new_env));
                 (new_env, decl_ptrs)
             },
@@ -123,7 +123,7 @@ pub fn eval_expr(expr: Expr, env: &WrappedEnv) -> Value {
 }
 
 fn error(message: &str) -> Value {
-    Value::Error(message.to_string())
+    Value::Error(message.into())
 }
 
 #[cfg(test)]
@@ -180,7 +180,7 @@ mod tests {
                 Value::Int(1),
                 &VarEnv::empty()
             ).unwrap()
-        ) => Value::Error("Variable 'b' is not declared".to_string())
+        ) => Value::Error("Variable 'b' is not declared".into())
     }
     basic_test! {
         eval_let_expr
@@ -231,14 +231,14 @@ mod tests {
                 (Match::int(2), Expr::int(2))
             ]),
             &VarEnv::empty()
-        ) => Value::Error("Value didn't match any patterns".to_string())
+        ) => Value::Error("Value didn't match any patterns".into())
     }
     basic_test! {
         decl_eval
         {
             let decls = vec![
                 Decl::Expression(
-                    "add1".to_string(),
+                    "add1".into(),
                     Expr::fn_expr(
                         Match::ident("a"),
                         Expr::plus(Expr::variable("a"), Expr::int(1))
@@ -256,11 +256,11 @@ mod tests {
         {
             let decls = vec![
                 Decl::Expression(
-                    "a".to_string(),
+                    "a".into(),
                     Expr::int(1)
                 ),
                 Decl::Expression(
-                    "b".to_string(),
+                    "b".into(),
                     Expr::plus(Expr::variable("a"), Expr::int(1))
                 )
             ];
@@ -275,11 +275,11 @@ mod tests {
         {
             let decls = vec![
                 Decl::Expression(
-                    "a".to_string(),
+                    "a".into(),
                     Expr::plus(Expr::variable("b"), Expr::int(1))
                 ),
                 Decl::Expression(
-                    "b".to_string(),
+                    "b".into(),
                     Expr::int(2)
                 )
             ];

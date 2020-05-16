@@ -19,15 +19,19 @@ impl Expr {
     pub fn let_expr(ident: Match, value: Self, inner: Self) -> Self {
         Expr::Let(ident, Box::new(value), Box::new(inner))
     }
+
     pub fn if_expr(cond: Self, t: Self, f: Self) -> Self {
         Expr::If(Box::new(cond), Box::new(t), Box::new(f))
     }
+
     pub fn fn_expr(param: Match, body: Self) -> Self {
         Expr::Fn_(param, Box::new(body))
     }
+
     pub fn fn_app(function: Self, arg: Self) -> Self {
         Expr::FnApp(Box::new(function), Box::new(arg))
     }
+
     pub fn match_(val: Self, patterns: Vec<(Match, Self)>) -> Self {
         Expr::Match(Box::new(val), patterns)
     }
@@ -35,21 +39,27 @@ impl Expr {
     pub fn delayed(ident: Match, value: Self, inner: Self) -> Self {
         Expr::Delayed(ident, Box::new(value), Box::new(inner))
     }
+
     pub fn unary(op: UnaryOp, a: Self) -> Self {
         Expr::Unary(op, Box::new(a))
     }
+
     pub fn unary_from_str(op: &str, a: Self) -> Self {
         Expr::unary(UnaryOp::from(op), a)
     }
+
     pub fn negate(a: Self) -> Self {
         Expr::unary(UnaryOp::Negate, a)
     }
+
     pub fn not(a: Self) -> Self {
         Expr::unary(UnaryOp::Not, a)
     }
+
     pub fn binary(a: Self, op: BinaryOp, b: Self) -> Self {
         Expr::Binary(Box::new(a), op, Box::new(b))
     }
+
     pub fn binary_from_str(a: Self, op: &str, b: Self) -> Self {
         Expr::binary(a, BinaryOp::from(op), b)
     }
@@ -73,6 +83,7 @@ impl Expr {
     pub fn modulo(a: Self, b: Self) -> Self {
         Expr::binary(a, BinaryOp::Modulo, b)
     }
+
     pub fn and(a: Self, b: Self) -> Self {
         Expr::binary(a, BinaryOp::And, b)
     }
@@ -92,38 +103,49 @@ impl Expr {
     pub fn equal(a: Self, b: Self) -> Self {
         Expr::binary(a, BinaryOp::Equal, b)
     }
+
     pub fn not_equal(a: Self, b: Self) -> Self {
         Expr::binary(a, BinaryOp::NotEqual, b)
     }
+
     pub fn less_than(a: Self, b: Self) -> Self {
         Expr::binary(a, BinaryOp::LessThan, b)
     }
+
     pub fn greater_than(a: Self, b: Self) -> Self {
         Expr::binary(a, BinaryOp::GreaterThan, b)
     }
+
     pub fn less_than_equal(a: Self, b: Self) -> Self {
         Expr::binary(a, BinaryOp::LessThanEqual, b)
     }
+
     pub fn greater_than_equal(a: Self, b: Self) -> Self {
         Expr::binary(a, BinaryOp::GreaterThanEqual, b)
     }
+
     pub fn int(i: i32) -> Self {
         Expr::Literal(Value::Int(i))
     }
+
     pub fn bool(b: bool) -> Self {
         Expr::Literal(Value::Bool(b))
     }
+
     pub fn unit() -> Self {
         Expr::Literal(Value::unit())
     }
+
     pub fn tuple(vals: Vec<Value>) -> Self {
         Expr::Literal(Value::Tuple(vals))
     }
+
     pub fn variable(ident: &str) -> Self {
-        Expr::Variable(ident.to_string())
+        Expr::Variable(ident.into())
     }
+
     pub fn error(err: &str) -> Self {
-        Expr::Literal(Value::Error(err.to_string()))
+        Expr::Literal(Value::Error(err.into()))
     }
 }
 
