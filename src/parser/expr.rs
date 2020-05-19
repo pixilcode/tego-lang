@@ -135,18 +135,20 @@ fn grouping(input: &'_ str) -> ExprResult<'_> {
 }
 
 fn literal(input: &'_ str) -> ExprResult<'_> {
-    alt((true_val, false_val, number, identifier))(input).and_then(|(new_input, token)| match token
-    {
-        "true" => Ok((new_input, Expr::bool(true))),
-        "false" => Ok((new_input, Expr::bool(false))),
-        lexeme => {
-            if let Ok(i) = lexeme.parse::<i32>() {
-                Ok((new_input, Expr::int(i)))
-            } else {
-                Ok((new_input, Expr::variable(lexeme)))
-            }
-        }
-    })
+    alt((true_val, false_val, number, identifier))(input)
+        .and_then(|(new_input, token)| match token {
+            "true" => Ok((new_input, Expr::bool(true))),
+            "false" => Ok((new_input, Expr::bool(false))),
+            lexeme => {
+                if let Ok(i) = lexeme.parse::<i32>() {
+                    Ok((new_input, Expr::int(i)))
+                } else {
+                    Ok((new_input, Expr::variable(lexeme)))
+                }
+            } // Has to be done seperately so that it doesn't get mixed up as an identifier
+        })
+        .or_else(|_| string(input).map(|(input, s)| (input, Expr::string(s))))
+        .or_else(|_| char(input).map(|(input, c)| (input, Expr::char(c))))
 }
 
 #[cfg(test)]
@@ -368,5 +370,13 @@ mod tests {
                 Expr::int(1),
                 Expr::variable("a")
             )
+    }
+    parser_test! {
+        string_test
+        (expr): "\"abc\"" => Expr::string("abc")
+    }
+    parser_test! {
+        char_test
+        (expr): "'a'" => Expr::char('a')
     }
 }

@@ -1,7 +1,7 @@
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take_till1},
-    character::complete::{digit1, multispace0, multispace1, space0},
+    bytes::complete::{is_not, tag, take_till1},
+    character::complete::{anychar, digit1, multispace0, multispace1, space0},
     combinator::{all_consuming, verify},
     sequence::{preceded, terminated},
     IResult,
@@ -41,6 +41,14 @@ macro_rules! reserved {
     };
 }
 
+pub fn char(input: &'_ str) -> IResult<&'_ str, char> {
+    terminated(preceded(single_quote, anychar), single_quote)(input)
+}
+
+pub fn string(input: &'_ str) -> IResult<&'_ str, &'_ str> {
+    terminated(preceded(double_quote, is_not("\"")), double_quote)(input)
+}
+
 pub fn number(input: &'_ str) -> IResult<&'_ str, &'_ str> {
     token(digit1)(input)
 }
@@ -48,7 +56,7 @@ pub fn number(input: &'_ str) -> IResult<&'_ str, &'_ str> {
 pub fn identifier(input: &'_ str) -> IResult<&'_ str, &'_ str> {
     verify(
         token(take_till1(|c: char| !c.is_ascii_alphabetic() && c != '\'')),
-        |id| !is_keyword(id),
+        |id| !is_keyword(id) && !id.starts_with("'"),
     )(input)
 }
 
@@ -87,6 +95,8 @@ reserved!(to, "to");
 reserved!(bar, "|");
 reserved!(underscore, "_");
 reserved!(delay, "delay");
+reserved!(single_quote, "'");
+reserved!(double_quote, "\"");
 
 fn is_keyword(lexeme: &str) -> bool {
     KEYWORDS.iter().any(|keyword| keyword == &lexeme)
@@ -131,6 +141,10 @@ mod tests {
     parser_test!(bar_test (bar): "|" => "|");
     parser_test!(underscore_test (underscore): "_" => "_");
     parser_test!(delay_test (delay): "delay" => "delay");
+    parser_test!(single_quote_test (single_quote): "'" => "'");
+    parser_test!(double_quote_test (double_quote): "\"" => "\"");
+    parser_test!(string_test (string): "\"abc\"" => "abc");
+    basic_test!(char_test char("'a'") => Ok(("", 'a')));
     // Use find and replace
     // Find: reserved!\(([a-z_]+), ("[^"]+")\);
     // Replace: parser_test!(\1_test (\1): \2 => \2);

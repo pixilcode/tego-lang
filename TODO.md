@@ -24,7 +24,7 @@
 * Build compiler (maybe use craftinginterpreters.com?)
 * Add lists -> Actually, lists are just tuples with all the same type
 * Add named tuples
-* Add `,,` operator
+* Add `,,` operator, `,:` operator, `:,` operator
 * Add `.` composition/application(?) operator
   * `id 1` == `1.id`
   * `fn x -> id (id x)` ~= `id . id`
@@ -42,3 +42,4 @@
 * Also, maybe see if the language (or a new one) can be improved with [this](http://willcrichton.net/notes/type-level-programming/)
 * Add regex expressions and regex matches using regex crate (eg. `\a+b*\`)
 * Open file in repl
+* Add strings to pattern matching

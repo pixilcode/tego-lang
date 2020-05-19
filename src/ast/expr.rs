@@ -144,6 +144,10 @@ impl Expr {
         Expr::Literal(Value::string(s))
     }
 
+    pub fn char(c: char) -> Self {
+        Expr::Literal(Value::Char(c))
+    }
+
     pub fn variable(ident: &str) -> Self {
         Expr::Variable(ident.into())
     }
