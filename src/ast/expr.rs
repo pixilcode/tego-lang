@@ -1,22 +1,23 @@
 use crate::ast::match_::Match;
 use crate::execute::value::Value;
+use std::marker::PhantomData;
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Expr {
-    If(Box<Expr>, Box<Expr>, Box<Expr>),
-    Let(Match, Box<Expr>, Box<Expr>),
-    Fn_(Match, Box<Expr>),
-    FnApp(Box<Expr>, Box<Expr>),
-    Match(Box<Expr>, Vec<(Match, Expr)>),
-    Delayed(Match, Box<Expr>, Box<Expr>),
+pub enum Expr<'a> {
+    If(Box<Expr<'a>>, Box<Expr<'a>>, Box<Expr<'a>>),
+    Let(Match<'a>, Box<Expr<'a>>, Box<Expr<'a>>),
+    Fn_(Match<'a>, Box<Expr<'a>>),
+    FnApp(Box<Expr<'a>>, Box<Expr<'a>>),
+    Match(Box<Expr<'a>>, Vec<(Match<'a>, Expr<'a>)>),
+    Delayed(Match<'a>, Box<Expr<'a>>, Box<Expr<'a>>),
     Variable(String),
-    Unary(UnaryOp, Box<Expr>),
-    Binary(Box<Expr>, BinaryOp, Box<Expr>),
-    Literal(Value),
+    Unary(UnaryOp<'a>, Box<Expr<'a>>),
+    Binary(Box<Expr<'a>>, BinaryOp<'a>, Box<Expr<'a>>),
+    Literal(Value<'a>),
 }
 
-impl Expr {
-    pub fn let_expr(ident: Match, value: Self, inner: Self) -> Self {
+impl<'a> Expr<'a> {
+    pub fn let_expr(ident: Match<'a>, value: Self, inner: Self) -> Self {
         Expr::Let(ident, Box::new(value), Box::new(inner))
     }
 
@@ -24,7 +25,7 @@ impl Expr {
         Expr::If(Box::new(cond), Box::new(t), Box::new(f))
     }
 
-    pub fn fn_expr(param: Match, body: Self) -> Self {
+    pub fn fn_expr(param: Match<'a>, body: Self) -> Self {
         Expr::Fn_(param, Box::new(body))
     }
 
@@ -32,15 +33,15 @@ impl Expr {
         Expr::FnApp(Box::new(function), Box::new(arg))
     }
 
-    pub fn match_(val: Self, patterns: Vec<(Match, Self)>) -> Self {
+    pub fn match_(val: Self, patterns: Vec<(Match<'a>, Self)>) -> Self {
         Expr::Match(Box::new(val), patterns)
     }
 
-    pub fn delayed(ident: Match, value: Self, inner: Self) -> Self {
+    pub fn delayed(ident: Match<'a>, value: Self, inner: Self) -> Self {
         Expr::Delayed(ident, Box::new(value), Box::new(inner))
     }
 
-    pub fn unary(op: UnaryOp, a: Self) -> Self {
+    pub fn unary(op: UnaryOp<'a>, a: Self) -> Self {
         Expr::Unary(op, Box::new(a))
     }
 
@@ -49,14 +50,14 @@ impl Expr {
     }
 
     pub fn negate(a: Self) -> Self {
-        Expr::unary(UnaryOp::Negate, a)
+        Expr::unary(UnaryOp::negate(), a)
     }
 
     pub fn not(a: Self) -> Self {
-        Expr::unary(UnaryOp::Not, a)
+        Expr::unary(UnaryOp::not(), a)
     }
 
-    pub fn binary(a: Self, op: BinaryOp, b: Self) -> Self {
+    pub fn binary(a: Self, op: BinaryOp<'a>, b: Self) -> Self {
         Expr::Binary(Box::new(a), op, Box::new(b))
     }
 
@@ -65,63 +66,63 @@ impl Expr {
     }
 
     pub fn plus(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::Plus, b)
+        Expr::binary(a, BinaryOp::plus(), b)
     }
 
     pub fn minus(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::Minus, b)
+        Expr::binary(a, BinaryOp::minus(), b)
     }
 
     pub fn multiply(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::Multiply, b)
+        Expr::binary(a, BinaryOp::multiply(), b)
     }
 
     pub fn divide(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::Divide, b)
+        Expr::binary(a, BinaryOp::divide(), b)
     }
 
     pub fn modulo(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::Modulo, b)
+        Expr::binary(a, BinaryOp::modulo(), b)
     }
 
     pub fn and(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::And, b)
+        Expr::binary(a, BinaryOp::and(), b)
     }
 
     pub fn or(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::Or, b)
+        Expr::binary(a, BinaryOp::or(), b)
     }
 
     pub fn xor(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::Xor, b)
+        Expr::binary(a, BinaryOp::xor(), b)
     }
 
     pub fn join(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::Join, b)
+        Expr::binary(a, BinaryOp::join(), b)
     }
 
     pub fn equal(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::Equal, b)
+        Expr::binary(a, BinaryOp::equal(), b)
     }
 
     pub fn not_equal(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::NotEqual, b)
+        Expr::binary(a, BinaryOp::notEqual(), b)
     }
 
     pub fn less_than(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::LessThan, b)
+        Expr::binary(a, BinaryOp::lessThan(), b)
     }
 
     pub fn greater_than(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::GreaterThan, b)
+        Expr::binary(a, BinaryOp::greaterThan(), b)
     }
 
     pub fn less_than_equal(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::LessThanEqual, b)
+        Expr::binary(a, BinaryOp::lessThanEqual(), b)
     }
 
     pub fn greater_than_equal(a: Self, b: Self) -> Self {
-        Expr::binary(a, BinaryOp::GreaterThanEqual, b)
+        Expr::binary(a, BinaryOp::greaterThanEqual(), b)
     }
 
     pub fn int(i: i32) -> Self {
@@ -136,7 +137,7 @@ impl Expr {
         Expr::Literal(Value::unit())
     }
 
-    pub fn tuple(vals: Vec<Value>) -> Self {
+    pub fn tuple(vals: Vec<Value<'a>>) -> Self {
         Expr::Literal(Value::Tuple(vals))
     }
 
@@ -157,90 +158,158 @@ impl Expr {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum UnaryOp {
-    Negate,
-    Not,
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum UnaryOp<'a> {
+    Negate(PhantomData<Value<'a>>),
+    Not(PhantomData<Value<'a>>),
 }
 
-impl UnaryOp {
-    pub fn eval(&self, a: Value) -> Value {
+impl<'a> UnaryOp<'a> {
+    pub fn eval(&self, a: Value<'a>) -> Value<'a> {
         match self {
-            UnaryOp::Negate => -a,
-            UnaryOp::Not => !a,
+            UnaryOp::Negate(_) => -a,
+            UnaryOp::Not(_) => !a,
         }
+    }
+
+    fn negate() -> Self {
+        UnaryOp::Negate(PhantomData)
+    }
+
+    fn not() -> Self {
+        UnaryOp::Not(PhantomData)
     }
 }
 
-impl From<&str> for UnaryOp {
+impl<'a> From<&str> for UnaryOp<'a> {
     fn from(s: &str) -> Self {
         match s {
-            "-" => UnaryOp::Negate,
-            "not" => UnaryOp::Not,
+            "-" => UnaryOp::negate(),
+            "not" => UnaryOp::not(),
             other => panic!("Unary op {} has not been defined!", other),
         }
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum BinaryOp {
-    Plus,
-    Minus,
-    Multiply,
-    Divide,
-    Modulo,
-    And,
-    Or,
-    Xor,
-    Join, // ',' operator, creates a tuple
-    Equal,
-    NotEqual,
-    LessThan,
-    GreaterThan,
-    LessThanEqual,
-    GreaterThanEqual,
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum BinaryOp<'a> {
+    Plus(PhantomData<Value<'a>>),
+    Minus(PhantomData<Value<'a>>),
+    Multiply(PhantomData<Value<'a>>),
+    Divide(PhantomData<Value<'a>>),
+    Modulo(PhantomData<Value<'a>>),
+    And(PhantomData<Value<'a>>),
+    Or(PhantomData<Value<'a>>),
+    Xor(PhantomData<Value<'a>>),
+    Join(PhantomData<Value<'a>>), // ',' operator, creates a tuple
+    Equal(PhantomData<Value<'a>>),
+    NotEqual(PhantomData<Value<'a>>),
+    LessThan(PhantomData<Value<'a>>),
+    GreaterThan(PhantomData<Value<'a>>),
+    LessThanEqual(PhantomData<Value<'a>>),
+    GreaterThanEqual(PhantomData<Value<'a>>),
 }
 
-impl BinaryOp {
-    pub fn eval(&self, a: Value, b: Value) -> Value {
+impl<'a> BinaryOp<'a> {
+    pub fn eval(&self, a: Value<'a>, b: Value<'a>) -> Value<'a> {
         match self {
-            BinaryOp::Plus => a + b,
-            BinaryOp::Minus => a - b,
-            BinaryOp::Multiply => a * b,
-            BinaryOp::Divide => a / b,
-            BinaryOp::Modulo => a % b,
-            BinaryOp::And => a & b,
-            BinaryOp::Or => a | b,
-            BinaryOp::Xor => a ^ b,
-            BinaryOp::Join => Value::join(a, b),
-            BinaryOp::Equal => Value::Bool(a == b),
-            BinaryOp::NotEqual => Value::Bool(a != b),
-            BinaryOp::LessThan => a.less_than(b),
-            BinaryOp::GreaterThan => a.greater_than(b),
-            BinaryOp::LessThanEqual => a.less_than_equal(b),
-            BinaryOp::GreaterThanEqual => a.greater_than_equal(b),
+            BinaryOp::Plus(_) => a + b,
+            BinaryOp::Minus(_) => a - b,
+            BinaryOp::Multiply(_) => a * b,
+            BinaryOp::Divide(_) => a / b,
+            BinaryOp::Modulo(_) => a % b,
+            BinaryOp::And(_) => a & b,
+            BinaryOp::Or(_) => a | b,
+            BinaryOp::Xor(_) => a ^ b,
+            BinaryOp::Join(_) => Value::join(a, b),
+            BinaryOp::Equal(_) => Value::Bool(a == b),
+            BinaryOp::NotEqual(_) => Value::Bool(a != b),
+            BinaryOp::LessThan(_) => a.less_than(b),
+            BinaryOp::GreaterThan(_) => a.greater_than(b),
+            BinaryOp::LessThanEqual(_) => a.less_than_equal(b),
+            BinaryOp::GreaterThanEqual(_) => a.greater_than_equal(b),
         }
+    }
+
+    fn plus() -> Self {
+        BinaryOp::Plus(PhantomData)
+    }
+
+    fn minus() -> Self {
+        BinaryOp::Minus(PhantomData)
+    }
+
+    fn multiply() -> Self {
+        BinaryOp::Multiply(PhantomData)
+    }
+
+    fn divide() -> Self {
+        BinaryOp::Divide(PhantomData)
+    }
+
+    fn modulo() -> Self {
+        BinaryOp::Modulo(PhantomData)
+    }
+
+    fn and() -> Self {
+        BinaryOp::And(PhantomData)
+    }
+
+    fn or() -> Self {
+        BinaryOp::Or(PhantomData)
+    }
+
+    fn xor() -> Self {
+        BinaryOp::Xor(PhantomData)
+    }
+
+    fn join() -> Self {
+        BinaryOp::Join(PhantomData)
+    }
+
+    fn equal() -> Self {
+        BinaryOp::Equal(PhantomData)
+    }
+
+    fn notEqual() -> Self {
+        BinaryOp::NotEqual(PhantomData)
+    }
+
+    fn lessThan() -> Self {
+        BinaryOp::LessThan(PhantomData)
+    }
+
+    fn greaterThan() -> Self {
+        BinaryOp::GreaterThan(PhantomData)
+    }
+
+    fn lessThanEqual() -> Self {
+        BinaryOp::LessThanEqual(PhantomData)
+    }
+
+    fn greaterThanEqual() -> Self {
+        BinaryOp::GreaterThanEqual(PhantomData)
     }
 }
 
-impl From<&str> for BinaryOp {
+impl<'a> From<&str> for BinaryOp<'a> {
     fn from(s: &str) -> Self {
         match s {
-            "+" => BinaryOp::Plus,
-            "-" => BinaryOp::Minus,
-            "*" => BinaryOp::Multiply,
-            "/" => BinaryOp::Divide,
-            "%" => BinaryOp::Modulo,
-            "and" => BinaryOp::And,
-            "or" => BinaryOp::Or,
-            "xor" => BinaryOp::Xor,
-            "," => BinaryOp::Join,
-            "==" => BinaryOp::Equal,
-            "/=" => BinaryOp::NotEqual,
-            "<" => BinaryOp::LessThan,
-            ">" => BinaryOp::GreaterThan,
-            "<=" => BinaryOp::LessThanEqual,
-            ">=" => BinaryOp::GreaterThanEqual,
+            "+" => BinaryOp::plus(),
+            "-" => BinaryOp::minus(),
+            "*" => BinaryOp::multiply(),
+            "/" => BinaryOp::divide(),
+            "%" => BinaryOp::modulo(),
+            "and" => BinaryOp::and(),
+            "or" => BinaryOp::or(),
+            "xor" => BinaryOp::xor(),
+            "," => BinaryOp::join(),
+            "==" => BinaryOp::equal(),
+            "/=" => BinaryOp::notEqual(),
+            "<" => BinaryOp::lessThan(),
+            ">" => BinaryOp::greaterThan(),
+            "<=" => BinaryOp::lessThanEqual(),
+            ">=" => BinaryOp::greaterThanEqual(),
             other => panic!("Binary op {} has not been defined!", other),
         }
     }

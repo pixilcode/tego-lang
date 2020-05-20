@@ -1,19 +1,19 @@
 use std::fmt;
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Match {
-    Ident(String),
-    Tuple(Vec<Match>),
+pub enum Match<'a> {
+    Ident(&'a str),
+    Tuple(Vec<Match<'a>>),
     Value(MatchVal),
     Ignore,
 }
 
-impl Match {
-    pub fn ident(lexeme: &str) -> Match {
-        Match::Ident(lexeme.into())
+impl<'a> Match<'a> {
+    pub fn ident(lexeme: &'a str) -> Self {
+        Match::Ident(lexeme)
     }
 
-    pub fn tuple(a: Match, b: Match) -> Match {
+    pub fn tuple(a: Self, b: Self) -> Self {
         match (a, b) {
             (Match::Tuple(mut a), Match::Tuple(mut b)) => {
                 a.append(&mut b);

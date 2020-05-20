@@ -1,7 +1,7 @@
 use crate::ast::{Decl, Expr};
 
 #[derive(PartialEq, Debug, Clone)]
-pub enum Prog {
-	Library(Vec<Decl>),
-	Binary(Expr, Vec<Decl>),
+pub enum Prog<'a> {
+    Library(Vec<Decl<'a>>),
+    Binary(Expr<'a>, Vec<Decl<'a>>),
 }

@@ -8,7 +8,7 @@ use nom::{
     IResult,
 };
 
-type MatchResult<'a> = IResult<&'a str, Match>;
+type MatchResult<'a> = IResult<&'a str, Match<'a>>;
 
 pub fn match_(input: &'_ str) -> MatchResult<'_> {
     tuple(input)

@@ -11,7 +11,7 @@ use nom::{
     IResult,
 };
 
-type ExprResult<'a> = IResult<&'a str, Expr>;
+type ExprResult<'a> = IResult<&'a str, Expr<'a>>;
 
 macro_rules! binary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {

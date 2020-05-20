@@ -4,30 +4,30 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Env<V>
+pub enum Env<'a, V>
 where
-    V: EnvVal,
+    V: EnvVal<'a>,
 {
     Empty,
     Entry {
-        ident: String,
+        ident: &'a str,
         value: V,
-        parent: Rc<RefCell<Env<V>>>,
+        parent: Rc<RefCell<Env<'a, V>>>,
     },
 }
 
 pub type EnvWrapper<E> = Rc<RefCell<E>>;
 
-impl<V> Env<V>
+impl<'a, V> Env<'a, V>
 where
-    V: EnvVal,
+    V: EnvVal<'a>,
 {
     pub fn empty() -> EnvWrapper<Self> {
         Rc::new(RefCell::new(Env::Empty))
     }
 
     pub fn associate(
-        pattern: Match,
+        pattern: Match<'a>,
         value: V,
         parent: &EnvWrapper<Self>,
     ) -> Result<EnvWrapper<Self>, String> {
@@ -38,7 +38,7 @@ where
             })
         })
     }
-    pub fn associate_ident(ident: String, value: V, parent: EnvWrapper<Self>) -> EnvWrapper<Self> {
+    pub fn associate_ident(ident: &'a str, value: V, parent: EnvWrapper<Self>) -> EnvWrapper<Self> {
         Rc::new(RefCell::new(Env::Entry {
             ident,
             value,
@@ -49,7 +49,7 @@ where
         match *env.borrow() {
             Env::Empty => None,
             Env::Entry {
-                ident: ref id,
+                ident: id,
                 ref value,
                 ref parent,
             } => {
@@ -72,11 +72,11 @@ where
         match *env.borrow() {
             Env::Empty => Rc::clone(env_parent),
             Env::Entry {
-                ref ident,
+                ident,
                 ref value,
                 ref parent,
             } => Rc::new(RefCell::new(Env::Entry {
-                ident: ident.into(),
+                ident,
                 value: value.clone(),
                 parent: Env::with_parent(parent, env_parent),
             })),
@@ -90,11 +90,9 @@ where
         let new_inner_env = match *inner_env {
             Env::Empty => Env::Empty,
             Env::Entry {
-                ref ident,
-                ref parent,
-                ..
+                ident, ref parent, ..
             } => Env::Entry {
-                ident: ident.into(),
+                ident,
                 value,
                 parent: Rc::clone(parent),
             },
@@ -103,8 +101,8 @@ where
     }
 }
 
-pub trait EnvVal: Clone + Debug {
-    fn unwrap_matches(&self, pattern: &Match) -> Result<Vec<(String, Self)>, String>;
+pub trait EnvVal<'a>: Clone + Debug {
+    fn unwrap_matches(&self, pattern: &Match<'a>) -> Result<Vec<(&'a str, Self)>, String>;
     fn is_evaluated(&self) -> bool;
 }
 
@@ -238,26 +236,26 @@ mod tests {
         )
     }
     #[derive(Debug, Clone, PartialEq)]
-    enum DummyValue {
+    enum DummyValue<'a> {
         Int(u32),
-        Container(Vec<(String, Self)>),
+        Container(Vec<(&'a str, Self)>),
         Delayed(u32),
     }
-    impl DummyValue {
-        fn new(contains: Vec<(&str, u32)>) -> Self {
+    impl<'a> DummyValue<'a> {
+        fn new(contains: Vec<(&'a str, u32)>) -> Self {
             DummyValue::Container(
                 contains
                     .into_iter()
-                    .map(|(ident, val)| (ident.into(), DummyValue::Int(val)))
+                    .map(|(ident, val)| (ident, DummyValue::Int(val)))
                     .collect(),
             )
         }
-        fn int(ident: &str, val: u32) -> Self {
+        fn int(ident: &'a str, val: u32) -> Self {
             DummyValue::Container(vec![(ident.into(), DummyValue::Int(val))])
         }
     }
-    impl EnvVal for DummyValue {
-        fn unwrap_matches(&self, _pattern: &Match) -> Result<Vec<(String, Self)>, String> {
+    impl<'a> EnvVal<'a> for DummyValue<'a> {
+        fn unwrap_matches(&self, _pattern: &Match<'a>) -> Result<Vec<(&'a str, Self)>, String> {
             match self {
                 DummyValue::Container(a) => Ok(a.clone()),
                 DummyValue::Int(_) => Err("Int value can't be unwrapped!".into()),

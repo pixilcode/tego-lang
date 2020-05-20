@@ -9,15 +9,15 @@ use std::ops;
 use std::rc::Weak;
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Value {
+pub enum Value<'a> {
     Int(i32),
     Bool(bool),
-    Tuple(Vec<Value>),
-    Function(Match, Box<Expr>, StoredEnv),
+    Tuple(Vec<Value<'a>>),
+    Function(Match<'a>, Box<Expr<'a>>, StoredEnv<'a>),
     Delayed {
-        value: Box<Expr>,
-        self_ptr: StoredEnv,
-        outer_env: StoredEnv,
+        value: Box<Expr<'a>>,
+        self_ptr: StoredEnv<'a>,
+        outer_env: StoredEnv<'a>,
     },
     Char(char),
     Error(String),
@@ -25,7 +25,7 @@ pub enum Value {
 
 macro_rules! impl_op {
     ($op:ty, $func:ident, $name:expr => $( $type_:pat = $new_val:expr ),+) => {
-        impl $op for Value {
+        impl<'a> $op for Value<'a> {
             type Output = Self;
             fn $func(self) -> Self {
                 let error = || unary_op_error($name, self.type_());
@@ -42,7 +42,7 @@ macro_rules! impl_op {
     };
 
     ($op:ty, $func:ident, $name:expr => $( $type_a:pat, $type_b:pat = $new_val:expr ),+) => {
-        impl $op for Value {
+        impl<'a> $op for Value<'a> {
             type Output = Self;
             fn $func(self, other: Self) -> Self {
                 let error = || binary_op_error($name, self.type_(), other.type_());
@@ -94,8 +94,8 @@ macro_rules! impl_op {
     };
 }
 
-impl Value {
-    pub fn eval(self, env: Option<WrappedEnv>) -> Self {
+impl<'a> Value<'a> {
+    pub fn eval(self, env: Option<WrappedEnv<'a>>) -> Self {
         match self {
             Value::Delayed {
                 value,
@@ -136,15 +136,23 @@ impl Value {
         }
     }
 
-    pub fn function(param: Match, body: Box<Expr>, env: WrappedEnv) -> Self {
+    pub fn function(param: Match<'a>, body: Box<Expr<'a>>, env: WrappedEnv<'a>) -> Self {
         Value::Function(param, body, StoredEnv::Expr(env))
     }
 
-    pub fn decl_function(param: Match, body: Box<Expr>, env: Weak<RefCell<VarEnv>>) -> Self {
+    pub fn decl_function(
+        param: Match<'a>,
+        body: Box<Expr<'a>>,
+        env: Weak<RefCell<VarEnv<'a>>>,
+    ) -> Self {
         Value::Function(param, body, StoredEnv::Decl(env))
     }
 
-    pub fn delayed(value: Box<Expr>, self_ptr: Weak<RefCell<VarEnv>>, outer_env: WrappedEnv) -> Self {
+    pub fn delayed(
+        value: Box<Expr<'a>>,
+        self_ptr: Weak<RefCell<VarEnv<'a>>>,
+        outer_env: WrappedEnv<'a>,
+    ) -> Self {
         Value::Delayed {
             value: value,
             self_ptr: StoredEnv::Decl(self_ptr), // So it doesn't create a loop
@@ -153,9 +161,9 @@ impl Value {
     }
 
     pub fn delayed_decl(
-        value: Expr,
-        self_ptr: Weak<RefCell<VarEnv>>,
-        outer_env: Weak<RefCell<VarEnv>>,
+        value: Expr<'a>,
+        self_ptr: Weak<RefCell<VarEnv<'a>>>,
+        outer_env: Weak<RefCell<VarEnv<'a>>>,
     ) -> Self {
         Value::Delayed {
             value: Box::new(value),
@@ -209,10 +217,10 @@ impl Value {
     );
 }
 
-impl EnvVal for Value {
-    fn unwrap_matches(&self, pattern: &Match) -> Result<Vec<(String, Self)>, String> {
+impl<'a> EnvVal<'a> for Value<'a> {
+    fn unwrap_matches(&self, pattern: &Match<'a>) -> Result<Vec<(&'a str, Self)>, String> {
         match (pattern, self) {
-            (Match::Ident(ident), val) => Ok(vec![(ident.into(), val.clone())]),
+            (Match::Ident(ident), val) => Ok(vec![(ident, val.clone())]),
             (Match::Tuple(tup_match), Value::Tuple(tup_val)) => unwrap_tuple(&tup_match, &tup_val),
             (Match::Tuple(tup_match), val) => unwrap_tuple(&tup_match, &[val.clone()]),
             (Match::Value(MatchVal::Int(a)), Value::Int(b)) => {
@@ -242,7 +250,10 @@ impl EnvVal for Value {
     }
 }
 
-fn unwrap_tuple(tup_match: &[Match], tup_val: &[Value]) -> Result<Vec<(String, Value)>, String> {
+fn unwrap_tuple<'a>(
+    tup_match: &[Match<'a>],
+    tup_val: &[Value<'a>],
+) -> Result<Vec<(&'a str, Value<'a>)>, String> {
     let tup_match_len = tup_match.len();
     let tup_val_len = tup_val.len();
     match (tup_match_len, tup_val_len) {
@@ -270,7 +281,10 @@ fn unwrap_tuple(tup_match: &[Match], tup_val: &[Value]) -> Result<Vec<(String, V
     }
 }
 
-fn match_error(expected: &Match, found: &Value) -> Result<Vec<(String, Value)>, String> {
+fn match_error<'a>(
+    expected: &Match<'a>,
+    found: &Value<'a>,
+) -> Result<Vec<(&'a str, Value<'a>)>, String> {
     Err(format!(
         "Expected {}, found {}",
         match expected {
@@ -283,7 +297,7 @@ fn match_error(expected: &Match, found: &Value) -> Result<Vec<(String, Value)>, 
     ))
 }
 
-impl fmt::Display for Value {
+impl<'a> fmt::Display for Value<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -325,7 +339,7 @@ impl fmt::Display for Value {
                     }
                 }
                 Value::Function(_, _, _) => "<fn>".into(),
-                v @ Value::Delayed { .. } => format!("{}", v.clone().eval(None)),
+                v @ Value::Delayed { .. } => "delayed".into(),
                 Value::Error(error) => format!("Error: {}", error),
             }
         )
@@ -403,13 +417,13 @@ fn unary_op_error(op: &str, type_: Type) -> Value {
 }
 
 #[derive(Debug, Clone)]
-pub enum StoredEnv {
-    Expr(WrappedEnv),
-    Decl(Weak<RefCell<VarEnv>>), // To avoid memory leaks
+pub enum StoredEnv<'a> {
+    Expr(WrappedEnv<'a>),
+    Decl(Weak<RefCell<VarEnv<'a>>>), // To avoid memory leaks
 }
 
-impl StoredEnv {
-    pub fn unwrap(self) -> WrappedEnv {
+impl<'a> StoredEnv<'a> {
+    pub fn unwrap(self) -> WrappedEnv<'a> {
         match self {
             StoredEnv::Expr(env) => env,
             StoredEnv::Decl(env) => match env.upgrade() {
@@ -420,11 +434,11 @@ impl StoredEnv {
     }
 }
 
-impl PartialEq for StoredEnv {
+impl<'a> PartialEq for StoredEnv<'a> {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {
             (StoredEnv::Expr(a), StoredEnv::Expr(b)) => a == b,
-            (StoredEnv::Decl(a), StoredEnv::Decl(b)) => a.upgrade() == b.upgrade(),
+            (StoredEnv::Decl(a), StoredEnv::Decl(b)) => Weak::ptr_eq(a, b),
             (_, _) => false,
         }
     }

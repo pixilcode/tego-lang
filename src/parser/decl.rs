@@ -6,7 +6,7 @@ use crate::parser::tokens::*;
 
 use nom::{multi::many0, sequence::tuple, IResult};
 
-type DeclResult<'a> = IResult<&'a str, Decl>;
+type DeclResult<'a> = IResult<&'a str, Decl<'a>>;
 
 pub fn decl(input: &'_ str) -> DeclResult<'_> {
     req_nl(expression)(input)
