@@ -67,7 +67,7 @@ fn fill_decl_env<'a>(
 }
 
 pub fn eval_expr<'a>(expr: Expr<'a>, env: &'a WrappedEnv<'a>) -> Value<'a> {
-    let mut result = eval_expr_thunk(&expr, env);
+    let mut result = eval_expr_thunk(expr, Rc::clone(env));
     loop {
         result = match result {
             EvalResult::Value(v) => return v.clone(),
@@ -76,76 +76,75 @@ pub fn eval_expr<'a>(expr: Expr<'a>, env: &'a WrappedEnv<'a>) -> Value<'a> {
     }
 }
 
-fn eval_expr_thunk<'a>(expr: &'a Expr<'a>, env: &'a WrappedEnv<'a>) -> EvalResult<'a> {
+fn eval_expr_thunk<'a>(expr: Expr<'a>, env: WrappedEnv<'a>) -> EvalResult<'a> {
     match expr {
-        Expr::Unary(op, a) => {
-            eval_expr_thunk(&*a, env).and_then(|a| EvalResult::Value(op.eval(*a)))
+        Expr::Unary(op, a) => eval_expr_thunk(*a.clone(), env)
+            .and_then(move |a| EvalResult::Value(op.eval(a.clone()))),
+        Expr::Binary(a, op, b) => {
+            // Because of lifetimes, `a` and `b` have to be evaluated immediately
+            EvalResult::Value(op.eval(eval_expr(*a.clone(), &env), eval_expr(*b.clone(), &env)))
         }
-        Expr::Binary(a, op, b) => eval_expr_thunk(&*a, env).and_then(|a| {
-            eval_expr_thunk(&*b, env).and_then(|b| EvalResult::Value(op.eval(*a, *b)))
-        }),
         Expr::Literal(val) => EvalResult::Value(val.clone()),
-        Expr::If(cond, a, b) => eval_expr_thunk(&*cond, env).and_then(|cond| match cond {
-            Value::Bool(true) => eval_expr_thunk(&*a, env),
-            Value::Bool(false) => eval_expr_thunk(&*b, env),
-            _ => error("If condition must return a boolean"),
+        Expr::If(cond, a, b) => eval_expr_thunk(*cond, env).and_then(|cond| match cond {
+            Value::Bool(true) => eval_expr_thunk(*a, env),
+            Value::Bool(false) => eval_expr_thunk(*b, env),
+            _ => error("If condition must return a boolean".into()),
         }),
         Expr::Variable(ident) => match Env::get(&env, &ident) {
-            Some(val) => EvalResult::Value(val.eval(Some(Rc::clone(env)))),
-            None => error(&format!("Variable '{}' is not declared", ident)),
+            Some(val) => EvalResult::Value(val.eval(Some(env))),
+            None => error(format!("Variable '{}' is not declared", ident)),
         },
-        Expr::Let(ident, value, inner) => eval_expr_thunk(&*value, env).and_then(|value| {
-            match VarEnv::associate(*ident, *value, &env) {
-                Ok(env) => eval_expr_thunk(&*inner, &env),
+        Expr::Let(ident, value, inner) => eval_expr_thunk(*value.clone(), env).and_then(|value| {
+            match VarEnv::associate(ident, value.clone(), &env) {
+                Ok(env) => eval_expr_thunk(*inner, env),
                 Err(error) => EvalResult::Value(Value::Error(error)),
             }
         }),
-        Expr::Fn_(param, body) => EvalResult::Value(Value::function(*param, *body, Rc::clone(env))),
+        Expr::Fn_(param, body) => EvalResult::Value(Value::function(param, body, env)),
         Expr::FnApp(function, arg) => {
-            eval_expr_thunk(&*function, env).and_then(|function| match function {
+            let function = eval_expr(*function, &env);
+            match function {
                 Value::Function(param, body, fn_env) => {
-                    eval_expr_thunk(&*arg, env).and_then(|arg| {
-                        match VarEnv::associate(*param, *arg, &fn_env.unwrap()) {
-                            Ok(fn_env) => {
-                                EvalResult::Thunk(Box::new(|| eval_expr_thunk(&*body, &fn_env)))
-                            }
-                            Err(error) => EvalResult::Value(Value::Error(error)),
-                        }
-                    })
+                    // Because of lifetime problems, have to evaluate `arg` immediately
+                    let arg = eval_expr(*arg, &env);
+                    match VarEnv::associate(param, arg, &fn_env.unwrap()) {
+                        Ok(fn_env) => EvalResult::thunk(|| eval_expr_thunk(*body, fn_env)),
+                        Err(error) => EvalResult::Value(Value::Error(error)),
+                    }
                 }
-                _ => error(&format!(
+                _ => error(format!(
                     "Can't apply argument to type '{}'",
                     function.type_()
                 )),
-            })
+            }
         }
-        Expr::Match(val, patterns) => eval_expr_thunk(&*val, env).and_then(|val| {
+        Expr::Match(val, patterns) => eval_expr_thunk(*val, env).and_then(|val| {
             match patterns.into_iter().find_map(|(pattern, expr)| {
-                VarEnv::associate(*pattern, val.clone(), &env)
+                VarEnv::associate(pattern, val.clone(), &env)
                     .map(|env| Some((env, expr)))
                     .unwrap_or(None)
             }) {
-                Some((env, expr)) => eval_expr_thunk(expr, &env),
-                None => error("Value didn't match any patterns"),
+                Some((env, expr)) => eval_expr_thunk(expr, env),
+                None => error("Value didn't match any patterns".into()),
             }
         }),
         Expr::Delayed(ident, value, inner) => {
             let new_env = VarEnv::associate(
-                *ident,
+                ident,
                 Value::Error("Value not yet initialized".into()),
                 &env,
             )
             .unwrap(); // This will never fail because the ident is always a variable identifier
             VarEnv::set_value(
                 &new_env,
-                Value::delayed(*value, Rc::downgrade(&new_env), Rc::clone(&env)),
+                Value::delayed(value, Rc::downgrade(&new_env), Rc::clone(&env)),
             );
-            eval_expr_thunk(&*inner, &new_env)
+            eval_expr_thunk(*inner, Rc::clone(&new_env))
         }
     }
 }
 
-fn error(message: &str) -> EvalResult {
+fn error(message: &str) -> EvalResult<'a> {
     // Make error a seperate enum, which can help with adding in error processing
     // Also will have to check for errors in the 'Expr::Literal' branch above
     // Although after this, maybe Value::Error won't be necessary
