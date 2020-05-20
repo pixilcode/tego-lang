@@ -1,5 +1,5 @@
 use crate::ast::{Decl, Expr, Prog};
-use crate::environment::{Env, EnvWrapper};
+use crate::execute::environment::{Env, EnvWrapper};
 use crate::execute::value::Value;
 use std::rc::Rc;
 
@@ -63,67 +63,118 @@ fn fill_decl_env(decls: &[Decl], decl_ptrs: &[WrappedEnv], env: WrappedEnv) -> W
 }
 
 pub fn eval_expr(expr: Expr, env: &WrappedEnv) -> Value {
+    let mut result = eval_expr_thunk(&expr, env);
+    loop {
+        result = match result {
+            EvalResult::Value(v) => return v.clone(),
+            EvalResult::Thunk(next) => next(),
+        }
+    }
+}
+
+fn eval_expr_thunk<'a>(expr: &'a Expr, env: &'a WrappedEnv) -> EvalResult<'a> {
     match expr {
-        Expr::Unary(op, a) => op.eval(eval_expr(*a, env)),
-        Expr::Binary(a, op, b) => op.eval(eval_expr(*a, env), eval_expr(*b, env)),
-        Expr::Literal(val) => val,
-        Expr::If(cond, a, b) => match eval_expr(*cond, env) {
-            Value::Bool(true) => eval_expr(*a, env),
-            Value::Bool(false) => eval_expr(*b, env),
-            _ => error("If condition must return a boolean"),
-        },
-        Expr::Variable(ident) => match Env::get(env, &ident) {
-            Some(val) => val.eval(Some(Rc::clone(env))),
+        Expr::Unary(op, a) => 
+            eval_expr_thunk(&*a, env).and_then(
+                |a| EvalResult::Value(&op.eval(*a))
+            ),
+        Expr::Binary(a, op, b) =>
+            eval_expr_thunk(&*a, env).and_then(
+                |a| eval_expr_thunk(&*b, env).and_then(
+                    |b| EvalResult::Value(&op.eval(*a, *b))
+                )
+            ),
+        Expr::Literal(val) => EvalResult::Value(val),
+        Expr::If(cond, a, b) => 
+            eval_expr_thunk(&*cond, env).and_then(
+                |cond| match cond {
+                    Value::Bool(true) => eval_expr_thunk(&*a, env),
+                    Value::Bool(false) => eval_expr_thunk(&*b, env),
+                    _ => error("If condition must return a boolean"),
+                }
+            ),
+        Expr::Variable(ident) => match Env::get(&env, &ident) {
+            Some(val) => EvalResult::Value(&val.eval(Some(Rc::clone(env)))),
             None => error(&format!("Variable '{}' is not declared", ident)),
         },
         Expr::Let(ident, value, inner) => {
-            match VarEnv::associate(ident, eval_expr(*value, env), env) {
-                Ok(env) => eval_expr(*inner, &env),
-                Err(error) => Value::Error(error),
-            }
-        }
-        Expr::Fn_(param, body) => Value::function(param, body, Rc::clone(env)),
-        Expr::FnApp(function, arg) => {
-            let function = eval_expr(*function, env);
-            match function {
-                Value::Function(param, body, fn_env) => {
-                    match VarEnv::associate(param, eval_expr(*arg, env), &fn_env.unwrap()) {
-                        Ok(fn_env) => eval_expr(*body, &fn_env),
-                        Err(error) => Value::Error(error),
-                    }
+            eval_expr_thunk(&*value, env).and_then(
+                |value| match  VarEnv::associate(*ident, *value, &env) {
+                    Ok(env) => eval_expr_thunk(&*inner, &env),
+                    Err(error) => EvalResult::Value(&Value::Error(error)),
                 }
-                _ => error(&format!(
-                    "Can't apply argument to type '{}'",
-                    function.type_()
-                )),
-            }
+            )
+        }
+        Expr::Fn_(param, body) => EvalResult::Value(&Value::function(*param, *body, Rc::clone(env))),
+        Expr::FnApp(function, arg) => {
+            eval_expr_thunk(&*function, env).and_then(
+                |function| match function {
+                    Value::Function(param, body, fn_env) => {
+                        eval_expr_thunk(&*arg, env).and_then(
+                            |arg| match VarEnv::associate(*param, *arg, &fn_env.unwrap()) {
+                                Ok(fn_env) => EvalResult::Thunk(Box::new(|| eval_expr_thunk(&*body, &fn_env))),
+                                Err(error) => EvalResult::Value(&Value::Error(error)),
+                            }
+                        )
+                    }
+                    _ => error(&format!(
+                        "Can't apply argument to type '{}'",
+                        function.type_()
+                    )),
+                }
+            )
         }
         Expr::Match(val, patterns) => {
-            let val = eval_expr(*val, env);
-            match patterns.into_iter().find_map(|(pattern, expr)| {
-                VarEnv::associate(pattern, val.clone(), env)
-                    .map(|env| Some((env, expr)))
-                    .unwrap_or(None)
-            }) {
-                Some((env, expr)) => eval_expr(expr, &env),
-                None => error("Value didn't match any patterns"),
-            }
+            eval_expr_thunk(&*val, env).and_then(
+                |val| match patterns.into_iter().find_map(|(pattern, expr)| {
+                    VarEnv::associate(*pattern, val.clone(), &env)
+                        .map(|env| Some((env, expr)))
+                        .unwrap_or(None)
+                }) {
+                    Some((env, expr)) => eval_expr_thunk(expr, &env),
+                    None => error("Value didn't match any patterns"),
+                }
+            )
         }
         Expr::Delayed(ident, value, inner) => {
             let new_env =
-                VarEnv::associate(ident, Value::Error("Value not yet initialized".into()), env)
+                VarEnv::associate(*ident, Value::Error("Value not yet initialized".into()), &env)
                     .unwrap(); // This will never fail because the ident is always a variable identifier
             VarEnv::set_value(
                 &new_env,
                 Value::delayed(*value, Rc::downgrade(&new_env), Rc::clone(&env)),
             );
-            eval_expr(*inner, &new_env)
+            eval_expr_thunk(&*inner, &new_env)
         }
     }
 }
 
-fn error(message: &str) -> Value {
-    Value::Error(message.into())
+fn error(message: &str) -> EvalResult {
+    // Make error a seperate enum, which can help with adding in error processing
+    // Also will have to check for errors in the 'Expr::Literal' branch above
+    // Although after this, maybe Value::Error won't be necessary
+    // Also, see 'Expr::Let', 'Expr::FnApp'
+    EvalResult::Value(&Value::Error(message.into()))
+}
+
+enum EvalResult<'a> {
+    Thunk(Box<dyn FnOnce() -> EvalResult<'a> + 'a>),
+    Value(&'a Value),
+}
+
+impl<'a> EvalResult<'a> {
+    fn and_then<F>(self, f: F) -> Self
+    where F: Clone + FnOnce(&Value) -> Self + 'a {
+        match self {
+            EvalResult::Thunk(thunk) => EvalResult::thunk(move || thunk().and_then(f.clone())),
+            EvalResult::Value(val) => f(val)
+        }
+    }
+
+    fn thunk<F>(f: F) -> Self
+    where F: FnOnce() -> EvalResult<'a> + 'a {
+        EvalResult::Thunk(Box::new(f))
+    }
 }
 
 #[cfg(test)]

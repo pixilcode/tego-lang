@@ -1,6 +1,6 @@
 use crate::ast::Expr;
 use crate::ast::{Match, MatchVal};
-use crate::environment::{Env, EnvVal};
+use crate::execute::environment::{Env, EnvVal};
 use crate::execute::interpreter::{eval_expr, VarEnv, WrappedEnv};
 use crate::type_::Type;
 use std::cell::RefCell;
@@ -144,9 +144,9 @@ impl Value {
         Value::Function(param, body, StoredEnv::Decl(env))
     }
 
-    pub fn delayed(value: Expr, self_ptr: Weak<RefCell<VarEnv>>, outer_env: WrappedEnv) -> Self {
+    pub fn delayed(value: Box<Expr>, self_ptr: Weak<RefCell<VarEnv>>, outer_env: WrappedEnv) -> Self {
         Value::Delayed {
-            value: Box::new(value),
+            value: value,
             self_ptr: StoredEnv::Decl(self_ptr), // So it doesn't create a loop
             outer_env: StoredEnv::Expr(outer_env),
         }
