@@ -2,6 +2,7 @@ main = primes 100
 
 primes = primes' () 2
 
+
 primes' ps curr n =
 	if n <= 0 then
 		ps
@@ -10,6 +11,7 @@ primes' ps curr n =
 	else
 		primes' ps (curr + 1) n
 
+-- Test whether 'n' is divisible by any number in 'primes'
 isDivisible n primes =
 	match primes to
 	| () -> false
