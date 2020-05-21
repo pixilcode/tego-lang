@@ -1,0 +1,15 @@
+main = (sumTo 15, sumTo' 15)
+
+sumTo n =
+    match n to
+    | 0 -> 0
+    | n -> n + sumTo (n - 1)
+
+sumTo' n =
+    match n to
+    | 0 -> 0
+    | n ->
+        if n % 3 == 0 or n % 5 == 0 then
+            n + (sumTo' (n - 1))
+        else
+            sumTo' (n - 1)

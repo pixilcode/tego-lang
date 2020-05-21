@@ -45,3 +45,5 @@
 * Open file in repl
 * Add strings to pattern matching
 * Code standard library
+* Comments
+* If-guarded match statements
