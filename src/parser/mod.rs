@@ -19,3 +19,5 @@ pub use decl::decl;
 pub use expr::expr;
 pub use match_::match_;
 pub use prog::prog;
+
+type Input<'a> = &'a str;

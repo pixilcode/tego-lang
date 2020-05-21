@@ -3,16 +3,17 @@ use crate::ast::Expr;
 use crate::parser::expr::expr;
 use crate::parser::match_::match_;
 use crate::parser::tokens::*;
+use crate::parser::Input;
 
 use nom::{multi::many0, sequence::tuple, IResult};
 
-type DeclResult<'a> = IResult<&'a str, Decl>;
+type DeclResult<'a> = IResult<Input<'a>, Decl>;
 
-pub fn decl(input: &'_ str) -> DeclResult<'_> {
+pub fn decl(input: Input<'_>) -> DeclResult<'_> {
     req_nl(expression)(input)
 }
 
-fn expression(input: &'_ str) -> DeclResult<'_> {
+fn expression(input: Input<'_>) -> DeclResult<'_> {
     tuple((identifier, many0(match_), opt_nl(assign), expr))(input).map(
         |(input, (ident, params, _, body))| {
             (

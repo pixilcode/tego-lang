@@ -2,6 +2,7 @@ use crate::ast::Expr;
 use crate::ast::Match;
 use crate::parser::match_::*;
 use crate::parser::tokens::*;
+use crate::parser::Input;
 
 use nom::{
     branch::alt,
@@ -11,11 +12,11 @@ use nom::{
     IResult,
 };
 
-type ExprResult<'a> = IResult<&'a str, Expr>;
+type ExprResult<'a> = IResult<Input<'a>, Expr>;
 
 macro_rules! binary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
-        fn $name(input: &'_ str) -> ExprResult<'_> {
+        fn $name(input: Input<'_>) -> ExprResult<'_> {
             pair(
                 $next_precedence,
                 opt(many1(pair(opt_nl($op_func), $next_precedence))),
@@ -37,7 +38,7 @@ macro_rules! binary_expr {
 
 macro_rules! unary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
-        fn $name(input: &'_ str) -> ExprResult<'_> {
+        fn $name(input: Input<'_>) -> ExprResult<'_> {
             opt(pair($op_func, $name))(input).and_then(|(input, unary_op)| match unary_op {
                 Some((op, a)) => Ok((input, Expr::unary(op.into(), a))),
                 None => $next_precedence(input),
@@ -46,11 +47,11 @@ macro_rules! unary_expr {
     };
 }
 
-pub fn expr(input: &'_ str) -> ExprResult<'_> {
+pub fn expr(input: Input<'_>) -> ExprResult<'_> {
     let_expr(input)
 }
 
-pub fn let_expr(input: &'_ str) -> ExprResult<'_> {
+pub fn let_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(alt((let_, delay)))(input).and_then(|(input, let_token)| match let_token {
         Some("let") => separated_pair(separated_pair(match_, assign, if_expr), opt_nl(in_), expr)(
             input,
@@ -67,7 +68,7 @@ pub fn let_expr(input: &'_ str) -> ExprResult<'_> {
     })
 }
 
-pub fn if_expr(input: &'_ str) -> ExprResult<'_> {
+pub fn if_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(if_)(input).and_then(|(input, if_token)| match if_token {
         Some(_) => pair(join_expr, opt_nl(alt((then, q_mark))))(input).and_then(
             |(input, (cond, symbol))| {
@@ -84,7 +85,7 @@ pub fn if_expr(input: &'_ str) -> ExprResult<'_> {
     })
 }
 
-pub fn match_expr(input: &'_ str) -> ExprResult<'_> {
+pub fn match_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(match_kw)(input).and_then(|(input, match_token)| match match_token {
         Some(_) => terminated(join_expr, opt_nl(to))(input).and_then(|(input, val)| {
             many1(opt_nl(match_arm))(input)
@@ -94,7 +95,7 @@ pub fn match_expr(input: &'_ str) -> ExprResult<'_> {
     })
 }
 
-pub fn match_arm(input: &'_ str) -> IResult<&'_ str, (Match, Expr)> {
+pub fn match_arm(input: Input<'_>) -> IResult<Input<'_>, (Match, Expr)> {
     preceded(bar, separated_pair(match_, arrow, expr))(input)
 }
 
@@ -114,7 +115,7 @@ binary_expr!(mult_expr, alt((star, slash, modulo)), negate_expr);
 unary_expr!(negate_expr, minus, not_expr);
 unary_expr!(not_expr, not, fn_expr);
 
-fn fn_expr(input: &'_ str) -> ExprResult<'_> {
+fn fn_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(fn_)(input).and_then(|(input, paren_token)| match paren_token {
         Some(_) => separated_pair(match_, opt_nl(arrow), expr)(input)
             .map(|(input, (param, body))| (input, Expr::fn_expr(param, body))),
@@ -122,11 +123,11 @@ fn fn_expr(input: &'_ str) -> ExprResult<'_> {
     })
 }
 
-fn fn_application(input: &'_ str) -> ExprResult<'_> {
+fn fn_application(input: Input<'_>) -> ExprResult<'_> {
     grouping(input).and_then(|(input, val)| fold_many0(grouping, val, Expr::fn_app)(input))
 }
 
-fn grouping(input: &'_ str) -> ExprResult<'_> {
+fn grouping(input: Input<'_>) -> ExprResult<'_> {
     opt(opt_nl(left_paren))(input).and_then(|(input, paren_token)| match paren_token {
         Some(_) => terminated(opt(opt_nl(expr)), right_paren)(input)
             .map(|(input, opt_exp)| (input, opt_exp.unwrap_or_else(Expr::unit))),
@@ -134,7 +135,7 @@ fn grouping(input: &'_ str) -> ExprResult<'_> {
     })
 }
 
-fn literal(input: &'_ str) -> ExprResult<'_> {
+fn literal(input: Input<'_>) -> ExprResult<'_> {
     alt((true_val, false_val, number, identifier))(input)
         .and_then(|(new_input, token)| match token {
             "true" => Ok((new_input, Expr::bool(true))),

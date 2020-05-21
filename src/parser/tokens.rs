@@ -1,3 +1,4 @@
+use crate::parser::Input;
 use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, take_till1},
@@ -12,48 +13,48 @@ const KEYWORDS: &[&str; 15] = &[
     "to", "delay",
 ];
 
-pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
+pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> IResult<Input<'a>, O>
 where
-    F: Fn(&'a str) -> IResult<&'a str, O>,
+    F: Fn(Input<'a>) -> IResult<Input<'a>, O>,
 {
     terminated(parser, multispace0)
 }
 
-pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
+pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> IResult<Input<'a>, O>
 where
-    F: Fn(&'a str) -> IResult<&'a str, O>,
+    F: Fn(Input<'a>) -> IResult<Input<'a>, O>,
 {
     terminated(parser, alt((multispace1, all_consuming(multispace0))))
 }
 
-fn token<'a, F, O>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
+fn token<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> IResult<Input<'a>, O>
 where
-    F: Fn(&'a str) -> IResult<&'a str, O>,
+    F: Fn(Input<'a>) -> IResult<Input<'a>, O>,
 {
     preceded(space0, parser)
 }
 
 macro_rules! reserved {
     ($lexeme:ident, $lexeme_str:literal) => {
-        pub fn $lexeme<'a>(input: &'a str) -> IResult<&'a str, &'a str> {
+        pub fn $lexeme<'a>(input: Input<'a>) -> IResult<Input<'a>, Input<'a>> {
             token(tag($lexeme_str))(input)
         }
     };
 }
 
-pub fn char(input: &'_ str) -> IResult<&'_ str, char> {
+pub fn char(input: Input<'_>) -> IResult<Input<'_>, char> {
     terminated(preceded(single_quote, anychar), single_quote)(input)
 }
 
-pub fn string(input: &'_ str) -> IResult<&'_ str, &'_ str> {
+pub fn string(input: Input<'_>) -> IResult<Input<'_>, Input<'_>> {
     terminated(preceded(double_quote, is_not("\"")), double_quote)(input)
 }
 
-pub fn number(input: &'_ str) -> IResult<&'_ str, &'_ str> {
+pub fn number(input: Input<'_>) -> IResult<Input<'_>, Input<'_>> {
     token(digit1)(input)
 }
 
-pub fn identifier(input: &'_ str) -> IResult<&'_ str, &'_ str> {
+pub fn identifier(input: Input<'_>) -> IResult<Input<'_>, Input<'_>> {
     verify(
         token(take_till1(|c: char| !c.is_ascii_alphabetic() && c != '\'')),
         |id| !is_keyword(id) && !id.starts_with("'"),

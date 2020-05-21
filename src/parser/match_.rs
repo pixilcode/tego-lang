@@ -1,5 +1,6 @@
 use crate::ast::Match;
 use crate::parser::tokens::*;
+use crate::parser::Input;
 use nom::branch::alt;
 
 use nom::{
@@ -8,20 +9,20 @@ use nom::{
     IResult,
 };
 
-type MatchResult<'a> = IResult<&'a str, Match>;
+type MatchResult<'a> = IResult<Input<'a>, Match>;
 
-pub fn match_(input: &'_ str) -> MatchResult<'_> {
+pub fn match_(input: Input<'_>) -> MatchResult<'_> {
     tuple(input)
 }
 
-fn tuple(input: &'_ str) -> MatchResult<'_> {
+fn tuple(input: Input<'_>) -> MatchResult<'_> {
     pair(grouping, opt(comma))(input).and_then(|(input, (a, comma))| match comma {
         Some(_) => tuple(input).map(|(input, b)| (input, Match::tuple(a, b))),
         None => Ok((input, a)),
     })
 }
 
-pub fn grouping(input: &'_ str) -> MatchResult<'_> {
+pub fn grouping(input: Input<'_>) -> MatchResult<'_> {
     opt(left_paren)(input).and_then(|(input, left_paren)| match left_paren {
         Some(_) => terminated(opt(match_), right_paren)(input)
             .map(|(input, pattern)| (input, pattern.unwrap_or_else(Match::unit))),
@@ -29,7 +30,7 @@ pub fn grouping(input: &'_ str) -> MatchResult<'_> {
     })
 }
 
-fn atom(input: &'_ str) -> MatchResult<'_> {
+fn atom(input: Input<'_>) -> MatchResult<'_> {
     alt((true_val, false_val, underscore, number, identifier))(input).and_then(
         |(new_input, token)| match token {
             "true" => Ok((new_input, Match::bool(true))),
@@ -46,7 +47,7 @@ fn atom(input: &'_ str) -> MatchResult<'_> {
     )
 }
 
-pub fn variable(input: &'_ str) -> MatchResult<'_> {
+pub fn variable(input: Input<'_>) -> MatchResult<'_> {
     identifier(input).map(|(input, lexeme)| (input, Match::ident(lexeme)))
 }
 

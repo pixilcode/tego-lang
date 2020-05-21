@@ -1,17 +1,18 @@
 use crate::ast::{Decl, Expr, Prog};
 use crate::parser::decl;
+use crate::parser::Input;
 use nom::IResult;
 
-type ProgResult<'a> = IResult<&'a str, Prog>;
+type ProgResult<'a> = IResult<Input<'a>, Prog>;
 
-pub fn prog(input: &'_ str) -> ProgResult<'_> {
+pub fn prog(input: Input<'_>) -> ProgResult<'_> {
 	parse_prog(input).map(|(input, (main, decl))| match main {
 		Some(main) => (input, Prog::Binary(main, decl)),
 		None => (input, Prog::Library(decl)),
 	})
 }
 
-fn parse_prog(input: &'_ str) -> IResult<&'_ str, (Option<Expr>, Vec<Decl>)> {
+fn parse_prog(input: Input<'_>) -> IResult<Input<'_>, (Option<Expr>, Vec<Decl>)> {
 	let decl = decl::decl(input.trim());
 	decl.and_then(|(input, decl)| {
 		let (input, (main, mut decls)) = if input.is_empty() {
