@@ -13,11 +13,13 @@ mod decl;
 mod expr;
 mod match_;
 mod prog;
+mod span;
 mod tokens;
 
 pub use decl::decl;
 pub use expr::expr;
 pub use match_::match_;
 pub use prog::prog;
+pub use span::Span;
 
 type Input<'a> = &'a str;
