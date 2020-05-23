@@ -19,7 +19,7 @@ fn expression(input: Input<'_>) -> DeclResult<'_> {
             (
                 input,
                 Decl::expression(
-                    ident,
+                    ident.to_str().into(),
                     params
                         .into_iter()
                         .rev()
@@ -34,6 +34,9 @@ fn expression(input: Input<'_>) -> DeclResult<'_> {
 mod tests {
     use super::*;
     use crate::ast::Match;
+    use crate::parser::test::*;
+    use crate::parser::Span;
+
     parser_test! {
         expression_test
         (decl): "val = 1\n" =>

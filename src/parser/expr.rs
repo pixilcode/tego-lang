@@ -27,7 +27,7 @@ macro_rules! binary_expr {
                     input,
                     others
                         .into_iter()
-                        .fold(a, |a, (op, b)| Expr::binary(a, op.into(), b)),
+                        .fold(a, |a, (op, b)| Expr::binary(a, op.to_str().into(), b)),
                 )),
                 // No operators found
                 None => Ok((input, a)),
@@ -40,7 +40,7 @@ macro_rules! unary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
         fn $name(input: Input<'_>) -> ExprResult<'_> {
             opt(pair($op_func, $name))(input).and_then(|(input, unary_op)| match unary_op {
-                Some((op, a)) => Ok((input, Expr::unary(op.into(), a))),
+                Some((op, a)) => Ok((input, Expr::unary(op.to_str().into(), a))),
                 None => $next_precedence(input),
             })
         }
@@ -52,19 +52,23 @@ pub fn expr(input: Input<'_>) -> ExprResult<'_> {
 }
 
 pub fn let_expr(input: Input<'_>) -> ExprResult<'_> {
-    opt(alt((let_, delay)))(input).and_then(|(input, let_token)| match let_token {
-        Some("let") => separated_pair(separated_pair(match_, assign, if_expr), opt_nl(in_), expr)(
-            input,
-        )
-        .map(|(input, ((ident, value), inner))| (input, Expr::let_expr(ident, value, inner))),
-        Some("delay") => separated_pair(
-            separated_pair(variable, assign, join_expr),
-            opt_nl(in_),
-            expr,
-        )(input)
-        .map(|(input, ((ident, value), inner))| (input, Expr::delayed(ident, value, inner))),
-        Some(_) => unreachable!(),
-        None => if_expr(input),
+    opt(alt((let_, delay)))(input).and_then(|(input, let_token)| {
+        match let_token.map(|s| s.into()) {
+            Some("let") => {
+                separated_pair(separated_pair(match_, assign, if_expr), opt_nl(in_), expr)(input)
+                    .map(|(input, ((ident, value), inner))| {
+                        (input, Expr::let_expr(ident, value, inner))
+                    })
+            }
+            Some("delay") => separated_pair(
+                separated_pair(variable, assign, join_expr),
+                opt_nl(in_),
+                expr,
+            )(input)
+            .map(|(input, ((ident, value), inner))| (input, Expr::delayed(ident, value, inner))),
+            Some(_) => unreachable!(),
+            None => if_expr(input),
+        }
     })
 }
 
@@ -72,7 +76,7 @@ pub fn if_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(if_)(input).and_then(|(input, if_token)| match if_token {
         Some(_) => pair(join_expr, opt_nl(alt((then, q_mark))))(input).and_then(
             |(input, (cond, symbol))| {
-                let next_symbol = match symbol {
+                let next_symbol = match symbol.into() {
                     "then" => else_,
                     "?" => colon,
                     _ => unreachable!(),
@@ -137,18 +141,18 @@ fn grouping(input: Input<'_>) -> ExprResult<'_> {
 
 fn literal(input: Input<'_>) -> ExprResult<'_> {
     alt((true_val, false_val, number, identifier))(input)
-        .and_then(|(new_input, token)| match token {
+        .and_then(|(new_input, token)| match token.to_str() {
             "true" => Ok((new_input, Expr::bool(true))),
             "false" => Ok((new_input, Expr::bool(false))),
             lexeme => {
                 if let Ok(i) = lexeme.parse::<i32>() {
                     Ok((new_input, Expr::int(i)))
                 } else {
-                    Ok((new_input, Expr::variable(lexeme)))
+                    Ok((new_input, Expr::variable(lexeme.into())))
                 }
             } // Has to be done seperately so that it doesn't get mixed up as an identifier
         })
-        .or_else(|_| string(input).map(|(input, s)| (input, Expr::string(s))))
+        .or_else(|_| string(input).map(|(input, s)| (input, Expr::string(s.into()))))
         .or_else(|_| char(input).map(|(input, c)| (input, Expr::char(c))))
 }
 
@@ -156,6 +160,8 @@ fn literal(input: Input<'_>) -> ExprResult<'_> {
 mod tests {
     use super::*;
     use crate::ast::Match;
+    use crate::parser::test::*;
+
     parser_test! {
         literal_test
         (expr): "1" => Expr::int(1);

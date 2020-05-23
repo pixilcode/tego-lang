@@ -1,7 +1,9 @@
 use crate::ast::{Decl, Expr, Prog};
 use crate::parser::decl;
 use crate::parser::Input;
+use crate::parser::tokens::newlines;
 use nom::IResult;
+use nom::sequence::preceded;
 
 type ProgResult<'a> = IResult<Input<'a>, Prog>;
 
@@ -13,9 +15,9 @@ pub fn prog(input: Input<'_>) -> ProgResult<'_> {
 }
 
 fn parse_prog(input: Input<'_>) -> IResult<Input<'_>, (Option<Expr>, Vec<Decl>)> {
-	let decl = decl::decl(input.trim());
-	decl.and_then(|(input, decl)| {
-		let (input, (main, mut decls)) = if input.is_empty() {
+	let decl_res = preceded(newlines(true), decl)(input);
+	decl_res.and_then(|(input, decl)| {
+		let (input, (main, mut decls)) = if input.to_str().is_empty() {
 			(input, (None, vec![]))
 		} else {
 			parse_prog(input)?
@@ -35,6 +37,7 @@ fn parse_prog(input: Input<'_>) -> IResult<Input<'_>, (Option<Expr>, Vec<Decl>)>
 mod test {
 	use super::*;
 	use crate::ast::Match;
+	use crate::parser::test::*;
 
 	parser_test! {
 		binary_test

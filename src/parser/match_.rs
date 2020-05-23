@@ -32,7 +32,7 @@ pub fn grouping(input: Input<'_>) -> MatchResult<'_> {
 
 fn atom(input: Input<'_>) -> MatchResult<'_> {
     alt((true_val, false_val, underscore, number, identifier))(input).and_then(
-        |(new_input, token)| match token {
+        |(new_input, token)| match token.into() {
             "true" => Ok((new_input, Match::bool(true))),
             "false" => Ok((new_input, Match::bool(false))),
             "_" => Ok((new_input, Match::ignore())),
@@ -40,7 +40,7 @@ fn atom(input: Input<'_>) -> MatchResult<'_> {
                 if let Ok(i) = lexeme.parse::<i32>() {
                     Ok((new_input, Match::int(i)))
                 } else {
-                    Ok((new_input, Match::ident(lexeme)))
+                    Ok((new_input, Match::ident(lexeme.into())))
                 }
             }
         },
@@ -48,13 +48,15 @@ fn atom(input: Input<'_>) -> MatchResult<'_> {
 }
 
 pub fn variable(input: Input<'_>) -> MatchResult<'_> {
-    identifier(input).map(|(input, lexeme)| (input, Match::ident(lexeme)))
+    identifier(input).map(|(input, lexeme)| (input, Match::ident(lexeme.into())))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use nom::error::ErrorKind;
+    use crate::parser::test::*;
+
     parser_test! {
         ident_test
         (match_): "abc" => Match::ident("abc")
@@ -101,8 +103,8 @@ mod tests {
     }
     basic_test! {
         keyword_test
-        match_("let") =>
-            Err(nom::Err::Error(("let", ErrorKind::Verify)))
+        match_("let".into()) =>
+            Err(nom::Err::Error(("let".into(), ErrorKind::Verify)))
     }
     parser_test! {
         variable_test

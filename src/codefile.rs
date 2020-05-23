@@ -12,7 +12,7 @@ pub fn run<P: AsRef<Path>>(path: P) {
 			return;
 		}
 	};
-	let program = match parser::prog(&file) {
+	let program = match parser::prog(file.as_str().into()) {
 		Ok((_, prog)) => prog,
 		Err(e) => {
 			eprintln!("Error parsing file: {:?}", e);
