@@ -20,7 +20,7 @@ fn expression(input: Input<'_>) -> DeclResult<'_> {
             (
                 input,
                 Decl::expression(
-                    ident.to_str().into(),
+                    ident.to_str(),
                     params
                         .into_iter()
                         .rev()

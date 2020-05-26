@@ -9,7 +9,7 @@ pub struct ParseError {
 
 macro_rules! error_type {
 	($name:ident, $kind:expr, $error:ty) => {
-		pub fn $name<'a>(error: nom::Err<(Input<'a>, $error)>) -> nom::Err<(Input<'a>, ParseError)> {
+		pub fn $name(error: nom::Err<(Input<'_>, $error)>) -> nom::Err<(Input<'_>, ParseError)> {
 			match error {
 				nom::Err::Incomplete(e) => nom::Err::Incomplete(e),
 				nom::Err::Error((input, _)) => ParseError::new(input, $kind),

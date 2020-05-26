@@ -40,7 +40,7 @@ fn atom(input: Input<'_>) -> MatchResult<'_> {
                 if let Ok(i) = lexeme.parse::<i32>() {
                     Ok((new_input, Match::int(i)))
                 } else {
-                    Ok((new_input, Match::ident(lexeme.into())))
+                    Ok((new_input, Match::ident(lexeme)))
                 }
             }
         },
@@ -54,7 +54,6 @@ pub fn variable(input: Input<'_>) -> MatchResult<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nom::error::ErrorKind;
     use crate::parser::test::*;
 
     parser_test! {

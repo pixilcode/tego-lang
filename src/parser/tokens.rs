@@ -77,7 +77,7 @@ pub fn number(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
 pub fn identifier(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     verify(
         token(take_till1(|c: char| !c.is_ascii_alphabetic() && c != '\'')),
-        |id| !is_keyword(id.to_str()) && !id.to_str().starts_with("'"),
+        |id| !is_keyword(id.to_str()) && !id.to_str().starts_with('\''),
     )(input)
 }
 

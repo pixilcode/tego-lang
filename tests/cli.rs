@@ -22,7 +22,7 @@ fn example_tests() -> Result<(), Box<dyn std::error::Error>> {
 					entry
 						.file_name()
 						.into_string()
-						.unwrap_or("".into())
+						.unwrap_or_else(|_| "".into())
 						.ends_with(".out")
 				})
 				.unwrap_or(false)

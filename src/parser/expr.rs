@@ -148,7 +148,7 @@ fn literal(input: Input<'_>) -> ExprResult<'_> {
                 if let Ok(i) = lexeme.parse::<i32>() {
                     Ok((new_input, Expr::int(i)))
                 } else {
-                    Ok((new_input, Expr::variable(lexeme.into())))
+                    Ok((new_input, Expr::variable(lexeme)))
                 }
             } // Has to be done seperately so that it doesn't get mixed up as an identifier
         })
