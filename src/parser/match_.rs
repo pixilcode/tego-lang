@@ -6,7 +6,7 @@ use nom::branch::alt;
 
 use nom::{
     combinator::opt,
-    sequence::{pair, terminated}
+    sequence::{pair, terminated},
 };
 
 type MatchResult<'a> = ParseResult<'a, Match>;

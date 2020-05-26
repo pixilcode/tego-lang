@@ -1,5 +1,7 @@
-use nom::{InputIter, InputLength, InputTake, UnspecializedInput, Compare, CompareResult, Slice, Offset};
-use std::ops::{Range, RangeTo, RangeFrom, RangeFull};
+use nom::{
+    Compare, CompareResult, InputIter, InputLength, InputTake, Offset, Slice, UnspecializedInput,
+};
+use std::ops::{Range, RangeFrom, RangeFull, RangeTo};
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub struct Span<'a> {
@@ -21,7 +23,7 @@ impl<'a> Span<'a> {
     pub fn line(&self) -> usize {
         self.line
     }
-    
+
     pub fn offset(&self) -> usize {
         self.offset
     }
@@ -143,51 +145,51 @@ macro_rules! impl_slice_for_range {
     ($range:ty) => {
         impl<'a> Slice<$range> for Span<'a> {
             fn slice(&self, range: $range) -> Self {
-                    let next_slice = &self.lexeme[range];
-        
-                    if next_slice == self.lexeme {
-                        return *self;
-                    }
-        
-                    let next_offset = self.lexeme.offset(next_slice);
-        
-                    if next_offset == 0 {
-                        return Span {
-                            offset: self.offset,
-                            line: self.line,
-                            column: self.column,
-                            lexeme: next_slice
-                        };
-                    }
-                    
-                    let mut line = self.line;
-                    let mut column = self.column;
-                    let mut offset = self.offset;
-        
-                    for c in self.lexeme[..next_offset].chars() {
-                        match c {
-                            '\n' => {
-                                line += 1;
-                                column = 1;
-                                offset += 1;
-                            }
-                            '\t' => {
-                                column += 4;
-                                offset += 1;
-                            }
-                            _ => {
-                                column += 1;
-                                offset += 1;
-                            }
+                let next_slice = &self.lexeme[range];
+
+                if next_slice == self.lexeme {
+                    return *self;
+                }
+
+                let next_offset = self.lexeme.offset(next_slice);
+
+                if next_offset == 0 {
+                    return Span {
+                        offset: self.offset,
+                        line: self.line,
+                        column: self.column,
+                        lexeme: next_slice,
+                    };
+                }
+
+                let mut line = self.line;
+                let mut column = self.column;
+                let mut offset = self.offset;
+
+                for c in self.lexeme[..next_offset].chars() {
+                    match c {
+                        '\n' => {
+                            line += 1;
+                            column = 1;
+                            offset += 1;
+                        }
+                        '\t' => {
+                            column += 4;
+                            offset += 1;
+                        }
+                        _ => {
+                            column += 1;
+                            offset += 1;
                         }
                     }
-        
-                    Span {
-                        offset,
-                        line,
-                        column,
-                        lexeme: next_slice,
-                    }
+                }
+
+                Span {
+                    offset,
+                    line,
+                    column,
+                    lexeme: next_slice,
+                }
             }
         }
     };

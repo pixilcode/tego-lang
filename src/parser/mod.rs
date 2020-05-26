@@ -10,19 +10,19 @@ macro_rules! parser_test {
 }
 
 mod decl;
+mod error;
 mod expr;
 mod match_;
 mod prog;
 mod span;
 mod tokens;
-mod error;
 
 pub use decl::decl;
+pub use error::ParseError;
 pub use expr::expr;
 pub use match_::match_;
 pub use prog::prog;
 pub use span::Span;
-pub use error::ParseError;
 
 type Input<'a> = Span<'a>;
 type ParseResult<'a, O> = nom::IResult<Input<'a>, O, (Input<'a>, ParseError)>;

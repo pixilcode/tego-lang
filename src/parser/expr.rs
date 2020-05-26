@@ -9,7 +9,7 @@ use nom::{
     branch::alt,
     combinator::opt,
     multi::{fold_many0, many1},
-    sequence::{pair, preceded, separated_pair, terminated}
+    sequence::{pair, preceded, separated_pair, terminated},
 };
 
 type ExprResult<'a> = ParseResult<'a, Expr>;

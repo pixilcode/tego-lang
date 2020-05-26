@@ -26,7 +26,7 @@
      * `4 (true, 2, false)` => `()`
 * Build compiler (maybe use craftinginterpreters.com?)
 * Add named tuples
-* Add `,,` operator, `,:` operator, `:,` operator
+* Add `,,` operator, boxed tuples
 * Add `.` composition/application(?) operator
   * `id 1` == `1.id`
   * `fn x -> id (id x)` ~= `id . id`

@@ -1,5 +1,5 @@
-use crate::parser::{Input, ParseResult};
 use crate::parser::error::*;
+use crate::parser::{Input, ParseResult};
 use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, take_till1},
@@ -53,17 +53,13 @@ where
 macro_rules! reserved {
     ($lexeme:ident, $lexeme_str:literal) => {
         pub fn $lexeme(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
-            token(tag($lexeme_str))(input).map_err(
-                token_error
-            )
+            token(tag($lexeme_str))(input).map_err(token_error)
         }
     };
 }
 
 pub fn char(input: Input<'_>) -> ParseResult<'_, char> {
-    terminated(preceded(single_quote, anychar), single_quote)(input).map_err(
-        char_error
-    )
+    terminated(preceded(single_quote, anychar), single_quote)(input).map_err(char_error)
 }
 
 pub fn string(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
