@@ -50,6 +50,13 @@ error_type!(newline_error, ErrorKind::TerminatingNewline);
 error_type!(string_error, ErrorKind::String);
 error_type!(number_error, ErrorKind::Number);
 error_type!(ident_error, ErrorKind::Identifier);
+error_type!(literal_error, ErrorKind::Literal);
+error_type!(match_arm_error, ErrorKind::MatchArm);
+error_type!(match_head_error, ErrorKind::MatchHead);
+error_type!(if_cond_error, ErrorKind::IfCond);
+error_type!(if_body_error, ErrorKind::IfBody);
+error_type!(let_assign_error, ErrorKind::LetAssign);
+error_type!(delay_assign_error, ErrorKind::DelayAssign);
 
 impl<'a> nom::error::ParseError<Input<'a>> for (Input<'a>, ParseError) {
     fn from_error_kind(input: Input<'a>, kind: NomErrorKind) -> Self {
@@ -70,11 +77,23 @@ impl<'a> nom::error::ParseError<Input<'a>> for (Input<'a>, ParseError) {
 
 #[derive(PartialEq, Debug, Clone)]
 enum ErrorKind {
+    // Token Errors
     Reserved(&'static str),
     Char,
     String,
     Number,
     Identifier,
+
+    // Expr Errors
+    Literal,
+    MatchArm,
+    MatchHead,
+    IfCond,
+    IfBody,
+    LetAssign,
+    DelayAssign,
+
+    // Other Errors
     TerminatingNewline,
     Eof,
     UnknownNomError,

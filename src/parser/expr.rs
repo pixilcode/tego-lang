@@ -4,6 +4,7 @@ use crate::parser::match_::*;
 use crate::parser::tokens::*;
 use crate::parser::Input;
 use crate::parser::ParseResult;
+use crate::parser::error::*;
 
 use nom::{
     branch::alt,
@@ -56,6 +57,7 @@ pub fn let_expr(input: Input<'_>) -> ExprResult<'_> {
         match let_token.map(|s| s.into()) {
             Some("let") => {
                 separated_pair(separated_pair(match_, assign, if_expr), opt_nl(in_), expr)(input)
+                    .map_err(let_assign_error)
                     .map(|(input, ((ident, value), inner))| {
                         (input, Expr::let_expr(ident, value, inner))
                     })
@@ -65,6 +67,7 @@ pub fn let_expr(input: Input<'_>) -> ExprResult<'_> {
                 opt_nl(in_),
                 expr,
             )(input)
+            .map_err(delay_assign_error)
             .map(|(input, ((ident, value), inner))| (input, Expr::delayed(ident, value, inner))),
             Some(_) => unreachable!(),
             None => if_expr(input),
@@ -74,26 +77,31 @@ pub fn let_expr(input: Input<'_>) -> ExprResult<'_> {
 
 pub fn if_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(if_)(input).and_then(|(input, if_token)| match if_token {
-        Some(_) => pair(join_expr, opt_nl(alt((then, q_mark))))(input).and_then(
-            |(input, (cond, symbol))| {
-                let next_symbol = match symbol.into() {
-                    "then" => else_,
-                    "?" => colon,
-                    _ => unreachable!(),
-                };
-                separated_pair(opt_nl(expr), opt_nl(next_symbol), expr)(input)
-                    .map(|(input, (t, f))| (input, Expr::if_expr(cond, t, f)))
-            },
-        ),
+        Some(_) => pair(join_expr, opt_nl(alt((then, q_mark))))(input)
+        .map_err(if_cond_error)    
+        .and_then(
+                |(input, (cond, symbol))| {
+                    let next_symbol = match symbol.into() {
+                        "then" => else_,
+                        "?" => colon,
+                        _ => unreachable!(),
+                    };
+                    separated_pair(opt_nl(expr), opt_nl(next_symbol), expr)(input)
+                        .map_err(if_body_error)
+                        .map(|(input, (t, f))| (input, Expr::if_expr(cond, t, f)))
+                },
+            ),
         None => match_expr(input),
     })
 }
 
 pub fn match_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(match_kw)(input).and_then(|(input, match_token)| match match_token {
-        Some(_) => terminated(join_expr, opt_nl(to))(input).and_then(|(input, val)| {
-            many1(opt_nl(match_arm))(input)
-                .and_then(|(input, patterns)| Ok((input, Expr::match_(val, patterns))))
+        Some(_) => terminated(join_expr, opt_nl(to))(input)
+            .map_err(match_head_error)
+            .and_then(|(input, val)| {
+                many1(opt_nl(match_arm))(input)
+                    .and_then(|(input, patterns)| Ok((input, Expr::match_(val, patterns))))
         }),
         None => join_expr(input),
     })
@@ -101,6 +109,7 @@ pub fn match_expr(input: Input<'_>) -> ExprResult<'_> {
 
 pub fn match_arm(input: Input<'_>) -> ParseResult<'_, (Match, Expr)> {
     preceded(bar, separated_pair(match_, arrow, expr))(input)
+    .map_err(match_arm_error)
 }
 
 binary_expr!(join_expr, comma, or_expr);
@@ -154,6 +163,7 @@ fn literal(input: Input<'_>) -> ExprResult<'_> {
         })
         .or_else(|_| string(input).map(|(input, s)| (input, Expr::string(s.into()))))
         .or_else(|_| char(input).map(|(input, c)| (input, Expr::char(c))))
+        .map_err(literal_error)
 }
 
 #[cfg(test)]
