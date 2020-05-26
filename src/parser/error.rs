@@ -135,12 +135,29 @@ error_type! {
 }
 
 // Match Errors
-error_type!(ident_match_error, ErrorKind::IdentMatch);
-error_type!(basic_match_error, ErrorKind::BasicMatch);
-error_type!(grouping_match_error, ErrorKind::GroupingMatch);
+error_type!(ident_match_error, ErrorKind::IdentifierMatch);
+error_type! {
+    [basic_match_error, ErrorKind::BasicMatch]
+    nom::Err::Error((input, _)) =>
+        if input.to_str().starts_with('"') {
+            ParseError::new(input, ErrorKind::StringMatch)
+        } else if input.to_str().starts_with('\'') {
+            ParseError::new(input, ErrorKind::CharMatch)
+        } else if input.to_str().starts_with(|c: char| c.is_digit(10)) {
+            ParseError::new(input, ErrorKind::NumberMatch)
+        } else if input.to_str().starts_with(char::is_alphabetic) {
+            ParseError::new(input, ErrorKind::IdentifierMatch)
+        } else {
+            ParseError::new(input, ErrorKind::BasicMatch)
+        }
+}
+error_type!(grouping_match_error, ErrorKind::TerminatingParenMatch);
 
 // Decl Errors
-error_type!(decl_expr_error, ErrorKind::DeclExpr);
+error_type! {
+    token [decl_expr_error]
+    "=" => ErrorKind::DeclAssign
+}
 
 // Other Errors
 error_type!(newline_error, ErrorKind::TerminatingNewline);
@@ -187,12 +204,15 @@ enum ErrorKind {
     DelayIn,
 
     // Match Errors
-    IdentMatch,
     BasicMatch,
-    GroupingMatch,
+    StringMatch,
+    CharMatch,
+    NumberMatch,
+    IdentifierMatch,
+    TerminatingParenMatch,
 
     // Decl Errors
-    DeclExpr,
+    DeclAssign,
 
     // Other Errors
     TerminatingNewline,
