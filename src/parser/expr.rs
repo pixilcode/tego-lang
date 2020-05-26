@@ -3,16 +3,16 @@ use crate::ast::Match;
 use crate::parser::match_::*;
 use crate::parser::tokens::*;
 use crate::parser::Input;
+use crate::parser::ParseResult;
 
 use nom::{
     branch::alt,
     combinator::opt,
     multi::{fold_many0, many1},
-    sequence::{pair, preceded, separated_pair, terminated},
-    IResult,
+    sequence::{pair, preceded, separated_pair, terminated}
 };
 
-type ExprResult<'a> = IResult<Input<'a>, Expr>;
+type ExprResult<'a> = ParseResult<'a, Expr>;
 
 macro_rules! binary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
@@ -99,7 +99,7 @@ pub fn match_expr(input: Input<'_>) -> ExprResult<'_> {
     })
 }
 
-pub fn match_arm(input: Input<'_>) -> IResult<Input<'_>, (Match, Expr)> {
+pub fn match_arm(input: Input<'_>) -> ParseResult<'_, (Match, Expr)> {
     preceded(bar, separated_pair(match_, arrow, expr))(input)
 }
 

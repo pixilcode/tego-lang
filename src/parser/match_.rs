@@ -1,15 +1,15 @@
 use crate::ast::Match;
 use crate::parser::tokens::*;
 use crate::parser::Input;
+use crate::parser::ParseResult;
 use nom::branch::alt;
 
 use nom::{
     combinator::opt,
-    sequence::{pair, terminated},
-    IResult,
+    sequence::{pair, terminated}
 };
 
-type MatchResult<'a> = IResult<Input<'a>, Match>;
+type MatchResult<'a> = ParseResult<'a, Match>;
 
 pub fn match_(input: Input<'_>) -> MatchResult<'_> {
     tuple(input)
@@ -100,11 +100,6 @@ mod tests {
         unit_test
         (match_): "()" =>
             Match::Tuple(vec![])
-    }
-    basic_test! {
-        keyword_test
-        match_("let".into()) =>
-            Err(nom::Err::Error(("let".into(), ErrorKind::Verify)))
     }
     parser_test! {
         variable_test

@@ -1,11 +1,11 @@
 use crate::ast::{Decl, Expr, Prog};
 use crate::parser::decl;
 use crate::parser::Input;
+use crate::parser::ParseResult;
 use crate::parser::tokens::newlines;
-use nom::IResult;
 use nom::sequence::preceded;
 
-type ProgResult<'a> = IResult<Input<'a>, Prog>;
+type ProgResult<'a> = ParseResult<'a, Prog>;
 
 pub fn prog(input: Input<'_>) -> ProgResult<'_> {
 	parse_prog(input).map(|(input, (main, decl))| match main {
@@ -14,7 +14,7 @@ pub fn prog(input: Input<'_>) -> ProgResult<'_> {
 	})
 }
 
-fn parse_prog(input: Input<'_>) -> IResult<Input<'_>, (Option<Expr>, Vec<Decl>)> {
+fn parse_prog(input: Input<'_>) -> ParseResult<'_, (Option<Expr>, Vec<Decl>)> {
 	let decl_res = preceded(newlines(true), decl)(input);
 	decl_res.and_then(|(input, decl)| {
 		let (input, (main, mut decls)) = if input.to_str().is_empty() {
@@ -28,7 +28,7 @@ fn parse_prog(input: Input<'_>) -> IResult<Input<'_>, (Option<Expr>, Vec<Decl>)>
 			_ => None,
 		});
 
-		decls.insert(0, decl.clone());
+		decls.insert(0, decl);
 		Ok((input, (main, decls)))
 	})
 }

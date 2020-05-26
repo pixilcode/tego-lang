@@ -1,13 +1,14 @@
 use crate::ast::Decl;
 use crate::ast::Expr;
-use crate::parser::expr::expr;
-use crate::parser::match_::match_;
+use crate::parser::expr;
+use crate::parser::match_;
 use crate::parser::tokens::*;
 use crate::parser::Input;
+use crate::parser::ParseResult;
 
-use nom::{multi::many0, sequence::tuple, IResult};
+use nom::{multi::many0, sequence::tuple};
 
-type DeclResult<'a> = IResult<Input<'a>, Decl>;
+type DeclResult<'a> = ParseResult<'a, Decl>;
 
 pub fn decl(input: Input<'_>) -> DeclResult<'_> {
     req_nl(expression)(input)

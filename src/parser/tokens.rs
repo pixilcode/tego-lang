@@ -1,11 +1,11 @@
-use crate::parser::Input;
+use crate::parser::{Input, ParseResult};
+use crate::parser::error::*;
 use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, take_till1},
     character::complete::{anychar, digit1, line_ending, multispace0, space0},
     combinator::{all_consuming, map_res, opt, verify},
     sequence::{preceded, terminated, tuple},
-    IResult,
 };
 
 const KEYWORDS: &[&str; 15] = &[
@@ -15,7 +15,7 @@ const KEYWORDS: &[&str; 15] = &[
 
 pub fn newlines<'a>(
     is_opt: bool,
-) -> impl Fn(Input<'a>) -> IResult<Input<'a>, (Input<'a>, Option<Input<'a>>, Input<'a>)> {
+) -> impl Fn(Input<'a>) -> ParseResult<'a, (Input<'a>, Option<Input<'a>>, Input<'a>)> {
     map_res(
         tuple((space0, opt(line_ending), multispace0)),
         move |(ws1, nl, ws2)| match (is_opt, nl) {
@@ -26,16 +26,16 @@ pub fn newlines<'a>(
     )
 }
 
-pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> IResult<Input<'a>, O>
+pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
 where
-    F: Fn(Input<'a>) -> IResult<Input<'a>, O>,
+    F: Fn(Input<'a>) -> ParseResult<'a, O>,
 {
     terminated(parser, newlines(true))
 }
 
-pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> IResult<Input<'a>, O>
+pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
 where
-    F: Fn(Input<'a>) -> IResult<Input<'a>, O>,
+    F: Fn(Input<'a>) -> ParseResult<'a, O>,
 {
     terminated(
         parser,
@@ -43,34 +43,38 @@ where
     )
 }
 
-fn token<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> IResult<Input<'a>, O>
+fn token<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
 where
-    F: Fn(Input<'a>) -> IResult<Input<'a>, O>,
+    F: Fn(Input<'a>) -> ParseResult<'a, O>,
 {
     preceded(space0, parser)
 }
 
 macro_rules! reserved {
     ($lexeme:ident, $lexeme_str:literal) => {
-        pub fn $lexeme<'a>(input: Input<'a>) -> IResult<Input<'a>, Input<'a>> {
-            token(tag($lexeme_str))(input)
+        pub fn $lexeme(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+            token(tag($lexeme_str))(input).map_err(
+                token_error
+            )
         }
     };
 }
 
-pub fn char(input: Input<'_>) -> IResult<Input<'_>, char> {
-    terminated(preceded(single_quote, anychar), single_quote)(input)
+pub fn char(input: Input<'_>) -> ParseResult<'_, char> {
+    terminated(preceded(single_quote, anychar), single_quote)(input).map_err(
+        char_error
+    )
 }
 
-pub fn string(input: Input<'_>) -> IResult<Input<'_>, Input<'_>> {
+pub fn string(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     terminated(preceded(double_quote, is_not("\"")), double_quote)(input)
 }
 
-pub fn number(input: Input<'_>) -> IResult<Input<'_>, Input<'_>> {
+pub fn number(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     token(digit1)(input)
 }
 
-pub fn identifier(input: Input<'_>) -> IResult<Input<'_>, Input<'_>> {
+pub fn identifier(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     verify(
         token(take_till1(|c: char| !c.is_ascii_alphabetic() && c != '\'')),
         |id| !is_keyword(id.to_str()) && !id.to_str().starts_with("'"),
