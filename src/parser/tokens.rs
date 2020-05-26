@@ -16,14 +16,14 @@ const KEYWORDS: &[&str; 15] = &[
 pub fn newlines<'a>(
     is_opt: bool,
 ) -> impl Fn(Input<'a>) -> ParseResult<'a, (Input<'a>, Option<Input<'a>>, Input<'a>)> {
-    map_res(
-        tuple((space0, opt(line_ending), multispace0)),
+    move |input| map_res(
+        tuple((space0, opt(line_ending), multispace0)), // This parser cannot fail
         move |(ws1, nl, ws2)| match (is_opt, nl) {
             // The error won't be used in any way, just indicates that it's an error
             (false, None) => Err(()),
             (_, nl) => Ok((ws1, nl, ws2)),
         },
-    )
+    )(input).map_err(newline_error)
 }
 
 pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
@@ -39,7 +39,7 @@ where
 {
     terminated(
         parser,
-        alt((newlines(false), all_consuming(newlines(true)))),
+        alt((all_consuming(newlines(true)), newlines(false))),
     )
 }
 
@@ -53,28 +53,28 @@ where
 macro_rules! reserved {
     ($lexeme:ident, $lexeme_str:literal) => {
         pub fn $lexeme(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
-            token(tag($lexeme_str))(input).map_err(token_error)
+            token(tag($lexeme_str))(input).map_err(reserved_error($lexeme_str))
         }
     };
 }
 
 pub fn char(input: Input<'_>) -> ParseResult<'_, char> {
-    terminated(preceded(single_quote, anychar), single_quote)(input).map_err(char_error)
+    token(terminated(preceded(single_quote, anychar), single_quote))(input).map_err(char_error)
 }
 
 pub fn string(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
-    terminated(preceded(double_quote, is_not("\"")), double_quote)(input)
+    token(terminated(preceded(double_quote, is_not("\"")), double_quote))(input).map_err(string_error)
 }
 
 pub fn number(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
-    token(digit1)(input)
+    token(digit1)(input).map_err(number_error)
 }
 
 pub fn identifier(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
-    verify(
-        token(take_till1(|c: char| !c.is_ascii_alphabetic() && c != '\'')),
-        |id| !is_keyword(id.to_str()) && !id.to_str().starts_with('\''),
-    )(input)
+    token(verify(
+        take_till1(|c: char| !c.is_ascii_alphabetic() && c != '\''),
+        |id: &Input| !is_keyword(id.to_str()) && !id.to_str().starts_with('\''),
+    ))(input).map_err(ident_error)
 }
 
 reserved!(comma, ",");
