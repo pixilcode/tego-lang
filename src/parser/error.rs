@@ -57,6 +57,10 @@ error_type!(if_cond_error, ErrorKind::IfCond);
 error_type!(if_body_error, ErrorKind::IfBody);
 error_type!(let_assign_error, ErrorKind::LetAssign);
 error_type!(delay_assign_error, ErrorKind::DelayAssign);
+error_type!(ident_match_error, ErrorKind::IdentMatch);
+error_type!(basic_match_error, ErrorKind::BasicMatch);
+error_type!(grouping_match_error, ErrorKind::GroupingMatch);
+error_type!(decl_expr_error, ErrorKind::DeclExpr);
 
 impl<'a> nom::error::ParseError<Input<'a>> for (Input<'a>, ParseError) {
     fn from_error_kind(input: Input<'a>, kind: NomErrorKind) -> Self {
@@ -92,6 +96,14 @@ enum ErrorKind {
     IfBody,
     LetAssign,
     DelayAssign,
+
+    // Match Errors
+    IdentMatch,
+    BasicMatch,
+    GroupingMatch,
+
+    // Decl Errors
+    DeclExpr,
 
     // Other Errors
     TerminatingNewline,
