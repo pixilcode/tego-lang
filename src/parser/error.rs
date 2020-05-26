@@ -9,26 +9,54 @@ pub struct ParseError {
 }
 
 macro_rules! error_type {
-    ($name:ident, $kind:expr) => {
+    ( $name:ident, $kind:expr ) => {
         pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
             match error {
-                nom::Err::Incomplete(e) => nom::Err::Incomplete(e),
                 nom::Err::Error((input, _)) => ParseError::new(input, $kind),
-                nom::Err::Failure((input, _)) => ParseError::new(input, $kind),
+                e @ nom::Err::Incomplete(_) => e,
+                e @ nom::Err::Failure((_, _)) => e,
             }
         }
     };
 
-    ($name:ident, $kind:expr; $param_name:ident : $param_type:ty) => {
+    ( $name:ident, $kind:expr; $param_name:ident : $param_type:ty ) => {
         pub fn $name($param_name: $param_type) -> impl Fn(nom::Err<(Input<'_>, ParseError)>) -> nom::Err<(Input<'_>, ParseError)> {
             move |error|
             match error {
-                nom::Err::Incomplete(e) => nom::Err::Incomplete(e),
                 nom::Err::Error((input, _)) => ParseError::new(input, $kind),
-                nom::Err::Failure((input, _)) => ParseError::new(input, $kind),
+                e @ nom::Err::Incomplete(_) => e,
+                e @ nom::Err::Failure((_, _)) => e,
             }
         }
     };
+
+    
+    ( [ $name:ident, $kind:expr ] $( $error:pat => $result:expr ),+ ) => {
+        #[allow(unreachable_patterns)]
+        pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+            match error {
+                $( $error => $result, )+
+                nom::Err::Error((input, _)) => ParseError::new(input, $kind),
+                e @ nom::Err::Incomplete(_) => e,
+                e @ nom::Err::Failure((_, _)) => e,
+            }
+        }
+    };
+
+    ( token [ $name:ident ] $( $reserved:literal => $kind:expr ),+ ) => {
+        #[allow(unreachable_patterns)]
+        pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+            match error {
+                nom::Err::Error((input, error)) =>
+                    match error.kind {
+                        $( ErrorKind::Reserved($reserved) => ParseError::new(input, $kind), )+
+                        _ => ParseError::new_with(input, error)
+                    }
+                e @ nom::Err::Incomplete(_) => e,
+                e @ nom::Err::Failure((_, _)) => e,
+            }
+        }
+    }
 }
 
 impl ParseError {
@@ -42,25 +70,81 @@ impl ParseError {
             },
         ))
     }
+
+    fn new_with(input: Input<'_>, error: Self) -> nom::Err<(Input<'_>, Self)> {
+        nom::Err::Error((input, error))
+    }
 }
 
+// Token Errors
 error_type!(reserved_error, ErrorKind::Reserved(token); token: &'static str);
 error_type!(char_error, ErrorKind::Char);
-error_type!(newline_error, ErrorKind::TerminatingNewline);
 error_type!(string_error, ErrorKind::String);
 error_type!(number_error, ErrorKind::Number);
 error_type!(ident_error, ErrorKind::Identifier);
-error_type!(literal_error, ErrorKind::Literal);
-error_type!(match_arm_error, ErrorKind::MatchArm);
-error_type!(match_head_error, ErrorKind::MatchHead);
-error_type!(if_cond_error, ErrorKind::IfCond);
-error_type!(if_body_error, ErrorKind::IfBody);
-error_type!(let_assign_error, ErrorKind::LetAssign);
-error_type!(delay_assign_error, ErrorKind::DelayAssign);
+
+// Expr Errors
+error_type! {
+    [literal_error, ErrorKind::Literal]
+    nom::Err::Error((input, _)) =>
+        if input.to_str().starts_with('"') {
+            ParseError::new(input, ErrorKind::String)
+        } else if input.to_str().starts_with('\'') {
+            ParseError::new(input, ErrorKind::Char)
+        } else if input.to_str().starts_with(|c: char| c.is_digit(10)) {
+            ParseError::new(input, ErrorKind::Number)
+        } else if input.to_str().starts_with(char::is_alphabetic) {
+            ParseError::new(input, ErrorKind::Identifier)
+        } else {
+            ParseError::new(input, ErrorKind::Literal)
+        }
+}
+error_type!(terminating_paren_error, ErrorKind::TerminatingParen);
+error_type! {
+    token [fn_expr_error]
+    "->" => ErrorKind::FnArrow
+}
+error_type! {
+    token [match_arm_error]
+    "|" => ErrorKind::MatchBar,
+    "->" => ErrorKind::MatchArrow
+}
+error_type! {
+    token [match_head_error]
+    "to" => ErrorKind::MatchTo
+}
+error_type! {
+    token [if_cond_error]
+    "then" => ErrorKind::Then,
+    "?" => ErrorKind::Then
+}
+error_type! {
+    token [if_body_error]
+    "else" => ErrorKind::Else,
+    ":" => ErrorKind::Else
+}
+error_type! {
+    token [let_assign_error]
+    "=" => ErrorKind::LetAssign,
+    "in" => ErrorKind::LetIn
+}
+error_type! {
+    token [delay_assign_error]
+    "=" => ErrorKind::DelayAssign,
+    "in" => ErrorKind::DelayIn
+}
+
+// Match Errors
 error_type!(ident_match_error, ErrorKind::IdentMatch);
 error_type!(basic_match_error, ErrorKind::BasicMatch);
 error_type!(grouping_match_error, ErrorKind::GroupingMatch);
+
+// Decl Errors
 error_type!(decl_expr_error, ErrorKind::DeclExpr);
+
+// Other Errors
+error_type!(newline_error, ErrorKind::TerminatingNewline);
+
 
 impl<'a> nom::error::ParseError<Input<'a>> for (Input<'a>, ParseError) {
     fn from_error_kind(input: Input<'a>, kind: NomErrorKind) -> Self {
@@ -74,12 +158,12 @@ impl<'a> nom::error::ParseError<Input<'a>> for (Input<'a>, ParseError) {
         )
     }
 
-    fn append(_input: Input, _kind: NomErrorKind, other: Self) -> Self {
+    fn append(_: Input, _: NomErrorKind, other: Self) -> Self {
         other
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 enum ErrorKind {
     // Token Errors
     Reserved(&'static str),
@@ -90,12 +174,17 @@ enum ErrorKind {
 
     // Expr Errors
     Literal,
-    MatchArm,
-    MatchHead,
-    IfCond,
-    IfBody,
+    TerminatingParen,
+    FnArrow,
+    MatchBar,
+    MatchArrow,
+    MatchTo,
+    Then,
+    Else,
     LetAssign,
+    LetIn,
     DelayAssign,
+    DelayIn,
 
     // Match Errors
     IdentMatch,

@@ -131,6 +131,7 @@ unary_expr!(not_expr, not, fn_expr);
 fn fn_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(fn_)(input).and_then(|(input, paren_token)| match paren_token {
         Some(_) => separated_pair(match_, opt_nl(arrow), expr)(input)
+            .map_err(fn_expr_error)
             .map(|(input, (param, body))| (input, Expr::fn_expr(param, body))),
         None => fn_application(input),
     })
@@ -143,6 +144,7 @@ fn fn_application(input: Input<'_>) -> ExprResult<'_> {
 fn grouping(input: Input<'_>) -> ExprResult<'_> {
     opt(opt_nl(left_paren))(input).and_then(|(input, paren_token)| match paren_token {
         Some(_) => terminated(opt(opt_nl(expr)), right_paren)(input)
+            .map_err(terminating_paren_error)
             .map(|(input, opt_exp)| (input, opt_exp.unwrap_or_else(Expr::unit))),
         None => literal(input),
     })
