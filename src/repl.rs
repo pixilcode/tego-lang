@@ -43,7 +43,11 @@ fn repl_loop(env: Option<interpreter::WrappedEnv>, mut decls: Vec<Decl>) {
                 (Some(env), decls)
             }
             Err(error) => {
-                println!("{:?}", error);
+                match error {
+                    error @ nom::Err::Incomplete(_) => println!("{:?}", error),
+                    nom::Err::Failure((_, error)) => println!("{}", error),
+                    nom::Err::Error((_, error)) => println!("{}", error)
+                }
                 (env, decls)
             }
         }

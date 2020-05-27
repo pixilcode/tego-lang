@@ -14,8 +14,12 @@ pub fn run<P: AsRef<Path>>(path: P) {
     };
     let program = match parser::prog(file.as_str().into()) {
         Ok((_, prog)) => prog,
-        Err(e) => {
-            eprintln!("Error parsing file: {:?}", e);
+        Err(err) => {
+            match err {
+                nom::Err::Incomplete(_) => eprintln!("Incomplete file..."),
+                nom::Err::Error((_, error)) => eprintln!("{}", error),
+                nom::Err::Failure((_, error)) => eprintln!("{}", error)
+            }
             return;
         }
     };

@@ -47,3 +47,6 @@
 * Add strings to pattern matching
 * Code standard library
 * Fix recursion problem with [this](https://www.reddit.com/r/ProgrammingLanguages/comments/gkx10d/recursion_without_stack_overflow/) - tried this (see 'trampolining' branch), but was unable to
+* Add file tracking to `Span` struct (useful for error handling)
+* Add more detailed error messages (see [this](https://elm-lang.org/news/compiler-errors-for-humans) and [this](https://blog.rust-lang.org/2016/08/10/Shape-of-errors-to-come.html))
+* Check literal error parsing for keywords (ex. 'if', 'match')
