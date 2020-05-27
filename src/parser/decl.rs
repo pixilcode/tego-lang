@@ -1,24 +1,29 @@
 use crate::ast::Decl;
 use crate::ast::Expr;
-use crate::parser::expr::expr;
-use crate::parser::match_::match_;
+use crate::parser::expr;
+use crate::parser::match_;
 use crate::parser::tokens::*;
+use crate::parser::Input;
+use crate::parser::ParseResult;
+use crate::parser::error::*;
 
-use nom::{multi::many0, sequence::tuple, IResult};
+use nom::{multi::many0, sequence::tuple};
 
-type DeclResult<'a> = IResult<&'a str, Decl>;
+type DeclResult<'a> = ParseResult<'a, Decl>;
 
-pub fn decl(input: &'_ str) -> DeclResult<'_> {
+pub fn decl(input: Input<'_>) -> DeclResult<'_> {
     req_nl(expression)(input)
 }
 
-fn expression(input: &'_ str) -> DeclResult<'_> {
-    tuple((identifier, many0(match_), opt_nl(assign), expr))(input).map(
+fn expression(input: Input<'_>) -> DeclResult<'_> {
+    tuple((identifier, many0(match_), opt_nl(assign), expr))(input)
+    .map_err(decl_expr_error)
+    .map(
         |(input, (ident, params, _, body))| {
             (
                 input,
                 Decl::expression(
-                    ident,
+                    ident.to_str(),
                     params
                         .into_iter()
                         .rev()
@@ -33,6 +38,9 @@ fn expression(input: &'_ str) -> DeclResult<'_> {
 mod tests {
     use super::*;
     use crate::ast::Match;
+    use crate::parser::test::*;
+    use crate::parser::Span;
+
     parser_test! {
         expression_test
         (decl): "val = 1\n" =>

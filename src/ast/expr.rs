@@ -52,6 +52,7 @@ impl Expr {
         Expr::unary(UnaryOp::Negate, a)
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn not(a: Self) -> Self {
         Expr::unary(UnaryOp::Not, a)
     }

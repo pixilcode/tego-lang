@@ -109,7 +109,7 @@ impl Value {
                 Env::set_value(&self_ptr.clone().unwrap(), val.clone());
                 val
             }),
-            v => v.clone(),
+            v => v,
         }
     }
 
@@ -294,7 +294,7 @@ impl fmt::Display for Value {
                 Value::Char(c) => format!("'{}'", char::to_string(c)),
                 Value::Tuple(vals) => {
                     // If it is possible to represent it as a string, do it
-                    let string = vals.into_iter().fold(
+                    let string = vals.iter().fold(
                         Ok(String::with_capacity(vals.len() * 4)), // Each char is at most 4 bytes long
                         |string, value| {
                             string.and_then(|mut s| match value {

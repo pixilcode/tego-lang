@@ -31,11 +31,11 @@ fn repl_loop(env: Option<interpreter::WrappedEnv>, mut decls: Vec<Decl>) {
     if code == ":quit" || code == ":q" {
         return;
     }
-    let (env, decls) = if let Ok((_, d)) = parser::decl(&code) {
+    let (env, decls) = if let Ok((_, d)) = parser::decl(code.into()) {
         decls.push(d);
         (None, decls)
     } else {
-        match all_consuming(parser::expr)(&code) {
+        match all_consuming(parser::expr)(code.into()) {
             Ok((_, e)) => {
                 let env = env.unwrap_or_else(|| interpreter::env_from_decls(&decls));
                 let result = interpreter::eval_expr(e, &Rc::clone(&env));
@@ -43,7 +43,11 @@ fn repl_loop(env: Option<interpreter::WrappedEnv>, mut decls: Vec<Decl>) {
                 (Some(env), decls)
             }
             Err(error) => {
-                println!("{:?}", error);
+                match error {
+                    error @ nom::Err::Incomplete(_) => println!("{:?}", error),
+                    nom::Err::Failure((_, error)) => println!("{}", error),
+                    nom::Err::Error((_, error)) => println!("{}", error)
+                }
                 (env, decls)
             }
         }
