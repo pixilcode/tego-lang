@@ -28,7 +28,7 @@ impl fmt::Display for Type {
                 Type::Tuple(types) => {
                     if types.iter().all(|t| match t {
                         Type::Char => true,
-                        _ => false
+                        _ => false,
                     }) {
                         "String".into()
                     } else {

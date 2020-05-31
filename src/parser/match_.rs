@@ -1,37 +1,40 @@
 use crate::ast::Match;
 use crate::parser::tokens::*;
+use crate::parser::Input;
+use crate::parser::ParseResult;
+use crate::parser::error::*;
 use nom::branch::alt;
 
 use nom::{
     combinator::opt,
     sequence::{pair, terminated},
-    IResult,
 };
 
-type MatchResult<'a> = IResult<&'a str, Match>;
+type MatchResult<'a> = ParseResult<'a, Match>;
 
-pub fn match_(input: &'_ str) -> MatchResult<'_> {
+pub fn match_(input: Input<'_>) -> MatchResult<'_> {
     tuple(input)
 }
 
-fn tuple(input: &'_ str) -> MatchResult<'_> {
+fn tuple(input: Input<'_>) -> MatchResult<'_> {
     pair(grouping, opt(comma))(input).and_then(|(input, (a, comma))| match comma {
         Some(_) => tuple(input).map(|(input, b)| (input, Match::tuple(a, b))),
         None => Ok((input, a)),
     })
 }
 
-pub fn grouping(input: &'_ str) -> MatchResult<'_> {
+pub fn grouping(input: Input<'_>) -> MatchResult<'_> {
     opt(left_paren)(input).and_then(|(input, left_paren)| match left_paren {
         Some(_) => terminated(opt(match_), right_paren)(input)
+            .map_err(grouping_match_error)
             .map(|(input, pattern)| (input, pattern.unwrap_or_else(Match::unit))),
         None => atom(input),
     })
 }
 
-fn atom(input: &'_ str) -> MatchResult<'_> {
+fn atom(input: Input<'_>) -> MatchResult<'_> {
     alt((true_val, false_val, underscore, number, identifier))(input).and_then(
-        |(new_input, token)| match token {
+        |(new_input, token)| match token.into() {
             "true" => Ok((new_input, Match::bool(true))),
             "false" => Ok((new_input, Match::bool(false))),
             "_" => Ok((new_input, Match::ignore())),
@@ -43,17 +46,19 @@ fn atom(input: &'_ str) -> MatchResult<'_> {
                 }
             }
         },
-    )
+    ).map_err(basic_match_error)
 }
 
-pub fn variable(input: &'_ str) -> MatchResult<'_> {
-    identifier(input).map(|(input, lexeme)| (input, Match::ident(lexeme)))
+pub fn variable(input: Input<'_>) -> MatchResult<'_> {
+    identifier(input).map(|(input, lexeme)| (input, Match::ident(lexeme.into())))
+    .map_err(ident_match_error)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nom::error::ErrorKind;
+    use crate::parser::test::*;
+
     parser_test! {
         ident_test
         (match_): "abc" => Match::ident("abc")
@@ -97,11 +102,6 @@ mod tests {
         unit_test
         (match_): "()" =>
             Match::Tuple(vec![])
-    }
-    basic_test! {
-        keyword_test
-        match_("let") =>
-            Err(nom::Err::Error(("let", ErrorKind::Verify)))
     }
     parser_test! {
         variable_test

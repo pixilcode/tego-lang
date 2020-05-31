@@ -12,8 +12,8 @@ macro_rules! basic_test {
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-mod repl;
 mod codefile;
+mod repl;
 
 fn main() {
     let cli = Cli::from_args();
