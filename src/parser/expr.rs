@@ -1,10 +1,10 @@
 use crate::ast::Expr;
 use crate::ast::Match;
+use crate::parser::error::*;
 use crate::parser::match_::*;
 use crate::parser::tokens::*;
 use crate::parser::Input;
 use crate::parser::ParseResult;
-use crate::parser::error::*;
 
 use nom::{
     branch::alt,
@@ -78,19 +78,17 @@ pub fn let_expr(input: Input<'_>) -> ExprResult<'_> {
 pub fn if_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(if_)(input).and_then(|(input, if_token)| match if_token {
         Some(_) => pair(join_expr, opt_nl(alt((then, q_mark))))(input)
-        .map_err(if_cond_error)    
-        .and_then(
-                |(input, (cond, symbol))| {
-                    let next_symbol = match symbol.into() {
-                        "then" => else_,
-                        "?" => colon,
-                        _ => unreachable!(),
-                    };
-                    separated_pair(opt_nl(expr), opt_nl(next_symbol), expr)(input)
-                        .map_err(if_body_error)
-                        .map(|(input, (t, f))| (input, Expr::if_expr(cond, t, f)))
-                },
-            ),
+            .map_err(if_cond_error)
+            .and_then(|(input, (cond, symbol))| {
+                let next_symbol = match symbol.into() {
+                    "then" => else_,
+                    "?" => colon,
+                    _ => unreachable!(),
+                };
+                separated_pair(opt_nl(expr), opt_nl(next_symbol), expr)(input)
+                    .map_err(if_body_error)
+                    .map(|(input, (t, f))| (input, Expr::if_expr(cond, t, f)))
+            }),
         None => match_expr(input),
     })
 }
@@ -102,14 +100,13 @@ pub fn match_expr(input: Input<'_>) -> ExprResult<'_> {
             .and_then(|(input, val)| {
                 many1(opt_nl(match_arm))(input)
                     .and_then(|(input, patterns)| Ok((input, Expr::match_(val, patterns))))
-        }),
+            }),
         None => join_expr(input),
     })
 }
 
 pub fn match_arm(input: Input<'_>) -> ParseResult<'_, (Match, Expr)> {
-    preceded(bar, separated_pair(match_, arrow, expr))(input)
-    .map_err(match_arm_error)
+    preceded(bar, separated_pair(match_, arrow, expr))(input).map_err(match_arm_error)
 }
 
 binary_expr!(join_expr, comma, or_expr);

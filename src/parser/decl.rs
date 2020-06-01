@@ -1,11 +1,11 @@
 use crate::ast::Decl;
 use crate::ast::Expr;
+use crate::parser::error::*;
 use crate::parser::expr;
 use crate::parser::match_;
 use crate::parser::tokens::*;
 use crate::parser::Input;
 use crate::parser::ParseResult;
-use crate::parser::error::*;
 
 use nom::{multi::many0, sequence::tuple};
 
@@ -17,9 +17,8 @@ pub fn decl(input: Input<'_>) -> DeclResult<'_> {
 
 fn expression(input: Input<'_>) -> DeclResult<'_> {
     tuple((identifier, many0(match_), opt_nl(assign), expr))(input)
-    .map_err(decl_expr_error)
-    .map(
-        |(input, (ident, params, _, body))| {
+        .map_err(decl_expr_error)
+        .map(|(input, (ident, params, _, body))| {
             (
                 input,
                 Decl::expression(
@@ -30,8 +29,7 @@ fn expression(input: Input<'_>) -> DeclResult<'_> {
                         .fold(body, |body, param| Expr::fn_expr(param, body)),
                 ),
             )
-        },
-    )
+        })
 }
 
 #[cfg(test)]
