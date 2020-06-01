@@ -18,7 +18,7 @@ pub fn run<P: AsRef<Path>>(path: P) {
             match err {
                 nom::Err::Incomplete(_) => eprintln!("Incomplete file..."),
                 nom::Err::Error((_, error)) => eprintln!("{}", error),
-                nom::Err::Failure((_, error)) => eprintln!("{}", error)
+                nom::Err::Failure((_, error)) => eprintln!("{}", error),
             }
             return;
         }

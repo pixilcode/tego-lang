@@ -57,6 +57,13 @@ where
     terminated(parser, newlines(true))
 }
 
+pub fn preceding_opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+where
+    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+{
+    preceded(newlines(true), parser)
+}
+
 pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
 where
     F: Fn(Input<'a>) -> ParseResult<'a, O>,
@@ -87,7 +94,11 @@ pub fn char(input: Input<'_>) -> ParseResult<'_, char> {
 }
 
 pub fn string(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
-    token(terminated(preceded(double_quote, is_not("\"")), double_quote))(input).map_err(string_error)
+    token(terminated(
+        preceded(double_quote, is_not("\"")),
+        double_quote,
+    ))(input)
+    .map_err(string_error)
 }
 
 pub fn number(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
@@ -98,7 +109,8 @@ pub fn identifier(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     token(verify(
         take_till1(|c: char| !c.is_ascii_alphabetic() && c != '\''),
         |id: &Input| !is_keyword(id.to_str()) && !id.to_str().starts_with('\''),
-    ))(input).map_err(ident_error)
+    ))(input)
+    .map_err(ident_error)
 }
 
 reserved!(comma, ",");

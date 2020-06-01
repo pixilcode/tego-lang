@@ -31,7 +31,7 @@ macro_rules! error_type {
         }
     };
 
-    
+
     ( [ $name:ident, $kind:expr ] $( $error:pat => $result:expr ),+ ) => {
         #[allow(unreachable_patterns)]
         pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
@@ -107,7 +107,9 @@ impl fmt::Display for ParseError {
             // Expr Errors
             ErrorKind::Literal => "error parsing literal".into(),
             ErrorKind::TerminatingParen => "missing closing parentheses".into(),
-            ErrorKind::FnArrow => "missing '->' between function parameters and function body".into(),
+            ErrorKind::FnArrow => {
+                "missing '->' between function parameters and function body".into()
+            }
             ErrorKind::MatchBar => "missing '|' before match arm".into(),
             ErrorKind::MatchArrow => "missing '->' between match pattern and match body".into(),
             ErrorKind::MatchTo => "missing 'to' between match head and body".into(),
@@ -134,11 +136,14 @@ impl fmt::Display for ParseError {
             ErrorKind::Eof => "reached end of file before parsing was completed".into(),
             ErrorKind::UnknownNomError => "unknown error from parsing".into(),
         };
-        write!(f, "error[E{:04}]: {} (found on line {}, column {})",
+        write!(
+            f,
+            "error[E{:04}]: {} (found on line {}, column {})",
             u16::from(self.kind),
             error,
             self.line,
-            self.column)
+            self.column
+        )
     }
 }
 
@@ -276,7 +281,7 @@ impl From<NomErrorKind> for ErrorKind {
     fn from(error: NomErrorKind) -> Self {
         match error {
             NomErrorKind::Eof => ErrorKind::Eof,
-            _ => ErrorKind::UnknownNomError
+            _ => ErrorKind::UnknownNomError,
         }
     }
 }
