@@ -95,10 +95,12 @@ pub fn if_expr(input: Input<'_>) -> ExprResult<'_> {
 
 pub fn match_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(match_kw)(input).and_then(|(input, match_token)| match match_token {
-        Some(_) => terminated(join_expr, opt_nl(to))(input)
+        Some(_) => terminated(join_expr, to)(input)
             .map_err(match_head_error)
             .and_then(|(input, val)| {
-                many1(opt_nl(match_arm))(input)
+                // nl has to be preceding so as not to conflict with
+                // the `req_nl` parser that likely directly follows the match expr
+                many1(preceding_opt_nl(match_arm))(input)
                     .and_then(|(input, patterns)| Ok((input, Expr::match_(val, patterns))))
             }),
         None => join_expr(input),

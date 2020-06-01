@@ -36,6 +36,13 @@ where
     terminated(parser, newlines(true))
 }
 
+pub fn preceding_opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+where
+    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+{
+    preceded(newlines(true), parser)
+}
+
 pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
 where
     F: Fn(Input<'a>) -> ParseResult<'a, O>,
