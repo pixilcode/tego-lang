@@ -308,7 +308,7 @@ mod tests {
                 Expr::bool(true),
                 Expr::int(1),
                 Expr::int(2));
-        (expr): "if true ?\n1\n:\n2" =>
+        (expr): "if true ?\n1\nelse\n2" =>
             Expr::if_expr(
                 Expr::bool(true),
                 Expr::int(1),
