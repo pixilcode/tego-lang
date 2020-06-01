@@ -3,8 +3,8 @@ use crate::parser::decl;
 use crate::parser::tokens::newlines;
 use crate::parser::Input;
 use crate::parser::ParseResult;
-use nom::sequence::preceded;
 use nom::combinator::all_consuming;
+use nom::sequence::preceded;
 
 type ProgResult<'a> = ParseResult<'a, Prog>;
 

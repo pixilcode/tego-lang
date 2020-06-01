@@ -78,14 +78,12 @@ pub fn let_expr(input: Input<'_>) -> ExprResult<'_> {
 pub fn if_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(if_)(input).and_then(|(input, if_token)| match if_token {
         Some(_) => terminated(join_expr, opt_nl(alt((then, q_mark))))(input)
-        .map_err(if_cond_error)    
-        .and_then(
-                |(input, cond)| {
-                    separated_pair(opt_nl(expr), opt_nl(else_), expr)(input)
-                        .map_err(if_body_error)
-                        .map(|(input, (t, f))| (input, Expr::if_expr(cond, t, f)))
-                },
-            ),
+            .map_err(if_cond_error)
+            .and_then(|(input, cond)| {
+                separated_pair(opt_nl(expr), opt_nl(else_), expr)(input)
+                    .map_err(if_body_error)
+                    .map(|(input, (t, f))| (input, Expr::if_expr(cond, t, f)))
+            }),
         None => match_expr(input),
     })
 }

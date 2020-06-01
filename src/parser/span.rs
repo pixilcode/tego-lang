@@ -1,5 +1,6 @@
 use nom::{
-    Compare, CompareResult, InputIter, InputLength, InputTake, Offset, Slice, UnspecializedInput, FindSubstring
+    Compare, CompareResult, FindSubstring, InputIter, InputLength, InputTake, Offset, Slice,
+    UnspecializedInput,
 };
 use std::ops::{Range, RangeFrom, RangeFull, RangeTo};
 
