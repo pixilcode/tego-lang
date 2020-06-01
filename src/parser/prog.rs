@@ -3,12 +3,13 @@ use crate::parser::decl;
 use crate::parser::tokens::newlines;
 use crate::parser::Input;
 use crate::parser::ParseResult;
+use nom::combinator::all_consuming;
 use nom::sequence::preceded;
 
 type ProgResult<'a> = ParseResult<'a, Prog>;
 
 pub fn prog(input: Input<'_>) -> ProgResult<'_> {
-    parse_prog(input).map(|(input, (main, decl))| match main {
+    all_consuming(parse_prog)(input).map(|(input, (main, decl))| match main {
         Some(main) => (input, Prog::Binary(main, decl)),
         None => (input, Prog::Library(decl)),
     })

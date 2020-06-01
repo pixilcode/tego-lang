@@ -5,7 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Added
+* Support for comments
+  * `--` starts a single line comment
+  * `{-` and `-}` wrap a multi-line comment
 * Improved parsing errors, so the user actually *understands* what went wrong
+
+### Changed
+* `:` option removed from if expressions
+  * Only `if ... then ... else ...` and `if ... ? ... else ...` are allowed now
 
 ### Fixed
 * A match expression declaration couldn't be followed by any code

@@ -13,5 +13,5 @@ primes' ps curr n =
 isDivisible n primes =
 	match primes to
 	| () -> false
-	| p, px -> if n % p == 0 ? true : isDivisible n px
-	| p -> if n % p == 0 ? true : false
+	| p, px -> if n % p == 0 ? true else isDivisible n px
+	| p -> if n % p == 0 ? true else false
