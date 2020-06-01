@@ -13,7 +13,7 @@ macro_rules! error_type {
     ( $name:ident, $kind:expr ) => {
         pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
             match error {
-                nom::Err::Error((input, _)) => ParseError::new(input, $kind),
+                nom::Err::Error((input, error)) => ParseError::new_from(input, error, $kind),
                 e @ nom::Err::Incomplete(_) => e,
                 e @ nom::Err::Failure((_, _)) => e,
             }
@@ -24,7 +24,7 @@ macro_rules! error_type {
         pub fn $name($param_name: $param_type) -> impl Fn(nom::Err<(Input<'_>, ParseError)>) -> nom::Err<(Input<'_>, ParseError)> {
             move |error|
             match error {
-                nom::Err::Error((input, _)) => ParseError::new(input, $kind),
+                nom::Err::Error((input, error)) => ParseError::new_from(input, error, $kind),
                 e @ nom::Err::Incomplete(_) => e,
                 e @ nom::Err::Failure((_, _)) => e,
             }
@@ -37,7 +37,7 @@ macro_rules! error_type {
         pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
             match error {
                 $( $error => $result, )+
-                nom::Err::Error((input, _)) => ParseError::new(input, $kind),
+                nom::Err::Error((input, error)) => ParseError::new_from(input, error, $kind),
                 e @ nom::Err::Incomplete(_) => e,
                 e @ nom::Err::Failure((_, _)) => e,
             }
@@ -50,7 +50,7 @@ macro_rules! error_type {
             match error {
                 nom::Err::Error((input, error)) =>
                     match error.kind {
-                        $( ErrorKind::Reserved($reserved) => ParseError::new(input, $kind), )+
+                        $( ErrorKind::Reserved($reserved) => ParseError::new_from(input, error, $kind), )+
                         _ => ParseError::new_with(input, error)
                     }
                 e @ nom::Err::Incomplete(_) => e,
@@ -69,6 +69,16 @@ impl ParseError {
                 line: input.line(),
                 kind,
             },
+        ))
+    }
+
+    fn new_from(input: Input<'_>, error: Self, kind: ErrorKind) -> nom::Err<(Input<'_>, Self)> {
+        nom::Err::Error((
+            input,
+            ParseError {
+                kind,
+                ..error
+            }
         ))
     }
 
