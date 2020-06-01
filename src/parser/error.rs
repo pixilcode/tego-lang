@@ -112,7 +112,7 @@ impl fmt::Display for ParseError {
             ErrorKind::MatchArrow => "missing '->' between match pattern and match body".into(),
             ErrorKind::MatchTo => "missing 'to' between match head and body".into(),
             ErrorKind::Then => "missing 'then' or '?' after if condition".into(),
-            ErrorKind::Else => "missing 'else' or ':' in if expression".into(),
+            ErrorKind::Else => "missing 'else' in if expression".into(),
             ErrorKind::LetAssign => "missing '=' in let assignment".into(),
             ErrorKind::LetIn => "missing 'in' in let expression".into(),
             ErrorKind::DelayAssign => "missing '=' in delay assignment".into(),

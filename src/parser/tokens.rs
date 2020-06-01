@@ -101,7 +101,6 @@ reserved!(if_, "if");
 reserved!(then, "then");
 reserved!(q_mark, "?");
 reserved!(else_, "else");
-reserved!(colon, ":");
 reserved!(let_, "let");
 reserved!(in_, "in");
 reserved!(assign, "=");
@@ -151,7 +150,6 @@ mod tests {
     parser_test!(then_test (then): "then" => "then".into());
     parser_test!(q_mark_test (q_mark): "?" => "?".into());
     parser_test!(else_test (else_): "else" => "else".into());
-    parser_test!(colon_test (colon): ":" => ":".into());
     parser_test!(number_test (number): "12" => "12".into());
     parser_test!(identifier_test (identifier): "aBc'" => "aBc'".into());
     parser_test!(let_test (let_): "let" => "let".into());

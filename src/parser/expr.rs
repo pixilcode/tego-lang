@@ -77,16 +77,11 @@ pub fn let_expr(input: Input<'_>) -> ExprResult<'_> {
 
 pub fn if_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(if_)(input).and_then(|(input, if_token)| match if_token {
-        Some(_) => pair(join_expr, opt_nl(alt((then, q_mark))))(input)
+        Some(_) => terminated(join_expr, opt_nl(alt((then, q_mark))))(input)
         .map_err(if_cond_error)    
         .and_then(
-                |(input, (cond, symbol))| {
-                    let next_symbol = match symbol.into() {
-                        "then" => else_,
-                        "?" => colon,
-                        _ => unreachable!(),
-                    };
-                    separated_pair(opt_nl(expr), opt_nl(next_symbol), expr)(input)
+                |(input, cond)| {
+                    separated_pair(opt_nl(expr), opt_nl(else_), expr)(input)
                         .map_err(if_body_error)
                         .map(|(input, (t, f))| (input, Expr::if_expr(cond, t, f)))
                 },
