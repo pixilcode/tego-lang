@@ -1,6 +1,7 @@
 use crate::parser::Input;
 use nom::error::ErrorKind as NomErrorKind;
 use std::fmt;
+use std::io;
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct ParseError {
@@ -82,6 +83,17 @@ impl ParseError {
 
     fn new_with(input: Input<'_>, error: Self) -> nom::Err<(Input<'_>, Self)> {
         nom::Err::Error((input, error))
+    }
+
+    pub fn verbose_from_source(&self, source: &str, writer: &mut impl io::Write) -> io::Result<()> {
+        writeln!(writer, "{}", self)?;
+        writeln!(writer, ">>>> [{}:{}]", self.line, self.column)?;
+        writeln!(writer)?;
+        writeln!(writer, "     |")?;
+        writeln!(writer, "{:>4} |{}", self.line, source.lines().nth(self.line-1).unwrap_or(" <ERROR RETRIEVING CODE>"))?;
+        writeln!(writer, "     |{:>1$}", "^", self.column-1)?;
+        writeln!(writer)?;
+        Ok(())
     }
 }
 
