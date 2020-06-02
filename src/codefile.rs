@@ -45,7 +45,10 @@ fn open_file<P: AsRef<Path>>(path: P) -> io::Result<String> {
     fs::read_to_string(path)
 }
 
-fn wrap_up(mut stderr: io::BufWriter<io::Stderr>, mut stdout: io::BufWriter<io::Stdout>) -> io::Result<()> {
+fn wrap_up(
+    mut stderr: io::BufWriter<io::Stderr>,
+    mut stdout: io::BufWriter<io::Stdout>,
+) -> io::Result<()> {
     stderr.flush()?;
     stdout.flush()?;
     Ok(())

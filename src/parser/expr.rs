@@ -138,7 +138,10 @@ fn fn_application(input: Input<'_>) -> ExprResult<'_> {
 fn grouping(input: Input<'_>) -> ExprResult<'_> {
     opt(opt_nl(left_paren))(input).and_then(|(input, paren_token)| match paren_token {
         Some(open_paren) => terminated(opt(opt_nl(expr)), right_paren)(input)
-            .map_err(terminating_paren_error((open_paren.line(), open_paren.column())))
+            .map_err(terminating_paren_error((
+                open_paren.line(),
+                open_paren.column(),
+            )))
             .map(|(input, opt_exp)| (input, opt_exp.unwrap_or_else(Expr::unit))),
         None => literal(input),
     })

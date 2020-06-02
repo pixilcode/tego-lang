@@ -9,7 +9,8 @@ pub fn run() -> io::Result<()> {
     let mut stdout = io::BufWriter::new(io::stdout());
 
     writeln!(stdout, "Welcome to")?;
-    writeln!(stdout,
+    writeln!(
+        stdout,
         "
    /\\
   //\\\\
@@ -24,7 +25,11 @@ pub fn run() -> io::Result<()> {
     repl_loop(Some(interpreter::new_env()), vec![], stdout)
 }
 
-fn repl_loop(env: Option<interpreter::WrappedEnv>, mut decls: Vec<Decl>, mut stdout: io::BufWriter<io::Stdout>) -> io::Result<()> {
+fn repl_loop(
+    env: Option<interpreter::WrappedEnv>,
+    mut decls: Vec<Decl>,
+    mut stdout: io::BufWriter<io::Stdout>,
+) -> io::Result<()> {
     write!(stdout, ">> ")?;
     stdout.flush()?;
     let mut code = String::new();
@@ -48,7 +53,9 @@ fn repl_loop(env: Option<interpreter::WrappedEnv>, mut decls: Vec<Decl>, mut std
             Err(error) => {
                 match error {
                     error @ nom::Err::Incomplete(_) => writeln!(stdout, "{:?}", error)?,
-                    nom::Err::Failure((_, error)) => error.verbose_from_source(code, &mut stdout)?,
+                    nom::Err::Failure((_, error)) => {
+                        error.verbose_from_source(code, &mut stdout)?
+                    }
                     nom::Err::Error((_, error)) => error.verbose_from_source(code, &mut stdout)?,
                 }
                 (env, decls)

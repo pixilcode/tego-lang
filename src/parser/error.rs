@@ -60,25 +60,19 @@ macro_rules! error_type {
 impl ParseError {
     fn is_unhandled(&self) -> bool {
         match self.kind {
-            ErrorKind::Reserved(_) |
-            ErrorKind::Char |
-            ErrorKind::String |
-            ErrorKind::Number |
-            ErrorKind::Identifier |
-            ErrorKind::UnknownNomError |
-            ErrorKind::UnhandledError => true,
-            _ => false
+            ErrorKind::Reserved(_)
+            | ErrorKind::Char
+            | ErrorKind::String
+            | ErrorKind::Number
+            | ErrorKind::Identifier
+            | ErrorKind::UnknownNomError
+            | ErrorKind::UnhandledError => true,
+            _ => false,
         }
     }
 
     fn new_from(input: Input<'_>, error: Self, kind: ErrorKind) -> nom::Err<(Input<'_>, Self)> {
-        nom::Err::Error((
-            input,
-            ParseError {
-                kind,
-                ..error
-            }
-        ))
+        nom::Err::Error((input, ParseError { kind, ..error }))
     }
 
     fn new_with(input: Input<'_>, error: Self) -> nom::Err<(Input<'_>, Self)> {
@@ -89,19 +83,59 @@ impl ParseError {
         writeln!(writer, "{}", self)?;
         writeln!(writer)?;
         match self.kind {
-            ErrorKind::TerminatingParen(line, column) | ErrorKind::TerminatingParenMatch(line, column) => {
+            ErrorKind::TerminatingParen(line, column)
+            | ErrorKind::TerminatingParenMatch(line, column) => {
                 writeln!(writer, "    |")?;
-                writeln!(writer, "{:>3} | {}", self.line, source.lines().nth(self.line-1).unwrap_or("<ERROR RETRIEVING CODE>"))?;
-                writeln!(writer, "    | {:>1$} error found here", "^", self.column-1)?;
+                writeln!(
+                    writer,
+                    "{:>3} | {}",
+                    self.line,
+                    source
+                        .lines()
+                        .nth(self.line - 1)
+                        .unwrap_or("<ERROR RETRIEVING CODE>")
+                )?;
+                writeln!(
+                    writer,
+                    "    | {:>1$} error found here",
+                    "^",
+                    self.column - 1
+                )?;
                 writeln!(writer)?;
                 writeln!(writer, "    |")?;
-                writeln!(writer, "{:>3} | {}", line, source.lines().nth(line-1).unwrap_or("<ERROR RETRIEVING CODE>"))?;
-                writeln!(writer, "    | {:>1$} opening parenthesis found here", "^", column-1)?;
-            },
+                writeln!(
+                    writer,
+                    "{:>3} | {}",
+                    line,
+                    source
+                        .lines()
+                        .nth(line - 1)
+                        .unwrap_or("<ERROR RETRIEVING CODE>")
+                )?;
+                writeln!(
+                    writer,
+                    "    | {:>1$} opening parenthesis found here",
+                    "^",
+                    column - 1
+                )?;
+            }
             _ => {
                 writeln!(writer, "    |")?;
-                writeln!(writer, "{:>3} | {}", self.line, source.lines().nth(self.line-1).unwrap_or("<ERROR RETRIEVING CODE>"))?;
-                writeln!(writer, "    | {:>1$} error found here", "^", self.column-1)?;
+                writeln!(
+                    writer,
+                    "{:>3} | {}",
+                    self.line,
+                    source
+                        .lines()
+                        .nth(self.line - 1)
+                        .unwrap_or("<ERROR RETRIEVING CODE>")
+                )?;
+                writeln!(
+                    writer,
+                    "    | {:>1$} error found here",
+                    "^",
+                    self.column - 1
+                )?;
             }
         }
         writeln!(writer)?;
@@ -167,7 +201,7 @@ impl fmt::Display for ParseError {
             ErrorKind::TerminatingNewline => "missing newline (expected here)".into(),
             ErrorKind::Eof => "reached end of file before parsing was completed".into(),
             ErrorKind::UnknownNomError => "unknown error from parsing".into(),
-            ErrorKind::UnhandledError => "unhandled parsing error".into()
+            ErrorKind::UnhandledError => "unhandled parsing error".into(),
         };
         write!(
             f,
@@ -308,7 +342,7 @@ enum ErrorKind {
     TerminatingNewline,
     Eof,
     UnknownNomError,
-    UnhandledError
+    UnhandledError,
 }
 
 impl From<NomErrorKind> for ErrorKind {
