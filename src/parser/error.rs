@@ -87,11 +87,23 @@ impl ParseError {
 
     pub fn verbose_from_source(&self, source: &str, writer: &mut impl io::Write) -> io::Result<()> {
         writeln!(writer, "{}", self)?;
-        writeln!(writer, ">>>> [{}:{}]", self.line, self.column)?;
         writeln!(writer)?;
-        writeln!(writer, "     |")?;
-        writeln!(writer, "{:>4} |{}", self.line, source.lines().nth(self.line-1).unwrap_or(" <ERROR RETRIEVING CODE>"))?;
-        writeln!(writer, "     |{:>1$}", "^", self.column-1)?;
+        match self.kind {
+            ErrorKind::TerminatingParen(line, column) | ErrorKind::TerminatingParenMatch(line, column) => {
+                writeln!(writer, "    |")?;
+                writeln!(writer, "{:>3} | {}", self.line, source.lines().nth(self.line-1).unwrap_or("<ERROR RETRIEVING CODE>"))?;
+                writeln!(writer, "    | {:>1$} error found here", "^", self.column-1)?;
+                writeln!(writer)?;
+                writeln!(writer, "    |")?;
+                writeln!(writer, "{:>3} | {}", line, source.lines().nth(line-1).unwrap_or("<ERROR RETRIEVING CODE>"))?;
+                writeln!(writer, "    | {:>1$} opening parenthesis found here", "^", column-1)?;
+            },
+            _ => {
+                writeln!(writer, "    |")?;
+                writeln!(writer, "{:>3} | {}", self.line, source.lines().nth(self.line-1).unwrap_or("<ERROR RETRIEVING CODE>"))?;
+                writeln!(writer, "    | {:>1$} error found here", "^", self.column-1)?;
+            }
+        }
         writeln!(writer)?;
         Ok(())
     }
@@ -126,7 +138,7 @@ impl fmt::Display for ParseError {
 
             // Expr Errors
             ErrorKind::Literal => "encountered unknown character in expression".into(),
-            ErrorKind::TerminatingParen => "missing closing parentheses".into(),
+            ErrorKind::TerminatingParen(_, _) => "missing closing parenthesis".into(),
             ErrorKind::FnArrow => {
                 "missing '->' between function parameters and function body".into()
             }
@@ -146,7 +158,7 @@ impl fmt::Display for ParseError {
             ErrorKind::CharMatch => "error parsing a char value match".into(),
             ErrorKind::NumberMatch => "error parsing a number value match".into(),
             ErrorKind::IdentifierMatch => "error parsing an identifier match".into(),
-            ErrorKind::TerminatingParenMatch => "missing closing parentheses in match".into(),
+            ErrorKind::TerminatingParenMatch(_, _) => "missing closing parenthesis in match".into(),
 
             // Decl Errors
             ErrorKind::DeclAssign => "missing '=' in expression declaration".into(),
@@ -195,7 +207,7 @@ error_type! {
             ParseError::new_from(input, error, ErrorKind::Literal)
         }
 }
-error_type!(terminating_paren_error, ErrorKind::TerminatingParen);
+error_type!(terminating_paren_error, ErrorKind::TerminatingParen(open_paren_loc.0, open_paren_loc.1); open_paren_loc: (usize, usize));
 error_type! {
     token [fn_expr_error]
     "->" => ErrorKind::FnArrow
@@ -247,7 +259,7 @@ error_type! {
             ParseError::new_from(input, error, ErrorKind::BasicMatch)
         }
 }
-error_type!(grouping_match_error, ErrorKind::TerminatingParenMatch);
+error_type!(grouping_match_error, ErrorKind::TerminatingParenMatch(open_paren_loc.0, open_paren_loc.1); open_paren_loc: (usize, usize));
 
 // Decl Errors
 error_type! {
@@ -269,7 +281,7 @@ enum ErrorKind {
 
     // Expr Errors
     Literal,
-    TerminatingParen,
+    TerminatingParen(usize, usize),
     FnArrow,
     MatchBar,
     MatchArrow,
@@ -287,7 +299,7 @@ enum ErrorKind {
     CharMatch,
     NumberMatch,
     IdentifierMatch,
-    TerminatingParenMatch,
+    TerminatingParenMatch(usize, usize),
 
     // Decl Errors
     DeclAssign,
@@ -324,7 +336,7 @@ impl From<&ErrorKind> for u16 {
             ErrorKind::Number => 4,
             ErrorKind::Identifier => 5,
             ErrorKind::Literal => 6,
-            ErrorKind::TerminatingParen => 7,
+            ErrorKind::TerminatingParen(_, _) => 7,
             ErrorKind::FnArrow => 8,
             ErrorKind::MatchBar => 9,
             ErrorKind::MatchArrow => 10,
@@ -340,7 +352,7 @@ impl From<&ErrorKind> for u16 {
             ErrorKind::CharMatch => 20,
             ErrorKind::NumberMatch => 21,
             ErrorKind::IdentifierMatch => 22,
-            ErrorKind::TerminatingParenMatch => 23,
+            ErrorKind::TerminatingParenMatch(_, _) => 23,
             ErrorKind::DeclAssign => 24,
             ErrorKind::TerminatingNewline => 25,
             ErrorKind::Eof => 26,
