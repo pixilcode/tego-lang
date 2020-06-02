@@ -13,9 +13,8 @@ macro_rules! error_type {
     ( $name:ident, $kind:expr ) => {
         pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
             match error {
-                nom::Err::Error((input, error)) => ParseError::new_from(input, error, $kind),
-                e @ nom::Err::Incomplete(_) => e,
-                e @ nom::Err::Failure((_, _)) => e,
+                nom::Err::Error((input, error)) if error.is_unhandled() => ParseError::new_from(input, error, $kind),
+                e => e
             }
         }
     };
@@ -24,22 +23,20 @@ macro_rules! error_type {
         pub fn $name($param_name: $param_type) -> impl Fn(nom::Err<(Input<'_>, ParseError)>) -> nom::Err<(Input<'_>, ParseError)> {
             move |error|
             match error {
-                nom::Err::Error((input, error)) => ParseError::new_from(input, error, $kind),
-                e @ nom::Err::Incomplete(_) => e,
-                e @ nom::Err::Failure((_, _)) => e,
+                nom::Err::Error((input, error)) if error.is_unhandled() => ParseError::new_from(input, error, $kind),
+                e => e
             }
         }
     };
 
 
-    ( [ $name:ident, $kind:expr ] $( $error:pat => $result:expr ),+ ) => {
+    ( [ $name:ident ] $( $error:pat $( if $cond:expr )? => $result:expr ),+ ) => {
         #[allow(unreachable_patterns)]
         pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
             match error {
-                $( $error => $result, )+
-                nom::Err::Error((input, error)) => ParseError::new_from(input, error, $kind),
-                e @ nom::Err::Incomplete(_) => e,
-                e @ nom::Err::Failure((_, _)) => e,
+                $( $error $( if $cond:expr )? => $result, )+
+                nom::Err::Error((input, error)) if error.is_unhandled() => ParseError::new_from(input, error, ErrorKind::UnhandledError),
+                e => e
             }
         }
     };
@@ -48,28 +45,29 @@ macro_rules! error_type {
         #[allow(unreachable_patterns)]
         pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
             match error {
-                nom::Err::Error((input, error)) =>
+                nom::Err::Error((input, error)) if error.is_unhandled() =>
                     match error.kind {
                         $( ErrorKind::Reserved($reserved) => ParseError::new_from(input, error, $kind), )+
                         _ => ParseError::new_with(input, error)
-                    }
-                e @ nom::Err::Incomplete(_) => e,
-                e @ nom::Err::Failure((_, _)) => e,
+                    },
+                e => e
             }
         }
     }
 }
 
 impl ParseError {
-    fn new(input: Input<'_>, kind: ErrorKind) -> nom::Err<(Input<'_>, Self)> {
-        nom::Err::Error((
-            input,
-            ParseError {
-                column: input.column(),
-                line: input.line(),
-                kind,
-            },
-        ))
+    fn is_unhandled(&self) -> bool {
+        match self.kind {
+            ErrorKind::Reserved(_) |
+            ErrorKind::Char |
+            ErrorKind::String |
+            ErrorKind::Number |
+            ErrorKind::Identifier |
+            ErrorKind::UnknownNomError |
+            ErrorKind::UnhandledError => true,
+            _ => false
+        }
     }
 
     fn new_from(input: Input<'_>, error: Self, kind: ErrorKind) -> nom::Err<(Input<'_>, Self)> {
@@ -115,7 +113,7 @@ impl fmt::Display for ParseError {
             ErrorKind::Identifier => "error parsing identifier".into(),
 
             // Expr Errors
-            ErrorKind::Literal => "error parsing literal".into(),
+            ErrorKind::Literal => "encountered unknown character in expression".into(),
             ErrorKind::TerminatingParen => "missing closing parentheses".into(),
             ErrorKind::FnArrow => {
                 "missing '->' between function parameters and function body".into()
@@ -131,7 +129,7 @@ impl fmt::Display for ParseError {
             ErrorKind::DelayIn => "missing 'in' in delay expression".into(),
 
             // Match Errors
-            ErrorKind::BasicMatch => "error parsing a basic match".into(),
+            ErrorKind::BasicMatch => "encountered unknown character in match".into(),
             ErrorKind::StringMatch => "error parsing a string value match".into(),
             ErrorKind::CharMatch => "error parsing a char value match".into(),
             ErrorKind::NumberMatch => "error parsing a number value match".into(),
@@ -145,6 +143,7 @@ impl fmt::Display for ParseError {
             ErrorKind::TerminatingNewline => "missing newline (expected here)".into(),
             ErrorKind::Eof => "reached end of file before parsing was completed".into(),
             ErrorKind::UnknownNomError => "unknown error from parsing".into(),
+            ErrorKind::UnhandledError => "unhandled parsing error".into()
         };
         write!(
             f,
@@ -170,18 +169,18 @@ error_type!(ident_error, ErrorKind::Identifier);
 
 // Expr Errors
 error_type! {
-    [literal_error, ErrorKind::Literal]
-    nom::Err::Error((input, _)) =>
+    [literal_error]
+    nom::Err::Error((input, error)) =>
         if input.to_str().starts_with('"') {
-            ParseError::new(input, ErrorKind::String)
+            ParseError::new_from(input, error, ErrorKind::String)
         } else if input.to_str().starts_with('\'') {
-            ParseError::new(input, ErrorKind::Char)
+            ParseError::new_from(input, error, ErrorKind::Char)
         } else if input.to_str().starts_with(|c: char| c.is_digit(10)) {
-            ParseError::new(input, ErrorKind::Number)
+            ParseError::new_from(input, error, ErrorKind::Number)
         } else if input.to_str().starts_with(char::is_alphabetic) {
-            ParseError::new(input, ErrorKind::Identifier)
+            ParseError::new_from(input, error, ErrorKind::Identifier)
         } else {
-            ParseError::new(input, ErrorKind::Literal)
+            ParseError::new_from(input, error, ErrorKind::Literal)
         }
 }
 error_type!(terminating_paren_error, ErrorKind::TerminatingParen);
@@ -222,18 +221,18 @@ error_type! {
 // Match Errors
 error_type!(ident_match_error, ErrorKind::IdentifierMatch);
 error_type! {
-    [basic_match_error, ErrorKind::BasicMatch]
-    nom::Err::Error((input, _)) =>
+    [basic_match_error]
+    nom::Err::Error((input, error)) =>
         if input.to_str().starts_with('"') {
-            ParseError::new(input, ErrorKind::StringMatch)
+            ParseError::new_from(input, error, ErrorKind::StringMatch)
         } else if input.to_str().starts_with('\'') {
-            ParseError::new(input, ErrorKind::CharMatch)
+            ParseError::new_from(input, error, ErrorKind::CharMatch)
         } else if input.to_str().starts_with(|c: char| c.is_digit(10)) {
-            ParseError::new(input, ErrorKind::NumberMatch)
+            ParseError::new_from(input, error, ErrorKind::NumberMatch)
         } else if input.to_str().starts_with(char::is_alphabetic) {
-            ParseError::new(input, ErrorKind::IdentifierMatch)
+            ParseError::new_from(input, error, ErrorKind::IdentifierMatch)
         } else {
-            ParseError::new(input, ErrorKind::BasicMatch)
+            ParseError::new_from(input, error, ErrorKind::BasicMatch)
         }
 }
 error_type!(grouping_match_error, ErrorKind::TerminatingParenMatch);
@@ -285,6 +284,7 @@ enum ErrorKind {
     TerminatingNewline,
     Eof,
     UnknownNomError,
+    UnhandledError
 }
 
 impl From<NomErrorKind> for ErrorKind {
@@ -333,6 +333,7 @@ impl From<&ErrorKind> for u16 {
             ErrorKind::TerminatingNewline => 25,
             ErrorKind::Eof => 26,
             ErrorKind::UnknownNomError => 27,
+            ErrorKind::UnhandledError => 28,
         }
     }
 }
