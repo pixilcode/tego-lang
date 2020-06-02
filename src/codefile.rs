@@ -1,42 +1,52 @@
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::path::Path;
 use tego_lang::interpreter;
 use tego_lang::parser;
 
-pub fn run<P: AsRef<Path>>(path: P) {
+pub fn run<P: AsRef<Path>>(path: P) -> io::Result<()> {
+    let mut stdout = io::BufWriter::new(io::stdout());
+    let mut stderr = io::BufWriter::new(io::stderr());
     let file = match open_file(path) {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("Error reading file: {}", e);
-            return;
+            writeln!(stdout, "Error reading file: {}", e)?;
+            return wrap_up(stderr, stdout);
         }
     };
     let program = match parser::prog(file.as_str().into()) {
         Ok((_, prog)) => prog,
         Err(err) => {
             match err {
-                nom::Err::Incomplete(_) => eprintln!("Incomplete file..."),
-                nom::Err::Error((_, error)) => eprintln!("{}", error),
-                nom::Err::Failure((_, error)) => eprintln!("{}", error),
+                nom::Err::Incomplete(_) => writeln!(stderr, "Incomplete file...")?,
+                nom::Err::Error((_, error)) => error.verbose_from_source(&file, &mut stderr)?,
+                nom::Err::Failure((_, error)) => error.verbose_from_source(&file, &mut stderr)?,
             }
-            return;
+            return wrap_up(stderr, stdout);
         }
     };
     let result = match interpreter::run_prog(program) {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("Error running file: {}", e);
-            return;
+            writeln!(stderr, "Error running file: {}", e)?;
+            return wrap_up(stderr, stdout);
         }
     };
     if result.is_error() {
-        eprintln!("Error running file: {}", result);
+        writeln!(stderr, "Error running file: {}", result)?;
     } else {
-        println!("{}", result);
+        writeln!(stdout, "{}", result)?;
     }
+
+    wrap_up(stderr, stdout)
 }
 
 fn open_file<P: AsRef<Path>>(path: P) -> io::Result<String> {
     fs::read_to_string(path)
+}
+
+fn wrap_up(mut stderr: io::BufWriter<io::Stderr>, mut stdout: io::BufWriter<io::Stdout>) -> io::Result<()> {
+    stderr.flush()?;
+    stdout.flush()?;
+    Ok(())
 }
