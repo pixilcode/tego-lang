@@ -1,9 +1,9 @@
 use nom::combinator::all_consuming;
 use std::io::{self, Write};
 use std::rc::Rc;
-use tego_lang::ast::Decl;
-use tego_lang::interpreter;
-use tego_lang::parser;
+use tego::ast::Decl;
+use tego::interpreter;
+use tego::parser;
 
 pub fn run() -> io::Result<()> {
     let mut stdout = io::BufWriter::new(io::stdout());

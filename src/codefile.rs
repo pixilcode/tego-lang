@@ -1,8 +1,8 @@
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
-use tego_lang::interpreter;
-use tego_lang::parser;
+use tego::interpreter;
+use tego::parser;
 
 pub fn run<P: AsRef<Path>>(path: P) -> io::Result<()> {
     let mut stdout = io::BufWriter::new(io::stdout());
