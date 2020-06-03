@@ -19,8 +19,8 @@ fn main() {
     let cli = Cli::from_args();
 
     match cli {
-        Cli::Repl => repl::run(),
-        Cli::Run { file_loc } => codefile::run(file_loc),
+        Cli::Repl => repl::run().unwrap_or(()),
+        Cli::Run { file_loc } => codefile::run(file_loc).unwrap_or(()),
     }
 }
 

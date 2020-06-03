@@ -2,9 +2,10 @@ use crate::parser::error::*;
 use crate::parser::{Input, ParseResult};
 use nom::{
     branch::alt,
-    bytes::complete::{is_not, tag, take_till1},
-    character::complete::{anychar, digit1, line_ending, multispace0, space0},
+    bytes::complete::{is_not, tag, take_till1, take_until},
+    character::complete::{anychar, digit1, line_ending, multispace0, not_line_ending, space0},
     combinator::{all_consuming, map_res, opt, verify},
+    multi::many0,
     sequence::{preceded, terminated, tuple},
 };
 
@@ -14,23 +15,72 @@ const KEYWORDS: &[&str; 15] = &[
 ];
 
 pub fn newlines<'a>(
-    is_opt: bool,
-) -> impl Fn(Input<'a>) -> ParseResult<'a, (Input<'a>, Option<Input<'a>>, Input<'a>)> {
-    move |input| map_res(
-        tuple((space0, opt(line_ending), multispace0)), // This parser cannot fail
-        move |(ws1, nl, ws2)| match (is_opt, nl) {
-            // The error won't be used in any way, just indicates that it's an error
-            (false, None) => Err(()),
-            (_, nl) => Ok((ws1, nl, ws2)),
-        },
-    )(input).map_err(newline_error)
+    is_req: bool,
+) -> impl Fn(Input<'a>) -> ParseResult<'a, (Vec<Input<'a>>, Option<Input<'a>>, Vec<Input<'a>>)> {
+    move |input| {
+        map_res(
+            tuple((
+                comment0,
+                opt(alt((line_ending, single_comment, multi_comment))),
+                multicomment0,
+            )), // This parser cannot fail
+            move |(ws1, nl, ws2)| match (is_req, nl) {
+                // The error won't be used in any way, just indicates that it's an error
+                (true, None) => Err(()),
+                (_, nl) => Ok((ws1, nl, ws2)),
+            },
+        )(input)
+        .map_err(newline_error)
+    }
+}
+
+pub fn comment0(input: Input<'_>) -> ParseResult<'_, Vec<Input<'_>>> {
+    terminated(many0(preceded(space0, inline_comment)), space0)(input)
+}
+
+pub fn multicomment0(input: Input<'_>) -> ParseResult<'_, Vec<Input<'_>>> {
+    terminated(
+        many0(preceded(multispace0, alt((single_comment, multi_comment)))),
+        multispace0,
+    )(input)
+}
+
+fn single_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+    preceded(
+        tag("--"),
+        alt((terminated(not_line_ending, line_ending), not_line_ending)),
+    )(input)
+}
+
+fn inline_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+    verify(
+        terminated(
+            preceded(tag("{-"), take_until("-}")),
+            tag("-}"),
+        ),
+        |s: &Input| !s.to_str().contains('\n'),
+    )(input)
+}
+
+fn multi_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+    terminated(
+        preceded(tag("{-"), take_until("-}")),
+        tag("-}"),
+    )(input)
 }
 
 pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
 where
     F: Fn(Input<'a>) -> ParseResult<'a, O>,
 {
-    terminated(parser, newlines(true))
+    terminated(parser, newlines(false))
+}
+
+pub fn preceding_opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+where
+    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+{
+    preceded(newlines(false), parser)
 }
 
 pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
@@ -39,11 +89,11 @@ where
 {
     terminated(
         parser,
-        alt((all_consuming(newlines(true)), newlines(false))),
+        alt((all_consuming(newlines(false)), newlines(true))),
     )
 }
 
-fn token<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+pub fn token<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
 where
     F: Fn(Input<'a>) -> ParseResult<'a, O>,
 {
@@ -63,7 +113,11 @@ pub fn char(input: Input<'_>) -> ParseResult<'_, char> {
 }
 
 pub fn string(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
-    token(terminated(preceded(double_quote, is_not("\"")), double_quote))(input).map_err(string_error)
+    token(terminated(
+        preceded(double_quote, is_not("\"")),
+        double_quote,
+    ))(input)
+    .map_err(string_error)
 }
 
 pub fn number(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
@@ -74,7 +128,8 @@ pub fn identifier(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     token(verify(
         take_till1(|c: char| !c.is_ascii_alphabetic() && c != '\''),
         |id: &Input| !is_keyword(id.to_str()) && !id.to_str().starts_with('\''),
-    ))(input).map_err(ident_error)
+    ))(input)
+    .map_err(ident_error)
 }
 
 reserved!(comma, ",");
@@ -101,7 +156,6 @@ reserved!(if_, "if");
 reserved!(then, "then");
 reserved!(q_mark, "?");
 reserved!(else_, "else");
-reserved!(colon, ":");
 reserved!(let_, "let");
 reserved!(in_, "in");
 reserved!(assign, "=");
@@ -133,6 +187,8 @@ mod tests {
             Ok((span_at("", 9, 1, 5), span_at("abc", 6, 1, 2)))
         );
     }
+
+    // Reserved token parsing
     parser_test!(comma_test (comma): "," => ",".into());
     parser_test!(plus_test (plus): "+" => "+".into());
     parser_test!(minus_test (minus): "-" => "-".into());
@@ -151,8 +207,6 @@ mod tests {
     parser_test!(then_test (then): "then" => "then".into());
     parser_test!(q_mark_test (q_mark): "?" => "?".into());
     parser_test!(else_test (else_): "else" => "else".into());
-    parser_test!(colon_test (colon): ":" => ":".into());
-    parser_test!(number_test (number): "12" => "12".into());
     parser_test!(identifier_test (identifier): "aBc'" => "aBc'".into());
     parser_test!(let_test (let_): "let" => "let".into());
     parser_test!(in_test (in_): "in" => "in".into());
@@ -166,9 +220,52 @@ mod tests {
     parser_test!(delay_test (delay): "delay" => "delay".into());
     parser_test!(single_quote_test (single_quote): "'" => "'".into());
     parser_test!(double_quote_test (double_quote): "\"" => "\"".into());
-    parser_test!(string_test (string): "\"abc\"" => span_at("abc", 2, 1, 1));
-    basic_test!(char_test char("'a'".into()) => Ok((span_at("", 4, 1, 3), 'a')));
     // Use find and replace
     // Find: reserved!\(([a-z_]+), ("[^"]+")\);
     // Replace: parser_test!($1_test ($1): $2 => $2);
+
+    // Literal parsing
+    parser_test!(number_test (number): "12" => "12".into());
+    parser_test!(string_test (string): "\"abc\"" => span_at("abc", 2, 1, 1));
+    basic_test!(char_test char("'a'".into()) => Ok((span_at("", 4, 1, 3), 'a')));
+
+    // Comment tests
+    parser_test!(inline_comment_test (inline_comment): "{- inline -}" => span_at(" inline ", 3, 1, 2));
+    parser_test! {
+        single_comment_test
+        (single_comment): "-- single" => span_at(" single", 3, 1, 2);
+        (single_comment): "-- single\n" => span_at(" single", 3, 1, 2)
+    }
+    parser_test! {
+        multi_comment_test
+        (multi_comment): "{- multi\ncomment -}" => span_at(" multi\ncomment ", 3, 1, 2)
+    }
+    basic_test! {
+        comment_error_test
+        inline_comment("{- \n -}".into()).is_err() => true;
+        inline_comment("{- unclosed".into()).is_err() => true;
+        multi_comment("{- unclosed".into()).is_err() => true
+    }
+    parser_test! {
+        comment0_test
+            (comment0): " \t {- comment -} \t " =>
+                vec![
+                    span_at(" comment ", 9, 1, 5)
+                ];
+            (comment0): " \t " => vec![];
+            (comment0): "" => vec![]
+    }
+    parser_test! {
+        multicomment0_test
+            (multicomment0):
+                "
+                \t
+                -- end of line
+                {- multi \n\
+                line -}
+                " => vec![
+                    span_at(" end of line", 19, 3, 37),
+                    span_at(" multi \nline ", 19, 4, 68)
+                ]
+    }
 }

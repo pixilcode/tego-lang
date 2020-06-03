@@ -1,5 +1,6 @@
 use nom::{
-    Compare, CompareResult, InputIter, InputLength, InputTake, Offset, Slice, UnspecializedInput,
+    Compare, CompareResult, FindSubstring, InputIter, InputLength, InputTake, Offset, Slice,
+    UnspecializedInput,
 };
 use std::ops::{Range, RangeFrom, RangeFull, RangeTo};
 
@@ -138,6 +139,12 @@ impl<'a> Compare<&str> for Span<'a> {
 
     fn compare_no_case(&self, s: &str) -> CompareResult {
         self.lexeme.compare_no_case(s)
+    }
+}
+
+impl<'a> FindSubstring<&str> for Span<'a> {
+    fn find_substring(&self, substr: &str) -> Option<usize> {
+        self.to_str().find_substring(substr)
     }
 }
 

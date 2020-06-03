@@ -1,10 +1,10 @@
 use crate::ast::Expr;
 use crate::ast::Match;
+use crate::parser::error::*;
 use crate::parser::match_::*;
 use crate::parser::tokens::*;
 use crate::parser::Input;
 use crate::parser::ParseResult;
-use crate::parser::error::*;
 
 use nom::{
     branch::alt,
@@ -77,39 +77,33 @@ pub fn let_expr(input: Input<'_>) -> ExprResult<'_> {
 
 pub fn if_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(if_)(input).and_then(|(input, if_token)| match if_token {
-        Some(_) => pair(join_expr, opt_nl(alt((then, q_mark))))(input)
-        .map_err(if_cond_error)    
-        .and_then(
-                |(input, (cond, symbol))| {
-                    let next_symbol = match symbol.into() {
-                        "then" => else_,
-                        "?" => colon,
-                        _ => unreachable!(),
-                    };
-                    separated_pair(opt_nl(expr), opt_nl(next_symbol), expr)(input)
-                        .map_err(if_body_error)
-                        .map(|(input, (t, f))| (input, Expr::if_expr(cond, t, f)))
-                },
-            ),
+        Some(_) => terminated(join_expr, opt_nl(alt((then, q_mark))))(input)
+            .map_err(if_cond_error)
+            .and_then(|(input, cond)| {
+                separated_pair(opt_nl(expr), opt_nl(else_), expr)(input)
+                    .map_err(if_body_error)
+                    .map(|(input, (t, f))| (input, Expr::if_expr(cond, t, f)))
+            }),
         None => match_expr(input),
     })
 }
 
 pub fn match_expr(input: Input<'_>) -> ExprResult<'_> {
     opt(match_kw)(input).and_then(|(input, match_token)| match match_token {
-        Some(_) => terminated(join_expr, opt_nl(to))(input)
+        Some(_) => terminated(join_expr, to)(input)
             .map_err(match_head_error)
             .and_then(|(input, val)| {
-                many1(opt_nl(match_arm))(input)
+                // nl has to be preceding so as not to conflict with
+                // the `req_nl` parser that likely directly follows the match expr
+                many1(preceding_opt_nl(match_arm))(input)
                     .and_then(|(input, patterns)| Ok((input, Expr::match_(val, patterns))))
-        }),
+            }),
         None => join_expr(input),
     })
 }
 
 pub fn match_arm(input: Input<'_>) -> ParseResult<'_, (Match, Expr)> {
-    preceded(bar, separated_pair(match_, arrow, expr))(input)
-    .map_err(match_arm_error)
+    preceded(bar, separated_pair(match_, arrow, expr))(input).map_err(match_arm_error)
 }
 
 binary_expr!(join_expr, comma, or_expr);
@@ -143,8 +137,11 @@ fn fn_application(input: Input<'_>) -> ExprResult<'_> {
 
 fn grouping(input: Input<'_>) -> ExprResult<'_> {
     opt(opt_nl(left_paren))(input).and_then(|(input, paren_token)| match paren_token {
-        Some(_) => terminated(opt(opt_nl(expr)), right_paren)(input)
-            .map_err(terminating_paren_error)
+        Some(open_paren) => terminated(opt(opt_nl(expr)), right_paren)(input)
+            .map_err(terminating_paren_error((
+                open_paren.line(),
+                open_paren.column(),
+            )))
             .map(|(input, opt_exp)| (input, opt_exp.unwrap_or_else(Expr::unit))),
         None => literal(input),
     })
@@ -313,7 +310,7 @@ mod tests {
                 Expr::bool(true),
                 Expr::int(1),
                 Expr::int(2));
-        (expr): "if true ?\n1\n:\n2" =>
+        (expr): "if true ?\n1\nelse\n2" =>
             Expr::if_expr(
                 Expr::bool(true),
                 Expr::int(1),

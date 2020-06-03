@@ -1,8 +1,8 @@
 use crate::ast::Match;
+use crate::parser::error::*;
 use crate::parser::tokens::*;
 use crate::parser::Input;
 use crate::parser::ParseResult;
-use crate::parser::error::*;
 use nom::branch::alt;
 
 use nom::{
@@ -25,16 +25,19 @@ fn tuple(input: Input<'_>) -> MatchResult<'_> {
 
 pub fn grouping(input: Input<'_>) -> MatchResult<'_> {
     opt(left_paren)(input).and_then(|(input, left_paren)| match left_paren {
-        Some(_) => terminated(opt(match_), right_paren)(input)
-            .map_err(grouping_match_error)
+        Some(open_paren) => terminated(opt(match_), right_paren)(input)
+            .map_err(grouping_match_error((
+                open_paren.line(),
+                open_paren.column(),
+            )))
             .map(|(input, pattern)| (input, pattern.unwrap_or_else(Match::unit))),
         None => atom(input),
     })
 }
 
 fn atom(input: Input<'_>) -> MatchResult<'_> {
-    alt((true_val, false_val, underscore, number, identifier))(input).and_then(
-        |(new_input, token)| match token.into() {
+    alt((true_val, false_val, underscore, number, identifier))(input)
+        .and_then(|(new_input, token)| match token.into() {
             "true" => Ok((new_input, Match::bool(true))),
             "false" => Ok((new_input, Match::bool(false))),
             "_" => Ok((new_input, Match::ignore())),
@@ -45,13 +48,14 @@ fn atom(input: Input<'_>) -> MatchResult<'_> {
                     Ok((new_input, Match::ident(lexeme)))
                 }
             }
-        },
-    ).map_err(basic_match_error)
+        })
+        .map_err(basic_match_error)
 }
 
 pub fn variable(input: Input<'_>) -> MatchResult<'_> {
-    identifier(input).map(|(input, lexeme)| (input, Match::ident(lexeme.into())))
-    .map_err(ident_match_error)
+    identifier(input)
+        .map(|(input, lexeme)| (input, Match::ident(lexeme.into())))
+        .map_err(ident_match_error)
 }
 
 #[cfg(test)]

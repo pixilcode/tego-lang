@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+* Support for comments
+  * `--` starts a single line comment
+  * `{-` and `-}` wrap a multi-line comment
+* Improved parsing errors, so the user actually *understands* what went wrong
+
+### Changed
+* `:` option removed from if expressions
+  * Only `if ... then ... else ...` and `if ... ? ... else ...` are allowed now
+
+### Fixed
+* A match expression declaration couldn't be followed by any code
+  * ```
+    foo a =
+      match a to
+      | () -> ()
+      | h, t -> foo t
+    
+    bar b = ...
+    ```
+  * The above code produced a 'missing newline' error
+  * Now, it works
+  * Error came from having an optional newline after the match arm, which consumed all whitespace up to the next token; then, at the end of the declaration, a newline was expected, but all newlines had already been consumed
 
 ## [0.4.0] - 2020-05-19
 ### Added

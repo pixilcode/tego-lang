@@ -53,3 +53,6 @@
 * Add file tracking to `Span` struct (useful for error handling)
 * Add more detailed error messages (see [this](https://elm-lang.org/news/compiler-errors-for-humans) and [this](https://blog.rust-lang.org/2016/08/10/Shape-of-errors-to-come.html))
 * Check literal error parsing for keywords (ex. 'if', 'match')
+* Use an arena instead of boxes? (https://discordapp.com/channels/442252698964721669/443150878111694848/
+717089937379557397)
+* Factor out an error interface so that some of the patterns in parse errors can be used elsewhere (including printing out a line of code with the error)

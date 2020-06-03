@@ -3,19 +3,20 @@ use crate::parser::decl;
 use crate::parser::tokens::newlines;
 use crate::parser::Input;
 use crate::parser::ParseResult;
+use nom::combinator::all_consuming;
 use nom::sequence::preceded;
 
 type ProgResult<'a> = ParseResult<'a, Prog>;
 
 pub fn prog(input: Input<'_>) -> ProgResult<'_> {
-    parse_prog(input).map(|(input, (main, decl))| match main {
+    all_consuming(parse_prog)(input).map(|(input, (main, decl))| match main {
         Some(main) => (input, Prog::Binary(main, decl)),
         None => (input, Prog::Library(decl)),
     })
 }
 
 fn parse_prog(input: Input<'_>) -> ParseResult<'_, (Option<Expr>, Vec<Decl>)> {
-    let decl_res = preceded(newlines(true), decl)(input);
+    let decl_res = preceded(newlines(false), decl)(input);
     decl_res.and_then(|(input, decl)| {
         let (input, (main, mut decls)) = if input.to_str().is_empty() {
             (input, (None, vec![]))
