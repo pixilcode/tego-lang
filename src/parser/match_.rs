@@ -32,6 +32,7 @@ pub fn grouping(input: Input<'_>) -> MatchResult<'_> {
             open_paren.column(),
         )))
     ).or_else(try_parser(atom, input))
+    
 }
 
 fn atom(input: Input<'_>) -> MatchResult<'_> {
