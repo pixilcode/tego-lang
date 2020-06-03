@@ -1,5 +1,5 @@
-use crate::parser::{Input, ParseResult};
 use crate::parser::tokens::{newlines, token};
+use crate::parser::{Input, ParseResult};
 use nom::error::ErrorKind as NomErrorKind;
 use std::fmt;
 use std::io;
@@ -43,10 +43,7 @@ impl ParseError {
                     writer,
                     "{:>3} | {}",
                     self.line,
-                    source
-                        .lines()
-                        .nth(self.line - 1)
-                        .unwrap_or("")
+                    source.lines().nth(self.line - 1).unwrap_or("")
                 )?;
                 writeln!(
                     writer,
@@ -60,10 +57,7 @@ impl ParseError {
                     writer,
                     "{:>3} | {}",
                     line,
-                    source
-                        .lines()
-                        .nth(line - 1)
-                        .unwrap_or("")
+                    source.lines().nth(line - 1).unwrap_or("")
                 )?;
                 writeln!(
                     writer,
@@ -78,10 +72,7 @@ impl ParseError {
                     writer,
                     "{:>3} | {}",
                     self.line,
-                    source
-                        .lines()
-                        .nth(self.line - 1)
-                        .unwrap_or("")
+                    source.lines().nth(self.line - 1).unwrap_or("")
                 )?;
                 writeln!(
                     writer,
@@ -229,12 +220,18 @@ macro_rules! error_type {
 // Error handlers
 
 // Try a different parser
-pub fn try_parser<'a, F, O>(parser: F, input: Input<'a>) -> impl Fn(nom::Err<(Input<'a>, ParseError)>) -> ParseResult<'a, O>
-where F: Fn(Input<'a>) -> ParseResult<'a, O> {
-    move |error|
-    match error {
-        nom::Err::Error((input, error)) if !error.is_unhandled() => Err(nom::Err::Error((input, error))),
-        _ => parser(input)
+pub fn try_parser<'a, F, O>(
+    parser: F,
+    input: Input<'a>,
+) -> impl Fn(nom::Err<(Input<'a>, ParseError)>) -> ParseResult<'a, O>
+where
+    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+{
+    move |error| match error {
+        nom::Err::Error((input, error)) if !error.is_unhandled() => {
+            Err(nom::Err::Error((input, error)))
+        }
+        _ => parser(input),
     }
 }
 
@@ -383,7 +380,7 @@ impl From<&ErrorKind> for u16 {
             ErrorKind::Eof => 20,
             ErrorKind::UnknownNomError => 21,
             ErrorKind::UnhandledError => 22,
-            ErrorKind::EndOfExpr => 23
+            ErrorKind::EndOfExpr => 23,
         }
     }
 }

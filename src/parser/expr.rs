@@ -40,10 +40,9 @@ macro_rules! binary_expr {
 macro_rules! unary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
         fn $name(input: Input<'_>) -> ExprResult<'_> {
-            pair($op_func, $name)(input).and_then(
-                |(input, (op, a))| 
-                Ok((input, Expr::unary(op.to_str().into(), a)))
-            ).or_else(try_parser($next_precedence, input))
+            pair($op_func, $name)(input)
+                .and_then(|(input, (op, a))| Ok((input, Expr::unary(op.to_str().into(), a))))
+                .or_else(try_parser($next_precedence, input))
         }
     };
 }
@@ -53,8 +52,8 @@ pub fn expr(input: Input<'_>) -> ExprResult<'_> {
 }
 
 pub fn let_expr(input: Input<'_>) -> ExprResult<'_> {
-    alt((let_, delay))(input).and_then(|(input, let_token)| {
-        match let_token.into() {
+    alt((let_, delay))(input)
+        .and_then(|(input, let_token)| match let_token.into() {
             "let" => {
                 separated_pair(separated_pair(match_, assign, if_expr), opt_nl(in_), expr)(input)
                     .map_err(let_assign_error)
@@ -70,33 +69,37 @@ pub fn let_expr(input: Input<'_>) -> ExprResult<'_> {
             .map_err(delay_assign_error)
             .map(|(input, ((ident, value), inner))| (input, Expr::delayed(ident, value, inner))),
             _ => unreachable!(),
-        }
-    }).or_else(try_parser(if_expr, input))
+        })
+        .or_else(try_parser(if_expr, input))
 }
 
 pub fn if_expr(input: Input<'_>) -> ExprResult<'_> {
-    if_(input).and_then(|(input, _)| 
-        terminated(join_expr, opt_nl(alt((then, q_mark))))(input)
-            .map_err(if_cond_error)
-            .and_then(|(input, cond)| {
-                separated_pair(opt_nl(expr), opt_nl(else_), expr)(input)
-                    .map_err(if_body_error)
-                    .map(|(input, (t, f))| (input, Expr::if_expr(cond, t, f)))
-            })
-    ).or_else(try_parser(match_expr, input))
+    if_(input)
+        .and_then(|(input, _)| {
+            terminated(join_expr, opt_nl(alt((then, q_mark))))(input)
+                .map_err(if_cond_error)
+                .and_then(|(input, cond)| {
+                    separated_pair(opt_nl(expr), opt_nl(else_), expr)(input)
+                        .map_err(if_body_error)
+                        .map(|(input, (t, f))| (input, Expr::if_expr(cond, t, f)))
+                })
+        })
+        .or_else(try_parser(match_expr, input))
 }
 
 pub fn match_expr(input: Input<'_>) -> ExprResult<'_> {
-    match_kw(input).and_then(|(input, _)|
-        terminated(join_expr, to)(input)
-            .map_err(match_head_error)
-            .and_then(|(input, val)| {
-                // nl has to be preceding so as not to conflict with
-                // the `req_nl` parser that likely directly follows the match expr
-                many1(preceding_opt_nl(match_arm))(input)
-                    .and_then(|(input, patterns)| Ok((input, Expr::match_(val, patterns))))
-            })
-    ).or_else(try_parser(join_expr, input))
+    match_kw(input)
+        .and_then(|(input, _)| {
+            terminated(join_expr, to)(input)
+                .map_err(match_head_error)
+                .and_then(|(input, val)| {
+                    // nl has to be preceding so as not to conflict with
+                    // the `req_nl` parser that likely directly follows the match expr
+                    many1(preceding_opt_nl(match_arm))(input)
+                        .and_then(|(input, patterns)| Ok((input, Expr::match_(val, patterns))))
+                })
+        })
+        .or_else(try_parser(join_expr, input))
 }
 
 pub fn match_arm(input: Input<'_>) -> ParseResult<'_, (Match, Expr)> {
@@ -120,11 +123,13 @@ unary_expr!(negate_expr, minus, not_expr);
 unary_expr!(not_expr, not, fn_expr);
 
 fn fn_expr(input: Input<'_>) -> ExprResult<'_> {
-    fn_(input).and_then(|(input, _)|
-        separated_pair(match_, opt_nl(arrow), expr)(input)
-            .map_err(fn_expr_error)
-            .map(|(input, (param, body))| (input, Expr::fn_expr(param, body)))
-    ).or_else(try_parser(fn_application, input))
+    fn_(input)
+        .and_then(|(input, _)| {
+            separated_pair(match_, opt_nl(arrow), expr)(input)
+                .map_err(fn_expr_error)
+                .map(|(input, (param, body))| (input, Expr::fn_expr(param, body)))
+        })
+        .or_else(try_parser(fn_application, input))
 }
 
 fn fn_application(input: Input<'_>) -> ExprResult<'_> {
@@ -132,14 +137,17 @@ fn fn_application(input: Input<'_>) -> ExprResult<'_> {
 }
 
 fn grouping(input: Input<'_>) -> ExprResult<'_> {
-    opt_nl(left_paren)(input).and_then(|(input, open_paren)|
-        right_paren(input).map(|(input, _)| (input, Expr::unit()))
-        .or_else(try_parser(terminated(opt_nl(expr), right_paren), input))
-        .map_err(terminating_paren_error((
-            open_paren.line(),
-            open_paren.column(),
-        )))
-    ).or_else(try_parser(literal, input))
+    opt_nl(left_paren)(input)
+        .and_then(|(input, open_paren)| {
+            right_paren(input)
+                .map(|(input, _)| (input, Expr::unit()))
+                .or_else(try_parser(terminated(opt_nl(expr), right_paren), input))
+                .map_err(terminating_paren_error((
+                    open_paren.line(),
+                    open_paren.column(),
+                )))
+        })
+        .or_else(try_parser(literal, input))
 }
 
 fn literal(input: Input<'_>) -> ExprResult<'_> {

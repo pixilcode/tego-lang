@@ -24,15 +24,17 @@ fn tuple(input: Input<'_>) -> MatchResult<'_> {
 }
 
 pub fn grouping(input: Input<'_>) -> MatchResult<'_> {
-    opt_nl(left_paren)(input).and_then(|(input, open_paren)|
-        right_paren(input).map(|(input, _)| (input, Match::unit()))
-        .or_else(try_parser(terminated(match_, right_paren), input))
-        .map_err(grouping_match_error((
-            open_paren.line(),
-            open_paren.column(),
-        )))
-    ).or_else(try_parser(atom, input))
-    
+    left_paren(input)
+        .and_then(|(input, open_paren)| {
+            right_paren(input)
+                .map(|(input, _)| (input, Match::unit()))
+                .or_else(try_parser(terminated(match_, right_paren), input))
+                .map_err(grouping_match_error((
+                    open_paren.line(),
+                    open_paren.column(),
+                )))
+        })
+        .or_else(try_parser(atom, input))
 }
 
 fn atom(input: Input<'_>) -> MatchResult<'_> {
