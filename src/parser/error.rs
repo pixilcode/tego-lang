@@ -1,4 +1,4 @@
-use crate::parser::Input;
+use crate::parser::{Input, ParseResult};
 use crate::parser::tokens::{newlines, token};
 use nom::error::ErrorKind as NomErrorKind;
 use std::fmt;
@@ -227,6 +227,16 @@ macro_rules! error_type {
 }
 
 // Error handlers
+
+// Try a different parser
+pub fn try_parser<'a, F, O>(parser: F, input: Input<'a>) -> impl Fn(nom::Err<(Input<'a>, ParseError)>) -> ParseResult<'a, O>
+where F: Fn(Input<'a>) -> ParseResult<'a, O> {
+    move |error|
+    match error {
+        nom::Err::Error((input, error)) if !error.is_unhandled() => Err(nom::Err::Error((input, error))),
+        _ => parser(input)
+    }
+}
 
 // Token Errors
 error_type!(reserved_error, ErrorKind::Reserved(token); token: &'static str);
