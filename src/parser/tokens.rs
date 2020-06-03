@@ -15,7 +15,7 @@ const KEYWORDS: &[&str; 15] = &[
 ];
 
 pub fn newlines<'a>(
-    is_opt: bool,
+    is_req: bool,
 ) -> impl Fn(Input<'a>) -> ParseResult<'a, (Vec<Input<'a>>, Option<Input<'a>>, Vec<Input<'a>>)> {
     move |input| {
         map_res(
@@ -24,9 +24,9 @@ pub fn newlines<'a>(
                 opt(alt((line_ending, single_comment, multi_comment))),
                 multicomment0,
             )), // This parser cannot fail
-            move |(ws1, nl, ws2)| match (is_opt, nl) {
+            move |(ws1, nl, ws2)| match (is_req, nl) {
                 // The error won't be used in any way, just indicates that it's an error
-                (false, None) => Err(()),
+                (true, None) => Err(()),
                 (_, nl) => Ok((ws1, nl, ws2)),
             },
         )(input)
@@ -47,7 +47,7 @@ pub fn multicomment0(input: Input<'_>) -> ParseResult<'_, Vec<Input<'_>>> {
 
 fn single_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     preceded(
-        single_comment_start,
+        tag("--"),
         alt((terminated(not_line_ending, line_ending), not_line_ending)),
     )(input)
 }
@@ -55,17 +55,17 @@ fn single_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
 fn inline_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     verify(
         terminated(
-            preceded(multi_comment_open, take_until("-}")),
-            multi_comment_close,
+            preceded(tag("{-"), take_until("-}")),
+            tag("-}"),
         ),
-        |s| !s.to_str().contains('\n'),
+        |s: &Input| !s.to_str().contains('\n'),
     )(input)
 }
 
 fn multi_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     terminated(
-        preceded(multi_comment_open, take_until("-}")),
-        multi_comment_close,
+        preceded(tag("{-"), take_until("-}")),
+        tag("-}"),
     )(input)
 }
 
@@ -73,14 +73,14 @@ pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
 where
     F: Fn(Input<'a>) -> ParseResult<'a, O>,
 {
-    terminated(parser, newlines(true))
+    terminated(parser, newlines(false))
 }
 
 pub fn preceding_opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
 where
     F: Fn(Input<'a>) -> ParseResult<'a, O>,
 {
-    preceded(newlines(true), parser)
+    preceded(newlines(false), parser)
 }
 
 pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
@@ -89,11 +89,11 @@ where
 {
     terminated(
         parser,
-        alt((all_consuming(newlines(true)), newlines(false))),
+        alt((all_consuming(newlines(false)), newlines(true))),
     )
 }
 
-fn token<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+pub fn token<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
 where
     F: Fn(Input<'a>) -> ParseResult<'a, O>,
 {
@@ -168,9 +168,6 @@ reserved!(underscore, "_");
 reserved!(delay, "delay");
 reserved!(single_quote, "'");
 reserved!(double_quote, "\"");
-reserved!(single_comment_start, "--");
-reserved!(multi_comment_open, "{-");
-reserved!(multi_comment_close, "-}");
 
 fn is_keyword(lexeme: &str) -> bool {
     KEYWORDS.iter().any(|keyword| keyword == &lexeme)
@@ -223,9 +220,6 @@ mod tests {
     parser_test!(delay_test (delay): "delay" => "delay".into());
     parser_test!(single_quote_test (single_quote): "'" => "'".into());
     parser_test!(double_quote_test (double_quote): "\"" => "\"".into());
-    parser_test!(single_comment_start_test (single_comment_start): "--" => "--".into());
-    parser_test!(multi_comment_open_test (multi_comment_open): "{-" => "{-".into());
-    parser_test!(multi_comment_close_test (multi_comment_close): "-}" => "-}".into());
     // Use find and replace
     // Find: reserved!\(([a-z_]+), ("[^"]+")\);
     // Replace: parser_test!($1_test ($1): $2 => $2);

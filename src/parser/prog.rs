@@ -16,7 +16,7 @@ pub fn prog(input: Input<'_>) -> ProgResult<'_> {
 }
 
 fn parse_prog(input: Input<'_>) -> ParseResult<'_, (Option<Expr>, Vec<Decl>)> {
-    let decl_res = preceded(newlines(true), decl)(input);
+    let decl_res = preceded(newlines(false), decl)(input);
     decl_res.and_then(|(input, decl)| {
         let (input, (main, mut decls)) = if input.to_str().is_empty() {
             (input, (None, vec![]))
