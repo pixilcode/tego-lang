@@ -39,7 +39,7 @@ fn example_tests() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap()
         })
         .for_each(|(outfile, codefile)| {
-            let mut cmd = Command::cargo_bin("tego-lang").unwrap();
+            let mut cmd = Command::cargo_bin("tego").unwrap();
             let output = cmd.arg("run").arg(codefile).output().unwrap();
             let expected = fs::read_to_string(outfile).unwrap();
             assert_eq!(String::from_utf8(output.stdout).unwrap(), expected);

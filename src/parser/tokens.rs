@@ -54,19 +54,13 @@ fn single_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
 
 fn inline_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     verify(
-        terminated(
-            preceded(tag("{-"), take_until("-}")),
-            tag("-}"),
-        ),
+        terminated(preceded(tag("{-"), take_until("-}")), tag("-}")),
         |s: &Input| !s.to_str().contains('\n'),
     )(input)
 }
 
 fn multi_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
-    terminated(
-        preceded(tag("{-"), take_until("-}")),
-        tag("-}"),
-    )(input)
+    terminated(preceded(tag("{-"), take_until("-}")), tag("-}"))(input)
 }
 
 pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
