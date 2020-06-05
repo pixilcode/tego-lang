@@ -1,3 +1,4 @@
+use crate::execute::value::tuple::TupleWrapper;
 use crate::ast::Expr;
 use crate::ast::{Match, MatchVal};
 use crate::environment::{Env, EnvVal};
@@ -7,21 +8,6 @@ use std::cell::RefCell;
 use std::fmt;
 use std::ops;
 use std::rc::Weak;
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Value {
-    Int(i32),
-    Bool(bool),
-    Tuple(Vec<Value>),
-    Function(Match, Box<Expr>, StoredEnv),
-    Delayed {
-        value: Box<Expr>,
-        self_ptr: StoredEnv,
-        outer_env: StoredEnv,
-    },
-    Char(char),
-    Error(String),
-}
 
 macro_rules! impl_op {
     ($op:ty, $func:ident, $name:expr => $( $type_:pat = $new_val:expr ),+) => {
@@ -94,6 +80,35 @@ macro_rules! impl_op {
     };
 }
 
+macro_rules! conversion {
+    ($for_type:ty [ $param:ident : $type:ty ] => $converted:expr) => {
+        impl From<$type> for $for_type {
+            fn from($param: $type) -> Self {
+                $converted
+            }
+        }
+    };
+}
+
+mod tuple;
+
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Value {
+    Int(i32),
+    Bool(bool),
+    Tuple(TupleWrapper),
+    Function(Match, Box<Expr>, StoredEnv),
+    Delayed {
+        value: Box<Expr>,
+        self_ptr: StoredEnv,
+        outer_env: StoredEnv,
+    },
+    Char(char),
+    Error(String),
+}
+
+
 impl Value {
     pub fn eval(self, env: Option<WrappedEnv>) -> Self {
         match self {
@@ -113,16 +128,12 @@ impl Value {
         }
     }
 
-    pub fn is_type(&self, t: &Type) -> bool {
-        t == &self.type_()
-    }
-
     pub fn type_(&self) -> Type {
         match self {
             Value::Int(_) => Type::Int,
             Value::Bool(_) => Type::Bool,
             Value::Char(_) => Type::Char,
-            Value::Tuple(vals) => Type::Tuple(vals.iter().map(|v| v.type_()).collect()),
+            Value::Tuple(vals) => Type::Tuple(vals.into_iter().map(|v| v.type_()).collect()),
             Value::Function(_, _, _) => Type::Fn_,
             v @ Value::Delayed { .. } => v.clone().eval(None).type_(),
             Value::Error(_) => Type::Error,
@@ -165,31 +176,32 @@ impl Value {
     }
 
     pub fn unit() -> Self {
-        Value::Tuple(vec![])
+        vec![].into()
+    }
+
+    pub fn generic_tuple(vec: Vec<Value>) -> Self {
+        vec.into()
     }
 
     pub fn string(s: &str) -> Self {
-        Value::Tuple(s.chars().map(Value::Char).collect())
+        s.into()
     }
 
     impl_op!(join, "join" =>
-        Value::Tuple(mut a_vals), Value::Tuple(mut b_vals) =
-            Value::Tuple({
-                a_vals.append(&mut b_vals);
-                a_vals
-            }),
-        Value::Tuple(mut a_vals), b =
-            Value::Tuple({
-                a_vals.push(b);
-                a_vals
-            }),
-        a, Value::Tuple(mut b_vals) =
-            Value::Tuple({
-                b_vals.insert(0, a);
-                b_vals
-            }),
+        Value::Tuple(a_vals), Value::Tuple(b_vals) =
+            Value::Tuple(a_vals.append(b_vals)),
+        Value::Tuple(a_vals), b =
+            Value::Tuple(a_vals.push_to_back(b)),
+        a, Value::Tuple(b_vals) =
+            Value::Tuple(b_vals.push_to_front(a)),
+        Value::Char(a), Value::Char(b) = {
+            let mut string = String::with_capacity(2);
+            string.push(a);
+            string.push(b);
+            string.into()
+        },
         a, b =
-            Value::Tuple(vec![a, b])
+            Value::Tuple(vec![a, b].into())
     );
 
     impl_op!(less_than, "less than" =>
@@ -214,7 +226,7 @@ impl EnvVal for Value {
         match (pattern, self) {
             (Match::Ident(ident), val) => Ok(vec![(ident.into(), val.clone())]),
             (Match::Tuple(tup_match), Value::Tuple(tup_val)) => unwrap_tuple(&tup_match, &tup_val),
-            (Match::Tuple(tup_match), val) => unwrap_tuple(&tup_match, &[val.clone()]),
+            (Match::Tuple(tup_match), val) => unwrap_tuple(&tup_match, &vec![val.clone()].into()),
             (Match::Value(MatchVal::Int(a)), Value::Int(b)) => {
                 if a == b {
                     Ok(vec![])
@@ -242,15 +254,15 @@ impl EnvVal for Value {
     }
 }
 
-fn unwrap_tuple(tup_match: &[Match], tup_val: &[Value]) -> Result<Vec<(String, Value)>, String> {
+fn unwrap_tuple(tup_match: &[Match], tup_val: &TupleWrapper) -> Result<Vec<(String, Value)>, String> {
     let tup_match_len = tup_match.len();
     let tup_val_len = tup_val.len();
     match (tup_match_len, tup_val_len) {
         (0, 0) => Ok(vec![]),
         (0, _) => Err("Tried to match non-empty tuple against '()'".into()),
         (1, 0) => Value::unit().unwrap_matches(&tup_match[0]),
-        (1, 1) => tup_val[0].unwrap_matches(&tup_match[0]),
-        (1, _) => Value::Tuple(tup_val.to_vec()).unwrap_matches(&tup_match[0]),
+        (1, 1) => tup_val.index(0).unwrap_matches(&tup_match[0]),
+        (1, _) => Value::Tuple(tup_val.clone()).unwrap_matches(&tup_match[0]),
         (_, 0) => Value::unit()
             .unwrap_matches(&tup_match[0])
             .and_then(|mut vals| {
@@ -259,10 +271,10 @@ fn unwrap_tuple(tup_match: &[Match], tup_val: &[Value]) -> Result<Vec<(String, V
                     Ok(vals)
                 })
             }),
-        (_, _) => tup_val[0]
+        (_, _) => tup_val.index(0)
             .unwrap_matches(&tup_match[0])
             .and_then(|mut vals| {
-                unwrap_tuple(&tup_match[1..], &tup_val[1..]).and_then(|mut rest| {
+                unwrap_tuple(&tup_match[1..], &tup_val.from(1)).and_then(|mut rest| {
                     vals.append(&mut rest);
                     Ok(vals)
                 })
@@ -292,38 +304,7 @@ impl fmt::Display for Value {
                 Value::Int(i) => i32::to_string(i),
                 Value::Bool(b) => bool::to_string(b),
                 Value::Char(c) => format!("'{}'", char::to_string(c)),
-                Value::Tuple(vals) => {
-                    // If it is possible to represent it as a string, do it
-                    let string = vals.iter().fold(
-                        Ok(String::with_capacity(vals.len() * 4)), // Each char is at most 4 bytes long
-                        |string, value| {
-                            string.and_then(|mut s| match value {
-                                Value::Char(c) => {
-                                    s.push(*c);
-                                    Ok(s)
-                                }
-                                _ => Err(()),
-                            })
-                        },
-                    );
-
-                    if let Ok(string) = string {
-                        format!("\"{}\"", string)
-                    } else {
-                        let result = vals
-                            .iter()
-                            .map(|v| format!("{}", v))
-                            .fold(String::new(), |a, s| a + &s + ", ");
-
-                        let result = if result.len() >= 2 {
-                            &result[..result.len() - 2] // Get rid of the last ", "
-                        } else {
-                            &result
-                        };
-
-                        format!("({})", result)
-                    }
-                }
+                Value::Tuple(vals) => format!("{}", vals),
                 Value::Function(_, _, _) => "<fn>".into(),
                 v @ Value::Delayed { .. } => format!("{}", v.clone().eval(None)),
                 Value::Error(error) => format!("Error: {}", error),
@@ -402,11 +383,21 @@ fn unary_op_error(op: &str, type_: Type) -> Value {
     ))
 }
 
+conversion!( Value[i: i32] => Value::Int(i));
+conversion!( Value[b: bool] => Value::Bool(b));
+conversion!( Value[c: char] => Value::Char(c));
+conversion!( Value[vec: Vec<Value>] => Value::Tuple(vec.into()));
+conversion!( Value[slice: &[Value]] => Value::Tuple(slice.into()));
+conversion!( Value[string: String] => Value::Tuple(string.into()));
+conversion!( Value[string: &str] => Value::Tuple(string.into()));
+
 #[derive(Debug, Clone)]
 pub enum StoredEnv {
     Expr(WrappedEnv),
     Decl(Weak<RefCell<VarEnv>>), // To avoid memory leaks
 }
+
+
 
 impl StoredEnv {
     pub fn unwrap(self) -> WrappedEnv {
@@ -666,10 +657,10 @@ mod tests {
         unwrap_ident
         Value::Int(1).unwrap_matches(&Match::ident("a")) =>
             Ok(vec![("a".into(), Value::Int(1))]);
-        Value::Tuple(vec![Value::Int(1), Value::Int(2)])
+        Value::generic_tuple(vec![Value::Int(1), Value::Int(2)])
             .unwrap_matches(&Match::ident("a")) =>
                 Ok(vec![
-                    ("a".into(), Value::Tuple(vec![
+                    ("a".into(), Value::generic_tuple(vec![
                         Value::Int(1),
                         Value::Int(2)
                     ]))
@@ -678,7 +669,7 @@ mod tests {
 
     basic_test!(
         unwrap_tuple
-        Value::Tuple(
+        Value::generic_tuple(
             vec![Value::Int(1), Value::Int(2), Value::Int(3)]
         ).unwrap_matches(
             &Match::tuple(
@@ -692,7 +683,7 @@ mod tests {
                 ("c".into(), Value::Int(3))
             ]);
 
-        Value::Tuple(
+        Value::generic_tuple(
             vec![Value::Int(1), Value::Int(2), Value::Int(3)]
         ).unwrap_matches(
             &Match::tuple(
@@ -702,10 +693,10 @@ mod tests {
         ) =>
             Ok(vec![
                 ("a".into(), Value::Int(1)),
-                ("b".into(), Value::Tuple(vec![Value::Int(2), Value::Int(3)]))
+                ("b".into(), Value::generic_tuple(vec![Value::Int(2), Value::Int(3)]))
             ]);
 
-        Value::Tuple(
+        Value::generic_tuple(
             vec![Value::Int(1), Value::Int(2)]
         ).unwrap_matches(
             &Match::tuple(
@@ -719,12 +710,12 @@ mod tests {
                 ("c".into(), Value::unit())
             ]);
 
-        Value::Tuple(vec![]).unwrap_matches(
+        Value::unit().unwrap_matches(
             &Match::Tuple(vec![])
         ) =>
             Ok(vec![]);
 
-        Value::Tuple(
+        Value::generic_tuple(
             vec![Value::Int(1), Value::Int(2)]
         ).unwrap_matches(
             &Match::Tuple(vec![])

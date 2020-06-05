@@ -138,7 +138,7 @@ impl Expr {
     }
 
     pub fn tuple(vals: Vec<Value>) -> Self {
-        Expr::Literal(Value::Tuple(vals))
+        Expr::Literal(Value::generic_tuple(vals))
     }
 
     pub fn string(s: &str) -> Self {

@@ -1,4 +1,5 @@
 extern crate nom;
+extern crate owned_chars;
 
 #[allow(unused_macros)]
 macro_rules! basic_test {
