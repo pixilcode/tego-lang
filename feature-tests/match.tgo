@@ -1,0 +1,22 @@
+main = mtchBool true, ", ", mtchInt 1, ", ", mtchStr "a", ", ", mtchChar 'a'
+
+mtchBool b =
+	match b to
+	| true -> "bool success"
+	| _ -> "bool failed"
+
+mtchInt i =
+	match i to
+	| 1 -> "int success"
+	| _ -> "int failed"
+
+
+mtchChar c =
+	match c to
+	| 'a' -> "char success"
+	| _ -> "char failed"
+
+mtchStr s =
+	match s to
+	| "a" -> "string success"
+	| _ -> "string failed"
