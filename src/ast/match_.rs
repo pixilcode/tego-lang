@@ -39,6 +39,14 @@ impl Match {
         Match::Value(MatchVal::Bool(b))
     }
 
+    pub fn char(c: char) -> Self {
+        Match::Value(MatchVal::Char(c))
+    }
+
+    pub fn string(s: &str) -> Self {
+        Match::Value(MatchVal::String(s.into()))
+    } 
+
     pub fn unit() -> Self {
         Match::Tuple(vec![])
     }
@@ -52,17 +60,17 @@ impl Match {
 pub enum MatchVal {
     Int(i32),
     Bool(bool),
+    Char(char),
+    String(String)
 }
 
 impl fmt::Display for MatchVal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
             match self {
-                MatchVal::Int(i) => i32::to_string(i),
-                MatchVal::Bool(b) => bool::to_string(b),
+                MatchVal::Int(i) => write!(f, "{}", i),
+                MatchVal::Bool(b) => write!(f, "{}", b),
+                MatchVal::Char(c) => write!(f, "'{}'", c),
+                MatchVal::String(s) => write!(f, "\"{}\"", s)
             }
-        )
     }
 }

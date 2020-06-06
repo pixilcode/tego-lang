@@ -53,3 +53,6 @@
 * Use an arena instead of boxes? (https://discordapp.com/channels/442252698964721669/443150878111694848/
 717089937379557397)
 * Factor out an error interface so that some of the patterns in parse errors can be used elsewhere (including printing out a line of code with the error)
+* Make an issue where people can put parse error codes that they don't understand
+* Use `Cow<'a, str>` instead of `String` in tuple representation
+* Add generators to language (should be easy, just modify `TupleWrapper` to add a new type)

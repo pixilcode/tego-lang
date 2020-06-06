@@ -241,6 +241,23 @@ impl EnvVal for Value {
                     Err(format!("Expected '{}', found '{}'", a, b))
                 }
             }
+            (Match::Value(MatchVal::Char(a)), Value::Char(b)) => {
+                if a == b {
+                    Ok(vec![])
+                } else {
+                    Err(format!("Expected '{}', found '{}'", a, b))
+                }
+            }
+            (Match::Value(MatchVal::String(a)), Value::Tuple(b)) => {
+                if a.chars().map(Value::Char).zip(b.into_iter()).all(
+                    |(val_a, val_b)|
+                    val_a == val_b
+                ) {
+                    Ok(vec![])
+                } else {
+                    Err(format!("Expected string \"{}\", found {}", a, b))
+                }
+            }
             (Match::Ignore, _) => Ok(vec![]),
             (pattern, value) => match_error(pattern, value),
         }

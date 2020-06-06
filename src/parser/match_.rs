@@ -51,6 +51,8 @@ fn atom(input: Input<'_>) -> MatchResult<'_> {
                 }
             }
         })
+        .or_else(|_| string(input).map(|(input, s)| (input, Match::string(s.into()))))
+        .or_else(|_| char(input).map(|(input, c)| (input, Match::char(c))))
         .map_err(basic_match_error)
 }
 
