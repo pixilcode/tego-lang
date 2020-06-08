@@ -4,7 +4,7 @@ use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, take_while1, take_until},
     character::complete::{anychar, digit1, line_ending, multispace0, not_line_ending, space0},
-    combinator::{all_consuming, map_res, opt, verify, peek},
+    combinator::{all_consuming, map, map_res, opt, verify, peek, rest_len},
     multi::many0,
     sequence::{preceded, terminated, tuple},
 };
@@ -100,7 +100,13 @@ macro_rules! reserved {
             token(
                 terminated(
                     tag($lexeme_str),
-                    peek(verify(anychar, |c| !is_identifier_char(*c)))
+                    alt((
+                        peek(verify(anychar, |c| !is_identifier_char(*c))),
+                        map( // Only used for typechecking purposes
+                            verify(rest_len, |len| *len == 0),
+                            |_| char::from(0) // This character will be ignored
+                        )
+                    ))
                 )
             )(input).map_err(reserved_error($lexeme_str))
         }
