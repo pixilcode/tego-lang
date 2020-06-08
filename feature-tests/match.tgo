@@ -1,22 +1,21 @@
-main = mtchBool true, ", ", mtchInt 1, ", ", mtchStr "a", ", ", mtchChar 'a'
+main = matchBool true, matchInt 1, matchChar 'a', matchStr "a"
 
-mtchBool b =
+matchBool b =
 	match b to
-	| true -> "bool success"
-	| _ -> "bool failed"
+	| true -> true
+	| _ -> false
 
-mtchInt i =
+matchInt i =
 	match i to
-	| 1 -> "int success"
-	| _ -> "int failed"
+	| 1 -> true
+	| _ -> false
 
-
-mtchChar c =
+matchChar c =
 	match c to
-	| 'a' -> "char success"
-	| _ -> "char failed"
+	| 'a' -> true
+	| _ -> false
 
-mtchStr s =
+matchStr s =
 	match s to
-	| "a" -> "string success"
-	| _ -> "string failed"
+	| "a" -> true
+	| _ -> false

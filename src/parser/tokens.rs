@@ -2,9 +2,9 @@ use crate::parser::error::*;
 use crate::parser::{Input, ParseResult};
 use nom::{
     branch::alt,
-    bytes::complete::{is_not, tag, take_till1, take_until},
+    bytes::complete::{is_not, tag, take_while1, take_until},
     character::complete::{anychar, digit1, line_ending, multispace0, not_line_ending, space0},
-    combinator::{all_consuming, map_res, opt, verify},
+    combinator::{all_consuming, map_res, opt, verify, peek},
     multi::many0,
     sequence::{preceded, terminated, tuple},
 };
@@ -95,6 +95,17 @@ where
 }
 
 macro_rules! reserved {
+    (keyword $lexeme:ident, $lexeme_str:literal) => {
+        pub fn $lexeme(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+            token(
+                terminated(
+                    tag($lexeme_str),
+                    peek(verify(anychar, |c| !is_identifier_char(*c)))
+                )
+            )(input).map_err(reserved_error($lexeme_str))
+        }
+    };
+
     ($lexeme:ident, $lexeme_str:literal) => {
         pub fn $lexeme(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
             token(tag($lexeme_str))(input).map_err(reserved_error($lexeme_str))
@@ -120,10 +131,14 @@ pub fn number(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
 
 pub fn identifier(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     token(verify(
-        take_till1(|c: char| !c.is_ascii_alphabetic() && c != '\''),
+        take_while1(is_identifier_char),
         |id: &Input| !is_keyword(id.to_str()) && !id.to_str().starts_with('\''),
     ))(input)
     .map_err(ident_error)
+}
+
+fn is_identifier_char(c: char) -> bool {
+    c.is_ascii_alphabetic() || c == '\''
 }
 
 reserved!(comma, ",");
@@ -132,12 +147,12 @@ reserved!(minus, "-");
 reserved!(star, "*");
 reserved!(slash, "/");
 reserved!(modulo, "%");
-reserved!(and, "and");
-reserved!(or, "or");
-reserved!(xor, "xor");
-reserved!(not, "not");
-reserved!(true_val, "true");
-reserved!(false_val, "false");
+reserved!(keyword and, "and");
+reserved!(keyword or, "or");
+reserved!(keyword xor, "xor");
+reserved!(keyword not, "not");
+reserved!(keyword true_val, "true");
+reserved!(keyword false_val, "false");
 reserved!(equal, "==");
 reserved!(not_equal, "/=");
 reserved!(less_than, "<");
@@ -146,20 +161,20 @@ reserved!(less_than_equal, "<=");
 reserved!(greater_than_equal, ">=");
 reserved!(left_paren, "(");
 reserved!(right_paren, ")");
-reserved!(if_, "if");
-reserved!(then, "then");
+reserved!(keyword if_, "if");
+reserved!(keyword then, "then");
 reserved!(q_mark, "?");
-reserved!(else_, "else");
-reserved!(let_, "let");
-reserved!(in_, "in");
+reserved!(keyword else_, "else");
+reserved!(keyword let_, "let");
+reserved!(keyword in_, "in");
 reserved!(assign, "=");
-reserved!(fn_, "fn");
+reserved!(keyword fn_, "fn");
 reserved!(arrow, "->");
-reserved!(match_kw, "match");
-reserved!(to, "to");
+reserved!(keyword match_kw, "match");
+reserved!(keyword to, "to");
 reserved!(bar, "|");
 reserved!(underscore, "_");
-reserved!(delay, "delay");
+reserved!(keyword delay, "delay");
 reserved!(single_quote, "'");
 reserved!(double_quote, "\"");
 

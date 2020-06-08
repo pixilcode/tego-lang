@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Fixed
 * A non-tuple value joined with `()` now evaluates to that same value
   * Previously, the above action would produce a single-value tuple, which doesn't make sense
+* An identifier starting with a keyword (ex. `matchStr`) isn't parsed as a keyword
+  * Previously, the above identifier would be parsed as `match` `Str`
 
 ## [0.4.1] - 2020-06-03
 ### Added
