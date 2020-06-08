@@ -1,0 +1,34 @@
+main = unwrapTuple , flatJoined , stringsA , stringsB , stringsC
+
+-- '[' and ']' can be used to create boxed values
+boxedValA = [1, 2]
+boxedValB = [3, 4]
+valC = 5, 6
+valD = 7, 8
+
+-- Boxed values are treated as a single value in tuple matching
+-- '[' and ']' can also be used to match boxed values
+unwrapTuple =
+	let a, b = boxedValA in
+	let [c, d] = boxedValB in
+	a == [1, 2], b == (), c == 3, d == 4
+
+-- ',,' flat joins tuples (it unwraps one layer of boxed values)
+flatJoined = (boxedValA ,, boxedValB) == (1, 2, 3, 4),
+			 (boxedValA ,, valC     ) == (1, 2, 5, 6),
+			 (valC      ,, boxedValB) == (5, 6, 3, 4),
+			 (valC      ,, valD     ) == (5, 6, 7, 8)
+
+-- Strings are boxed tuples
+stringsA = ("abc" , "123") == (['a', 'b', 'c'], ['1', '2', '3']),
+		   ("abc" ,, "123") == ('a', 'b', 'c', '1', '2', '3')
+
+-- After joining strings, it's a good idea to box them again
+stringsB = ["abc" ,, "123"] == "abc123"
+
+-- To access the character tuple, unbox the string
+startsWith char string =
+	let [first, _] = string in
+	first == char
+
+stringsC = startsWith 'a' "abc", not startsWith 'a' "123"

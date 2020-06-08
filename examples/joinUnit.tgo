@@ -1,0 +1,14 @@
+main = run a
+
+a = 1, ()
+
+run x =
+	let resultA = match x to
+				  | 1 -> "success"
+				  | _ -> "failure" in
+
+	let resultB = match x to
+				  | 1, () -> "success"
+				  | _ -> "failure" in
+	
+	"Result A: ", resultA, ", Result B: ", resultB

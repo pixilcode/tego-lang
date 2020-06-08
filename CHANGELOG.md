@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   * Strings are now stored as strings for as long as they only contain characters
   * Helps to conserve space and utilize the internal string representation
   * `Char` joined with `Char` results in a String
+* `Char` and `String` value pattern matching
+  * `'a'` matches the character `'a'`
+  * `"string"` matches the string `"string"`
 
 ## [0.4.1] - 2020-06-03
 ### Added
