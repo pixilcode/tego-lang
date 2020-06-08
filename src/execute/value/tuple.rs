@@ -3,7 +3,7 @@ use std::fmt;
 use std::iter;
 use owned_chars::OwnedCharsExt;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub enum TupleWrapper {
 	Generic(Vec<Value>),
 	String(String)
@@ -79,6 +79,20 @@ impl TupleWrapper {
 		match self {
 			Self::Generic(vec) => vec.get(index).unwrap_or(&Value::unit()).clone(),
 			Self::String(string) => string.chars().map(Value::Char).nth(index).unwrap_or_else(Value::unit)
+		}
+	}
+}
+
+impl PartialEq for TupleWrapper {
+	fn eq(&self, other: &Self) -> bool {
+		if self.len() != other.len() {
+			false
+		} else {
+			match (self, other) {
+				(Self::Generic(a), Self::Generic(b)) => a == b,
+				(Self::String(a), Self::String(b)) => a == b,
+				(a, b) => a.into_iter().eq(b.into_iter())
+			}
 		}
 	}
 }
