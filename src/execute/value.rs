@@ -105,6 +105,7 @@ pub enum Value {
         outer_env: StoredEnv,
     },
     Char(char),
+    Boxed(Box<Value>),
     Error(String),
 }
 
@@ -135,6 +136,7 @@ impl Value {
             Value::Char(_) => Type::Char,
             Value::Tuple(vals) => Type::Tuple(vals.into_iter().map(|v| v.type_()).collect()),
             Value::Function(_, _, _) => Type::Fn_,
+            Value::Boxed(val) => Type::Boxed(Box::new(val.type_())),
             v @ Value::Delayed { .. } => v.clone().eval(None).type_(),
             Value::Error(_) => Type::Error,
         }
@@ -200,7 +202,7 @@ impl Value {
             let mut string = String::with_capacity(2);
             string.push(a);
             string.push(b);
-            string.into()
+            Value::Tuple(string.into())
         },
         a, b =>
             Value::Tuple(vec![a, b].into())
@@ -325,6 +327,7 @@ impl fmt::Display for Value {
                 Value::Char(c) => format!("'{}'", char::to_string(c)),
                 Value::Tuple(vals) => format!("{}", vals),
                 Value::Function(_, _, _) => "<fn>".into(),
+                Value::Boxed(val) => format!("[{}]", val),
                 v @ Value::Delayed { .. } => format!("{}", v.clone().eval(None)),
                 Value::Error(error) => format!("Error: {}", error),
             }
@@ -408,8 +411,8 @@ conversion!( Value[b: bool] => Value::Bool(b));
 conversion!( Value[c: char] => Value::Char(c));
 conversion!( Value[vec: Vec<Value>] => Value::Tuple(vec.into()));
 conversion!( Value[slice: &[Value]] => Value::Tuple(slice.into()));
-conversion!( Value[string: String] => Value::Tuple(string.into()));
-conversion!( Value[string: &str] => Value::Tuple(string.into()));
+conversion!( Value[string: String] => Value::Boxed(Box::new(Value::Tuple(string.into()))));
+conversion!( Value[string: &str] => Value::Boxed(Box::new(Value::Tuple(string.into()))));
 
 #[derive(Debug, Clone)]
 pub enum StoredEnv {

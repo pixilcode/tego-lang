@@ -9,6 +9,7 @@ pub enum Expr {
     FnApp(Box<Expr>, Box<Expr>),
     Match(Box<Expr>, Vec<(Match, Expr)>),
     Delayed(Match, Box<Expr>, Box<Expr>),
+    Boxed(Box<Expr>),
     Variable(String),
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinaryOp, Box<Expr>),
@@ -38,6 +39,10 @@ impl Expr {
 
     pub fn delayed(ident: Match, value: Self, inner: Self) -> Self {
         Expr::Delayed(ident, Box::new(value), Box::new(inner))
+    }
+
+    pub fn boxed(expr: Self) -> Self {
+        Expr::Boxed(Box::new(expr))
     }
 
     pub fn unary(op: UnaryOp, a: Self) -> Self {
@@ -137,10 +142,6 @@ impl Expr {
         Expr::Literal(Value::unit())
     }
 
-    pub fn tuple(vals: Vec<Value>) -> Self {
-        Expr::Literal(Value::generic_tuple(vals))
-    }
-
     pub fn string(s: &str) -> Self {
         Expr::Literal(Value::string(s))
     }
@@ -151,10 +152,6 @@ impl Expr {
 
     pub fn variable(ident: &str) -> Self {
         Expr::Variable(ident.into())
-    }
-
-    pub fn error(err: &str) -> Self {
-        Expr::Literal(Value::Error(err.into()))
     }
 }
 

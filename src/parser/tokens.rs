@@ -183,6 +183,8 @@ reserved!(underscore, "_");
 reserved!(keyword delay, "delay");
 reserved!(single_quote, "'");
 reserved!(double_quote, "\"");
+reserved!(left_bracket, "[");
+reserved!(right_bracket, "]");
 
 fn is_keyword(lexeme: &str) -> bool {
     KEYWORDS.iter().any(|keyword| keyword == &lexeme)
@@ -235,9 +237,11 @@ mod tests {
     parser_test!(delay_test (delay): "delay" => "delay".into());
     parser_test!(single_quote_test (single_quote): "'" => "'".into());
     parser_test!(double_quote_test (double_quote): "\"" => "\"".into());
+    parser_test!(open_bracket_test (left_bracket): "[" => "[".into());
+    parser_test!(close_bracket_test (right_bracket): "]" => "]".into());
     // Use find and replace
     // Find: reserved!\(([a-z_]+), ("[^"]+")\);
-    // Replace: parser_test!($1_test ($1): $2 => $2);
+    // Replace: parser_test!($1_test ($1): $2 => $2.into());
 
     // Literal parsing
     parser_test!(number_test (number): "12" => "12".into());

@@ -66,6 +66,35 @@ impl ParseError {
                     column - 1
                 )?;
             }
+            ErrorKind::TerminatingBracket(line, column) => {
+                writeln!(writer, "    |")?;
+                writeln!(
+                    writer,
+                    "{:>3} | {}",
+                    self.line,
+                    source.lines().nth(self.line - 1).unwrap_or("")
+                )?;
+                writeln!(
+                    writer,
+                    "    | {:>1$} error found here",
+                    "^",
+                    self.column - 1
+                )?;
+                writeln!(writer)?;
+                writeln!(writer, "    |")?;
+                writeln!(
+                    writer,
+                    "{:>3} | {}",
+                    line,
+                    source.lines().nth(line - 1).unwrap_or("")
+                )?;
+                writeln!(
+                    writer,
+                    "    | {:>1$} opening bracket found here",
+                    "^",
+                    column - 1
+                )?;
+            }
             _ => {
                 writeln!(writer, "    |")?;
                 writeln!(
@@ -117,6 +146,7 @@ impl fmt::Display for ParseError {
             // Expr Errors
             ErrorKind::InvalidCharacter => "encountered invalid character".into(),
             ErrorKind::TerminatingParen(_, _) => "missing closing parenthesis".into(),
+            ErrorKind::TerminatingBracket(_, _) => "missing closing bracket".into(),
             ErrorKind::FnArrow => {
                 "missing '->' between function parameters and function body".into()
             }
@@ -251,6 +281,7 @@ error_type! {
     char::is_alphabetic => ErrorKind::Keyword
 }
 error_type!(terminating_paren_error, ErrorKind::TerminatingParen(open_paren_loc.0, open_paren_loc.1); open_paren_loc: (usize, usize));
+error_type!(terminating_bracket_error, ErrorKind::TerminatingBracket(open_bracket_loc.0, open_bracket_loc.1); open_bracket_loc: (usize, usize));
 error_type! {
     token [fn_expr_error]
     "->" => ErrorKind::FnArrow
@@ -317,6 +348,7 @@ enum ErrorKind {
 
     // Expr Errors
     TerminatingParen(usize, usize),
+    TerminatingBracket(usize, usize),
     FnArrow,
     MatchBar,
     MatchArrow,
@@ -381,6 +413,7 @@ impl From<&ErrorKind> for u16 {
             ErrorKind::UnknownNomError => 21,
             ErrorKind::UnhandledError => 22,
             ErrorKind::EndOfExpr => 23,
+            ErrorKind::TerminatingBracket(_, _) => 24,
         }
     }
 }

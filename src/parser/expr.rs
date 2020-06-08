@@ -147,6 +147,17 @@ fn grouping(input: Input<'_>) -> ExprResult<'_> {
                     open_paren.column(),
                 )))
         })
+        .or_else(try_parser(|input| opt_nl(left_bracket)(input)
+            .and_then(|(input, open_bracket)| {
+                terminated(opt_nl(expr), right_bracket)(input)
+                .map(|(input, inner)| (input, Expr::boxed(inner)))
+                .map_err(terminating_bracket_error((
+                    open_bracket.line(),
+                    open_bracket.column()
+                )))
+            }),
+            input)
+        )
         .or_else(try_parser(literal, input))
 }
 
@@ -397,5 +408,9 @@ mod tests {
     parser_test! {
         char_test
         (expr): "'a'" => Expr::char('a')
+    }
+    parser_test! {
+        boxed_tuple_test
+        (expr): "[1, 2]" => Expr::boxed(Expr::join(Expr::int(1), Expr::int(2)))
     }
 }

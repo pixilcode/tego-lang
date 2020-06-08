@@ -7,6 +7,7 @@ pub enum Type {
     Char,
     Tuple(Vec<Type>),
     Fn_,
+    Boxed(Box<Type>),
     Error,
 }
 
@@ -45,6 +46,7 @@ impl fmt::Display for Type {
                     }
                 }
                 Type::Fn_ => "Fn".into(),
+                Type::Boxed(type_) => format!("Boxed<{}>", type_),
                 Type::Error => "Error".into(),
             }
         )
