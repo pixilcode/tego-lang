@@ -92,6 +92,13 @@ pub fn eval_expr(expr: Expr, env: &WrappedEnv) -> Value {
                         Err(error) => Value::Error(error),
                     }
                 }
+                Value::Int(index) if index >= 0 => {
+                    match eval_expr(*arg, env) {
+                        Value::Tuple(tuple) => tuple.get(index as usize),
+                        arg => error(&format!("Can't index type '{}'", arg.type_()))
+                    }
+                }
+                Value::Int(_) => error("Cannot have a negative index of a tuple"),
                 _ => error(&format!(
                     "Can't apply argument to type '{}'",
                     function.type_()

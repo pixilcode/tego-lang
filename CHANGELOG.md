@@ -12,6 +12,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * `Char` and `String` value pattern matching
   * `'a'` matches the character `'a'`
   * `"string"` matches the string `"string"`
+* Positive integers can be used to index a tuple
+  * Tuples are 0-indexed
+  * Trying to access past the end results in `()`
+  * `0 (1, true, 'a') == 1`
+  * `1 (1, true, 'a') == true`
+  * `2 (1, true, 'a') == 'a'`
+  * `3 (1, true, 'a') == ()`
+
+### Fixed
+* A non-tuple value joined with `()` now evaluates to that same value
+  * Previously, the above action would produce a single-value tuple, which doesn't make sense
 
 ## [0.4.1] - 2020-06-03
 ### Added

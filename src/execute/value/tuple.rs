@@ -74,6 +74,13 @@ impl TupleWrapper {
 	pub fn is_unit(&self) -> bool {
 		self.len() == 0
 	}
+
+	pub fn get(&self, index: usize) -> Value {
+		match self {
+			Self::Generic(vec) => vec.get(index).unwrap_or(&Value::unit()).clone(),
+			Self::String(string) => string.chars().map(Value::Char).nth(index).unwrap_or_else(Value::unit)
+		}
+	}
 }
 
 conversion!( TupleWrapper[vec: Vec<Value>] => TupleWrapper::Generic(vec));
