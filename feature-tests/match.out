@@ -1,1 +1,1 @@
-"bool success, int success, string success, char success"
+(true, true, true, true)

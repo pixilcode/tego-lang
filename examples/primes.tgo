@@ -1,4 +1,4 @@
-main = primes 100
+main = primes 50
 
 primes = primes' () 2
 
