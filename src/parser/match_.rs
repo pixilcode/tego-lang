@@ -34,6 +34,18 @@ pub fn grouping(input: Input<'_>) -> MatchResult<'_> {
                     open_paren.column(),
                 )))
         })
+        .or_else(
+            try_parser(|input| opt_nl(left_bracket)(input)
+            .and_then(|(input, open_bracket)| {
+                terminated(opt_nl(match_), right_bracket)(input)
+                .map(|(input, inner)| (input, Match::boxed(inner)))
+                .map_err(terminating_bracket_error((
+                    open_bracket.line(),
+                    open_bracket.column()
+                )))
+            }),
+            input)
+        )
         .or_else(try_parser(atom, input))
 }
 

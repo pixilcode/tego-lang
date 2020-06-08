@@ -4,6 +4,7 @@ use std::fmt;
 pub enum Match {
     Ident(String),
     Tuple(Vec<Match>),
+    Boxed(Box<Match>),
     Value(MatchVal),
     Ignore,
 }
@@ -29,6 +30,10 @@ impl Match {
             }
             (a, b) => Match::Tuple(vec![a, b]),
         }
+    }
+
+    pub fn boxed(a: Match) -> Match {
+        Match::Boxed(Box::new(a))
     }
 
     pub fn int(i: i32) -> Self {
