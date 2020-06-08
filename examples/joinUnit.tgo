@@ -11,4 +11,4 @@ run x =
 				  | 1, () -> "success"
 				  | _ -> "failure" in
 	
-	"Result A: ", resultA, ", Result B: ", resultB
+	"Result A: ",, resultA,, ", Result B: ",, resultB

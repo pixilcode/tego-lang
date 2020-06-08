@@ -49,7 +49,7 @@ impl Match {
     }
 
     pub fn string(s: &str) -> Self {
-        Match::Value(MatchVal::String(s.into()))
+        Match::Boxed(Box::new(Match::Value(MatchVal::String(s.into()))))
     } 
 
     pub fn unit() -> Self {

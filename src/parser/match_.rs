@@ -128,4 +128,19 @@ mod tests {
         (variable): "abc" =>
             Match::ident("abc")
     }
+    parser_test! {
+        char_test
+        (match_): "'a'" =>
+            Match::char('a')
+    }
+    parser_test! {
+        string_test
+        (match_): "\"a\"" =>
+            Match::string("a")
+    }
+    parser_test! {
+        boxed_test
+        (match_): "[ 1 ]" =>
+            Match::boxed(Match::int(1))
+    }
 }
