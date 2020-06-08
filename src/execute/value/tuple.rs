@@ -70,6 +70,10 @@ impl TupleWrapper {
 			}
 		}
 	}
+
+	pub fn is_unit(&self) -> bool {
+		self.len() == 0
+	}
 }
 
 conversion!( TupleWrapper[vec: Vec<Value>] => TupleWrapper::Generic(vec));

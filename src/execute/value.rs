@@ -10,7 +10,7 @@ use std::ops;
 use std::rc::Weak;
 
 macro_rules! impl_op {
-    ($op:ty, $func:ident, $name:expr => $( $type_:pat = $new_val:expr ),+) => {
+    ($op:ty, $func:ident, $name:literal: $( $type_:pat $( if $cond:expr )? => $new_val:expr ),+) => {
         impl $op for Value {
             type Output = Self;
             fn $func(self) -> Self {
@@ -19,7 +19,7 @@ macro_rules! impl_op {
                     self
                 } else {
                     match self {
-                        $( $type_ => $new_val, )+
+                        $( $type_ $( if $cond )? => $new_val, )+
                         _ => error()
                     }
                 }
@@ -27,7 +27,7 @@ macro_rules! impl_op {
         }
     };
 
-    ($op:ty, $func:ident, $name:expr => $( $type_a:pat, $type_b:pat = $new_val:expr ),+) => {
+    ($op:ty, $func:ident, $name:literal: $( $type_a:pat, $type_b:pat $( if $cond:expr )? => $new_val:expr ),+) => {
         impl $op for Value {
             type Output = Self;
             fn $func(self, other: Self) -> Self {
@@ -38,7 +38,7 @@ macro_rules! impl_op {
                     other
                 } else {
                     match (&self, &other) {
-                        $( ($type_a, $type_b) => $new_val, )+
+                        $( ($type_a, $type_b) $( if $cond )? => $new_val, )+
                         _ => error()
                     }
                 }
@@ -46,21 +46,21 @@ macro_rules! impl_op {
         }
     };
 
-    ($func:ident, $name:expr => $( $type_:pat = $new_val:expr ),+) => {
+    ($func:ident, $name:literal: $( $type_:pat $( if $cond:expr )? => $new_val:expr ),+) => {
         pub fn $func(self) -> Self {
             let error = || unary_op_error($name, self.type_());
             if let Value::Error(_) = self {
                 self
             } else {
                 match self {
-                    $( $type_ => $new_val, )+
+                    $( $type_ $( if $cond )? => $new_val, )+
                     _ => error()
                 }
             }
         }
     };
 
-    ($func:ident, $name:expr => $( $type_a:pat, $type_b:pat = $new_val:expr ),+) => {
+    ($func:ident, $name:literal: $( $type_a:pat, $type_b:pat $( if $cond:expr )? => $new_val:expr ),+) => {
         #[allow(unreachable_patterns)]
         pub fn $func(self, other: Self) -> Self {
             // For now, won't work because of matching later
@@ -72,7 +72,7 @@ macro_rules! impl_op {
                 other
             } else {
                 match (self, other) {
-                    $( ($type_a, $type_b) => $new_val, )+
+                    $( ($type_a, $type_b) $( if $cond )? => $new_val, )+
                     _ => error
                 }
             }
@@ -187,37 +187,39 @@ impl Value {
         s.into()
     }
 
-    impl_op!(join, "join" =>
-        Value::Tuple(a_vals), Value::Tuple(b_vals) =
+    impl_op!(join, "join":
+        Value::Tuple(a_vals), Value::Tuple(b_vals) =>
             Value::Tuple(a_vals.append(b_vals)),
-        Value::Tuple(a_vals), b =
+        Value::Tuple(a_vals), b if a_vals.is_unit() => b,
+        Value::Tuple(a_vals), b =>
             Value::Tuple(a_vals.push_to_back(b)),
-        a, Value::Tuple(b_vals) =
+        a, Value::Tuple(b_vals) if b_vals.is_unit() => a,
+        a, Value::Tuple(b_vals) =>
             Value::Tuple(b_vals.push_to_front(a)),
-        Value::Char(a), Value::Char(b) = {
+        Value::Char(a), Value::Char(b) => {
             let mut string = String::with_capacity(2);
             string.push(a);
             string.push(b);
             string.into()
         },
-        a, b =
+        a, b =>
             Value::Tuple(vec![a, b].into())
     );
 
-    impl_op!(less_than, "less than" =>
-        Value::Int(a), Value::Int(b) = Value::Bool(a < b)
+    impl_op!(less_than, "less than":
+        Value::Int(a), Value::Int(b) => Value::Bool(a < b)
     );
 
-    impl_op!(greater_than, "greater than" =>
-        Value::Int(a), Value::Int(b) = Value::Bool(a > b)
+    impl_op!(greater_than, "greater than":
+        Value::Int(a), Value::Int(b) => Value::Bool(a > b)
     );
 
-    impl_op!(less_than_equal, "less than/equal to" =>
-        Value::Int(a), Value::Int(b) = Value::Bool(a <= b)
+    impl_op!(less_than_equal, "less than/equal to":
+        Value::Int(a), Value::Int(b) => Value::Bool(a <= b)
     );
 
-    impl_op!(greater_than_equal, "greater than/equal to" =>
-        Value::Int(a), Value::Int(b) = Value::Bool(a >= b)
+    impl_op!(greater_than_equal, "greater than/equal to":
+        Value::Int(a), Value::Int(b) => Value::Bool(a >= b)
     );
 }
 
@@ -331,56 +333,57 @@ impl fmt::Display for Value {
 }
 
 impl_op! {
-    ops::Add, add, "add" =>
-        Value::Int(a), Value::Int(b) = Value::Int(a + b)
+    ops::Add, add, "add":
+        Value::Int(a), Value::Int(b) => Value::Int(a + b)
 }
 
 impl_op! {
-    ops::Sub, sub, "subtract" =>
-        Value::Int(a), Value::Int(b) = Value::Int(a - b)
+    ops::Sub, sub, "subtract":
+        Value::Int(a), Value::Int(b) => Value::Int(a - b)
 }
 
 impl_op! {
-    ops::Mul, mul, "multiply" =>
-        Value::Int(a), Value::Int(b) = Value::Int(a * b)
+    ops::Mul, mul, "multiply":
+        Value::Int(a), Value::Int(b) => Value::Int(a * b)
 }
 
 impl_op! {
-    ops::Div, div, "divide" =>
-        Value::Int(a), Value::Int(b) = Value::Int(a / b)
+    ops::Div, div, "divide":
+        Value::Int(_), Value::Int(b) if *b == 0 => Value::Error("Divide by 0 error".into()),
+        Value::Int(a), Value::Int(b) => Value::Int(a / b)
 }
 
 impl_op! {
-    ops::Rem, rem, "modulo" =>
-        Value::Int(a), Value::Int(b) = Value::Int(a % b)
+    ops::Rem, rem, "modulo":
+        Value::Int(a), Value::Int(b) => Value::Int(a % b)
 }
 
 impl_op! {
-    ops::BitAnd, bitand, "and" =>
-        Value::Int(a), Value::Int(b) = Value::Int(a & b),
-        Value::Bool(a), Value::Bool(b) = Value::Bool(a & b)
+    ops::BitAnd, bitand, "and":
+        Value::Int(a), Value::Int(b) => Value::Int(a & b),
+        Value::Bool(a), Value::Bool(b) => Value::Bool(a & b)
 }
 
 impl_op! {
-    ops::BitOr, bitor, "or" =>
-        Value::Int(a), Value::Int(b) = Value::Int(a | b),
-        Value::Bool(a), Value::Bool(b) = Value::Bool(a | b)
+    ops::BitOr, bitor, "or":
+        Value::Int(a), Value::Int(b) => Value::Int(a | b),
+        Value::Bool(a), Value::Bool(b) => Value::Bool(a | b)
 }
 
 impl_op! {
-    ops::BitXor, bitxor, "xor" =>
-        Value::Int(a), Value::Int(b) = Value::Int(a ^ b),
-        Value::Bool(a), Value::Bool(b) = Value::Bool(a ^ b)
+    ops::BitXor, bitxor, "xor":
+        Value::Int(a), Value::Int(b) => Value::Int(a ^ b),
+        Value::Bool(a), Value::Bool(b) => Value::Bool(a ^ b)
 }
 
 impl_op! {
-    ops::Neg, neg, "negate" =>
-        Value::Int(a) = Value::Int(-a)
+    ops::Neg, neg, "negate":
+        Value::Int(a) => Value::Int(-a)
 }
 
 impl_op! {
-    ops::Not, not, "not" =>
-        Value::Bool(a) = Value::Bool(!a)
+    ops::Not, not, "not":
+        Value::Bool(a) => Value::Bool(!a)
 }
 
 fn binary_op_error(op: &str, type_a: Type, type_b: Type) -> Value {
