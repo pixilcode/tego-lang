@@ -1,16 +1,46 @@
-main =
-	let resultA = match a to
-				  | 1 -> "success"
-				  | _ -> "failure" in
-	let resultB = match b to
-				  | true -> "success"
-				  | _ -> "failure" in
-	"Result A: ", resultA, ", Result B: ", resultB
+main = a, b
 
 tuple = (1, true, 'a')
 
-a = 0 tuple
+-- Access the 0th item in the tuple (tuples are 0-indexed)
+a = (0 tuple == 1)
 
-b = getItem tuple 1
-
+-- Access can also be dynamic
+-- (Need to mention about type inference when it comes)
 getItem tuple index = index tuple
+
+b = (getItem tuple 1 == true)
+
+-- Attempting to access out of bounds yields '()'
+c = (3 tuple == ())
+
+{-
+NOTES
+-----
+
+All of this will look better once composition is added
+(ex. '3 tuple' => 'tuple.3')
+Also, this means that one can create a type ('Foo(Int, Bool, Char)'), then can create 'field names'
+by simply assigning a number to that 'field name' ('number = 0'), which can then be used like so:
+```
+type Foo = Foo(Int, Bool, Char) where
+	number = 0
+	boolean = 1
+	character = 2
+
+foo = Foo(1, true, 'a')
+
+main = foo.number, foo.boolean, foo.character
+```
+Then, a syntactic sugar can be created that translates to the above declaration of Foo.
+```
+type Foo = Foo(number: Int, boolean: Bool, character: Char)
+```
+is the same as
+```
+type Foo = Foo(Int, Bool, Char) where
+	number = 0
+	boolean = 1
+	character = 2
+```
+-}
