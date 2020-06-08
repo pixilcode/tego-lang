@@ -106,7 +106,8 @@ pub fn match_arm(input: Input<'_>) -> ParseResult<'_, (Match, Expr)> {
     preceded(bar, separated_pair(match_, opt_nl(arrow), expr))(input).map_err(match_arm_error)
 }
 
-binary_expr!(join_expr, comma, or_expr);
+binary_expr!(join_expr, comma, flat_join_expr);
+binary_expr!(flat_join_expr, double_comma, or_expr);
 binary_expr!(or_expr, or, xor_expr);
 binary_expr!(xor_expr, xor, and_expr);
 binary_expr!(and_expr, and, equal_expr);
@@ -412,5 +413,9 @@ mod tests {
     parser_test! {
         boxed_tuple_test
         (expr): "[1, 2]" => Expr::boxed(Expr::join(Expr::int(1), Expr::int(2)))
+    }
+    parser_test! {
+        flat_join_test
+        (expr): "1 ,, 2" => Expr::flat_join(Expr::int(1), Expr::int(2))
     }
 }

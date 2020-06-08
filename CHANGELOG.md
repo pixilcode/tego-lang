@@ -19,6 +19,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   * `1 (1, true, 'a') == true`
   * `2 (1, true, 'a') == 'a'`
   * `3 (1, true, 'a') == ()`
+* Boxed values
+  * `[` and `]` can be used to create boxed values (ex. `[1, 2]`)
+  * Boxed values are treated as a single value in tuple matching
+  * `[` and `]` can also be used to match boxed values
+  * The `,,` operator flat joins tuples (it unwraps one layer of boxed values)
+  * Strings are boxed tuples
+  * To access the character tuple, unbox the string
+  * For more details, see 'feature-tests/boxedTuple.tgo'
+
 
 ### Fixed
 * A non-tuple value joined with `()` now evaluates to that same value

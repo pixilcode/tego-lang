@@ -207,6 +207,13 @@ impl Value {
         a, b =>
             Value::Tuple(vec![a, b].into())
     );
+    
+    impl_op!(flat_join, "flat join":
+        Value::Boxed(a), Value::Boxed(b) => Value::join(*a, *b),
+        Value::Boxed(a), b => Value::join(*a, b),
+        a, Value::Boxed(b) => Value::join(a, *b),
+        a, b => Value::join(a, b)
+    );
 
     impl_op!(less_than, "less than":
         Value::Int(a), Value::Int(b) => Value::Bool(a < b)

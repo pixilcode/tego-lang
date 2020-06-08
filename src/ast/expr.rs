@@ -106,6 +106,10 @@ impl Expr {
         Expr::binary(a, BinaryOp::Join, b)
     }
 
+    pub fn flat_join(a: Self, b: Self) -> Self {
+        Expr::binary(a, BinaryOp::FlatJoin, b)
+    }
+
     pub fn equal(a: Self, b: Self) -> Self {
         Expr::binary(a, BinaryOp::Equal, b)
     }
@@ -191,6 +195,7 @@ pub enum BinaryOp {
     Or,
     Xor,
     Join, // ',' operator, creates a tuple
+    FlatJoin, // ',,' operator
     Equal,
     NotEqual,
     LessThan,
@@ -211,6 +216,7 @@ impl BinaryOp {
             BinaryOp::Or => a | b,
             BinaryOp::Xor => a ^ b,
             BinaryOp::Join => Value::join(a, b),
+            BinaryOp::FlatJoin => Value::flat_join(a, b),
             BinaryOp::Equal => Value::Bool(a == b),
             BinaryOp::NotEqual => Value::Bool(a != b),
             BinaryOp::LessThan => a.less_than(b),
@@ -233,6 +239,7 @@ impl From<&str> for BinaryOp {
             "or" => BinaryOp::Or,
             "xor" => BinaryOp::Xor,
             "," => BinaryOp::Join,
+            ",," => BinaryOp::FlatJoin,
             "==" => BinaryOp::Equal,
             "/=" => BinaryOp::NotEqual,
             "<" => BinaryOp::LessThan,
