@@ -8,13 +8,8 @@ pub enum Type {
     Tuple(Vec<Type>),
     Fn_,
     Boxed(Box<Type>),
+    Command,
     Error,
-}
-
-impl Type {
-    pub fn unit() -> Self {
-        Type::Tuple(vec![])
-    }
 }
 
 impl fmt::Display for Type {
@@ -47,6 +42,7 @@ impl fmt::Display for Type {
                 }
                 Type::Fn_ => "Fn".into(),
                 Type::Boxed(type_) => format!("Boxed<{}>", type_),
+                Type::Command => "Command".into(),
                 Type::Error => "Error".into(),
             }
         )

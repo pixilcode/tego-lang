@@ -1,0 +1,17 @@
+main =
+	-- to use the result of the Command
+	-- use the `use <Command> as <result> in` structure
+	use readLine as input in
+	-- to ignore the result of the Command
+	-- use the `use <Command> in` structure
+	use println input in
+	use addInput as val in
+	println val
+
+addInput =
+	use readInt as valA in
+	use readInt as valB in
+	-- The values can be manipulated as regular values
+	-- but the end result must be a Command
+	-- `return` wraps a regular value in a Command
+	return valA + valB

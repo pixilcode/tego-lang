@@ -1,4 +1,5 @@
 use crate::execute::value::tuple::TupleWrapper;
+use crate::execute::value::command::CommandWrapper;
 use crate::ast::Expr;
 use crate::ast::{Match, MatchVal};
 use crate::environment::{Env, EnvVal};
@@ -91,21 +92,22 @@ macro_rules! conversion {
 }
 
 mod tuple;
-
+mod command;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     Int(i32),
     Bool(bool),
+    Char(char),
     Tuple(TupleWrapper),
+    Boxed(Box<Value>),
     Function(Match, Box<Expr>, StoredEnv),
+    Command(CommandWrapper),
     Delayed {
         value: Box<Expr>,
         self_ptr: StoredEnv,
         outer_env: StoredEnv,
     },
-    Char(char),
-    Boxed(Box<Value>),
     Error(String),
 }
 
@@ -137,6 +139,7 @@ impl Value {
             Value::Tuple(vals) => Type::Tuple(vals.into_iter().map(|v| v.type_()).collect()),
             Value::Function(_, _, _) => Type::Fn_,
             Value::Boxed(val) => Type::Boxed(Box::new(val.type_())),
+            Value::Command(_) => Type::Command,
             v @ Value::Delayed { .. } => v.clone().eval(None).type_(),
             Value::Error(_) => Type::Error,
         }
@@ -344,6 +347,7 @@ impl fmt::Display for Value {
                 Value::Tuple(vals) => format!("{}", vals),
                 Value::Function(_, _, _) => "<fn>".into(),
                 Value::Boxed(val) => format!("[{}]", val),
+                Value::Command(_) => "<command>".into(),
                 v @ Value::Delayed { .. } => format!("{}", v.clone().eval(None)),
                 Value::Error(error) => format!("Error: {}", error),
             }
