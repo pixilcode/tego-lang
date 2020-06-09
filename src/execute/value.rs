@@ -1,5 +1,5 @@
 use crate::execute::value::tuple::TupleWrapper;
-use crate::execute::value::command::CommandWrapper;
+use crate::execute::value::command::Command;
 use crate::ast::Expr;
 use crate::ast::{Match, MatchVal};
 use crate::environment::{Env, EnvVal};
@@ -102,7 +102,7 @@ pub enum Value {
     Tuple(TupleWrapper),
     Boxed(Box<Value>),
     Function(Match, Box<Expr>, StoredEnv),
-    Command(CommandWrapper),
+    Command(Command),
     Delayed {
         value: Box<Expr>,
         self_ptr: StoredEnv,
