@@ -6,6 +6,7 @@ pub enum Match {
     Tuple(Vec<Match>),
     Boxed(Box<Match>),
     Value(MatchVal),
+    Unit, // Special value for matching '()' (this has special behavior)
     Ignore,
 }
 
@@ -53,7 +54,7 @@ impl Match {
     } 
 
     pub fn unit() -> Self {
-        Match::Tuple(vec![])
+        Match::Unit
     }
 
     pub fn ignore() -> Self {

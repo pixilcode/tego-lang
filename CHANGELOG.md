@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+* Matching on '()' actually matches on '()'
+  * The following code didn't work as expected
+    ```
+    foo t =
+        match t to
+        | head, () -> head
+        | head, tail -> head + 1, foo tail
+    ```
+  * The first match (`head, ()`) would always match
+  * In a regular value `(head, ()) == head`
+  * Match patterns were *originally* treated the same way
+  * Therefore, the match `head, ()` would be treated as `head`
+  * `head` is an identifier pattern, which would catch all values
+  * Now, `()` actually matches `()`
 
 ## [0.4.2] - 2020-06-08
 ### Added

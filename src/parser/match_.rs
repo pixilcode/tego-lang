@@ -96,6 +96,11 @@ mod tests {
                     Match::ident("a"),
                     Match::ident("b")
                 ), Match::ident("c")
+            );
+        (match_): "a, ()" =>
+            Match::tuple(
+                Match::ident("a"),
+                Match::unit()
             )
     }
     // Not actually super effective, the order
@@ -121,7 +126,7 @@ mod tests {
     parser_test! {
         unit_test
         (match_): "()" =>
-            Match::Tuple(vec![])
+            Match::Unit
     }
     parser_test! {
         variable_test

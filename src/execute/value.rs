@@ -238,6 +238,12 @@ impl EnvVal for Value {
             (Match::Ident(ident), val) => Ok(vec![(ident.into(), val.clone())]),
             (Match::Tuple(tup_match), Value::Tuple(tup_val)) => unwrap_tuple(&tup_match, &tup_val),
             (Match::Tuple(tup_match), val) => unwrap_tuple(&tup_match, &vec![val.clone()].into()),
+            (Match::Unit, Value::Tuple(tup_val)) =>
+                if tup_val.len() == 0 {
+                    Ok(vec![])
+                } else {
+                    Err("Tried to match non-empty tuple against '()'".into())
+                }
             (Match::Boxed(boxed_match), Value::Boxed(boxed_value)) => boxed_value.unwrap_matches(boxed_match),
             (Match::Value(MatchVal::Int(a)), Value::Int(b)) => {
                 if a == b {
@@ -317,6 +323,7 @@ fn match_error(expected: &Match, found: &Value) -> Result<Vec<(String, Value)>, 
         match expected {
             Match::Ident(_) => "value".into(),
             Match::Tuple(_) => "tuple".into(),
+            Match::Unit => "unit".into(),
             Match::Boxed(_) => "boxed value".into(),
             Match::Value(v) => format!("'{}'", v),
             Match::Ignore => "anything".into(),
