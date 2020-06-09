@@ -34,6 +34,9 @@
 * Add regex expressions and regex matches using regex crate (eg. `\a+b*\`)
 * Open file in repl
 * Code standard library
+* Comments
+* If-guarded match statements
+* Add primitive types to matching
 * Fix recursion problem with [this](https://www.reddit.com/r/ProgrammingLanguages/comments/gkx10d/recursion_without_stack_overflow/) - tried this (see 'trampolining' branch), but was unable to
 * Add file tracking to `Span` struct (useful for error handling)
 * Add more detailed error messages (see [this](https://elm-lang.org/news/compiler-errors-for-humans) and [this](https://blog.rust-lang.org/2016/08/10/Shape-of-errors-to-come.html))
