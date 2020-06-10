@@ -4,12 +4,12 @@ use std::iter;
 use owned_chars::OwnedCharsExt;
 
 #[derive(Debug, Clone)]
-pub enum TupleWrapper {
+pub enum Tuple {
 	Generic(Vec<Value>),
 	String(String)
 }
 
-impl TupleWrapper {
+impl Tuple {
 	pub fn len(&self) -> usize {
 		match self {
 			Self::Generic(vec) => vec.len(),
@@ -24,7 +24,7 @@ impl TupleWrapper {
 		}
 	}
 
-	pub fn from(&self, from: usize) -> TupleWrapper {
+	pub fn from(&self, from: usize) -> Tuple {
 		match self {
 			Self::Generic(vec) => vec[from..].into(),
 			Self::String(string) => string.chars().skip(from).collect::<String>().into()
@@ -83,7 +83,7 @@ impl TupleWrapper {
 	}
 }
 
-impl PartialEq for TupleWrapper {
+impl PartialEq for Tuple {
 	fn eq(&self, other: &Self) -> bool {
 		if self.len() != other.len() {
 			false
@@ -97,43 +97,43 @@ impl PartialEq for TupleWrapper {
 	}
 }
 
-conversion!( TupleWrapper[vec: Vec<Value>] => TupleWrapper::Generic(vec));
-conversion!( TupleWrapper[slice: &[Value]] => TupleWrapper::Generic(slice.into()));
-conversion!( TupleWrapper[string: String] => TupleWrapper::String(string));
-conversion!( TupleWrapper[string: &str] => TupleWrapper::String(string.into()));
+conversion!( Tuple[vec: Vec<Value>] => Tuple::Generic(vec));
+conversion!( Tuple[slice: &[Value]] => Tuple::Generic(slice.into()));
+conversion!( Tuple[string: String] => Tuple::String(string));
+conversion!( Tuple[string: &str] => Tuple::String(string.into()));
 
-impl IntoIterator for TupleWrapper {
+impl IntoIterator for Tuple {
 	type Item = Value;
 	type IntoIter = TupleIter;
 	
 	fn into_iter(self) -> Self::IntoIter {
 		match self {
-			TupleWrapper::Generic(tuple) => TupleIter::new(Box::new(tuple.into_iter())),
-			TupleWrapper::String(string) => TupleIter::new(Box::new(string.into_chars().map(Value::Char)))
+			Tuple::Generic(tuple) => TupleIter::new(Box::new(tuple.into_iter())),
+			Tuple::String(string) => TupleIter::new(Box::new(string.into_chars().map(Value::Char)))
 		}
 	}
 }
 
-impl iter::FromIterator<Value> for TupleWrapper {
+impl iter::FromIterator<Value> for Tuple {
 	fn from_iter<I: IntoIterator<Item=Value>>(iter: I) -> Self {
 		iter.into_iter().collect::<Vec<_>>().into()
 	}
 }
 
-impl iter::FromIterator<char> for TupleWrapper {
+impl iter::FromIterator<char> for Tuple {
 	fn from_iter<I: IntoIterator<Item=char>>(iter: I) -> Self {
 		iter.into_iter().collect::<String>().into()
 	}
 }
 
-impl IntoIterator for &TupleWrapper {
+impl IntoIterator for &Tuple {
 	type Item = Value;
 	type IntoIter = TupleIter;
 	
 	fn into_iter(self) -> Self::IntoIter {
 		match self {
-			TupleWrapper::Generic(tuple) => TupleIter::new(Box::new(tuple.clone().into_iter())),
-			TupleWrapper::String(string) => TupleIter::new(Box::new(string.clone().into_chars().map(Value::Char)))
+			Tuple::Generic(tuple) => TupleIter::new(Box::new(tuple.clone().into_iter())),
+			Tuple::String(string) => TupleIter::new(Box::new(string.clone().into_chars().map(Value::Char)))
 		}
 	}
 }
@@ -157,7 +157,7 @@ impl Iterator for TupleIter {
 	}
 }
 
-impl std::fmt::Display for TupleWrapper {
+impl std::fmt::Display for Tuple {
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result {
 		match self {
 			Self::Generic(vec) => {

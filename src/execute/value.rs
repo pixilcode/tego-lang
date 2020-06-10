@@ -1,4 +1,4 @@
-use crate::execute::value::tuple::TupleWrapper;
+use crate::execute::value::tuple::Tuple;
 use crate::execute::value::command::Command;
 use crate::ast::Expr;
 use crate::ast::{Match, MatchVal};
@@ -99,7 +99,7 @@ pub enum Value {
     Int(i32),
     Bool(bool),
     Char(char),
-    Tuple(TupleWrapper),
+    Tuple(Tuple),
     Boxed(Box<Value>),
     Function(Match, Box<Expr>, StoredEnv),
     Command(Command),
@@ -292,7 +292,7 @@ impl EnvVal for Value {
     }
 }
 
-fn unwrap_tuple(tup_match: &[Match], tup_val: &TupleWrapper) -> Result<Vec<(String, Value)>, String> {
+fn unwrap_tuple(tup_match: &[Match], tup_val: &Tuple) -> Result<Vec<(String, Value)>, String> {
     let tup_match_len = tup_match.len();
     let tup_val_len = tup_val.len();
     match (tup_match_len, tup_val_len) {

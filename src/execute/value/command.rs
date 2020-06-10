@@ -1,5 +1,5 @@
 use crate::execute::value::Value;
-use crate::execute::value::tuple::TupleWrapper;
+use crate::execute::value::tuple::Tuple;
 use std::rc::Rc;
 use std::fmt;
 
@@ -63,7 +63,7 @@ fn run_compound(first: &Command, next: &Rc<dyn Fn(Value) -> Command>) -> Value {
 
 fn run_println(value: &Value) -> Value {
 	match value {
-		Value::Tuple(TupleWrapper::String(ref s)) => println!("{}", s),
+		Value::Tuple(Tuple::String(ref s)) => println!("{}", s),
 		ref v => println!("{}", v)
 	}
 	Value::unit()
