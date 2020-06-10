@@ -1,5 +1,6 @@
 use crate::execute::value::tuple::Tuple;
 use crate::execute::value::command::Command;
+use crate::execute::value::function::Function;
 use crate::ast::Expr;
 use crate::ast::{Match, MatchVal};
 use crate::environment::{Env, EnvVal};
@@ -93,6 +94,7 @@ macro_rules! conversion {
 
 mod tuple;
 mod command;
+mod function;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
@@ -101,7 +103,7 @@ pub enum Value {
     Char(char),
     Tuple(Tuple),
     Boxed(Box<Value>),
-    Function(Match, Box<Expr>, StoredEnv),
+    Function(Function),
     Command(Command),
     Delayed {
         value: Box<Expr>,
@@ -137,7 +139,7 @@ impl Value {
             Value::Bool(_) => Type::Bool,
             Value::Char(_) => Type::Char,
             Value::Tuple(vals) => Type::Tuple(vals.into_iter().map(|v| v.type_()).collect()),
-            Value::Function(_, _, _) => Type::Fn_,
+            Value::Function(_) => Type::Fn_,
             Value::Boxed(val) => Type::Boxed(Box::new(val.type_())),
             Value::Command(_) => Type::Command,
             v @ Value::Delayed { .. } => v.clone().eval(None).type_(),
@@ -153,11 +155,11 @@ impl Value {
     }
 
     pub fn function(param: Match, body: Box<Expr>, env: WrappedEnv) -> Self {
-        Value::Function(param, body, StoredEnv::Expr(env))
+        Value::Function(Function::UserDef(param, body, StoredEnv::Expr(env)))
     }
 
     pub fn decl_function(param: Match, body: Box<Expr>, env: Weak<RefCell<VarEnv>>) -> Self {
-        Value::Function(param, body, StoredEnv::Decl(env))
+        Value::Function(Function::UserDef(param, body, StoredEnv::Decl(env)))
     }
 
     pub fn delayed(value: Expr, self_ptr: Weak<RefCell<VarEnv>>, outer_env: WrappedEnv) -> Self {
@@ -345,7 +347,7 @@ impl fmt::Display for Value {
                 Value::Bool(b) => bool::to_string(b),
                 Value::Char(c) => format!("'{}'", char::to_string(c)),
                 Value::Tuple(vals) => format!("{}", vals),
-                Value::Function(_, _, _) => "<fn>".into(),
+                Value::Function(_) => "<fn>".into(),
                 Value::Boxed(val) => format!("[{}]", val),
                 Value::Command(_) => "<command>".into(),
                 v @ Value::Delayed { .. } => format!("{}", v.clone().eval(None)),

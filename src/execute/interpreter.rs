@@ -86,11 +86,8 @@ pub fn eval_expr(expr: Expr, env: &WrappedEnv) -> Value {
         Expr::FnApp(function, arg) => {
             let function = eval_expr(*function, env);
             match function {
-                Value::Function(param, body, fn_env) => {
-                    match VarEnv::associate(param, eval_expr(*arg, env), &fn_env.unwrap()) {
-                        Ok(fn_env) => eval_expr(*body, &fn_env),
-                        Err(error) => Value::Error(error),
-                    }
+                Value::Function(function) => {
+                    function.eval(eval_expr(*arg, env))
                 }
                 Value::Int(index) if index >= 0 => {
                     match eval_expr(*arg, env) {
