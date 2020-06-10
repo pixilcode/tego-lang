@@ -3,6 +3,8 @@ use crate::environment::{Env, EnvWrapper};
 use crate::execute::value::Value;
 use std::rc::Rc;
 
+mod prelude;
+
 pub type VarEnv = Env<Value>;
 pub type WrappedEnv = EnvWrapper<VarEnv>;
 
@@ -11,6 +13,10 @@ pub fn run_prog(prog: Prog) -> Result<Value, String> {
         Prog::Binary(main, decls) => Ok(eval_expr(main, &env_from_decls(&decls))),
         Prog::Library(_) => Err("No 'main' found in file".into()),
     }
+}
+
+fn import_prelude(env: &WrappedEnv) -> WrappedEnv {
+    VarEnv::with_parent(&env, &prelude::prelude())
 }
 
 pub fn new_env() -> WrappedEnv {

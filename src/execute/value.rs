@@ -9,7 +9,7 @@ use crate::type_::Type;
 use std::cell::RefCell;
 use std::fmt;
 use std::ops;
-use std::rc::Weak;
+use std::rc::{Weak, Rc};
 
 macro_rules! impl_op {
     ($op:ty, $func:ident, $name:literal: $( $type_:pat $( if $cond:expr )? => $new_val:expr ),+) => {
@@ -93,7 +93,7 @@ macro_rules! conversion {
 }
 
 mod tuple;
-mod command;
+pub mod command;
 mod function;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -160,6 +160,11 @@ impl Value {
 
     pub fn decl_function(param: Match, body: Box<Expr>, env: Weak<RefCell<VarEnv>>) -> Self {
         Value::Function(Function::UserDef(param, body, StoredEnv::Decl(env)))
+    }
+
+    pub fn internal_fn<F>(f: F) -> Self
+    where F: Fn(Value) -> Value + 'static {
+        Value::Function(Function::Internal(Rc::new(f)))
     }
 
     pub fn delayed(value: Expr, self_ptr: Weak<RefCell<VarEnv>>, outer_env: WrappedEnv) -> Self {

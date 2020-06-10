@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+* Commands
+  * Also known as IO Monads
+* Internal functions
+  * Internal functions are functions built in to the compiler
+  * Helps with constructing Commands
+* Prelude
+  * Contains predefined functions
+  * `return` creates a Command from a function
+  * `println` prints out it's argument, then prints a line
+
 ### Fixed
 * Matching on '()' actually matches on '()'
   * The following code didn't work as expected
