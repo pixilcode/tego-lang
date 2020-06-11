@@ -1,0 +1,16 @@
+[package]
+name = "tego"
+version = "0.4.2"
+authors = ["Brendon Bown <bhbochikens@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+structopt = "0.3.14"
+tego_parser = { path = "../tego_parser" }
+tego_interpreter = { path = "../tego_interpreter" }
+
+[dev-dependencies]
+tempfile = "3.1.0"
+assert_cmd = "1"
