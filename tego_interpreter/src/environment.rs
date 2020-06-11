@@ -1,7 +1,7 @@
-use tego_parser::ast::Match;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
+use tego_parser::ast::Match;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Env<V>

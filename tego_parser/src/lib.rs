@@ -20,11 +20,11 @@ macro_rules! parser_test {
     };
 }
 
-mod error;
-mod span;
-mod parsers;
-mod traits;
 pub mod ast;
+mod error;
+mod parsers;
+mod span;
+mod traits;
 
 // Parsers
 pub use crate::parsers::decl::decl;
@@ -38,9 +38,9 @@ pub use crate::error::ParseError;
 pub use crate::span::Span;
 
 // Traits for parser output
-pub use crate::traits::MatchOutput;
-pub use crate::traits::ExprOutput;
 pub use crate::traits::DeclOutput;
+pub use crate::traits::ExprOutput;
+pub use crate::traits::MatchOutput;
 pub use crate::traits::ProgOutput;
 
 type Input<'a> = Span<'a>;
@@ -49,7 +49,7 @@ type ParseResult<'a, O> = nom::IResult<Input<'a>, O, (Input<'a>, ParseError)>;
 mod test {
     use crate::span;
     pub use crate::Span;
-    pub use crate::{ProgOutput, DeclOutput, ExprOutput, MatchOutput};
+    pub use crate::{DeclOutput, ExprOutput, MatchOutput, ProgOutput};
 
     #[allow(dead_code)]
     pub fn empty_span(input: Span<'_>) -> Span<'_> {

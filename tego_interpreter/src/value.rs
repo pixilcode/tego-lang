@@ -1,15 +1,15 @@
-use crate::value::tuple::Tuple;
-use crate::value::command::Command;
-use crate::value::function::Function;
-use tego_parser::ast::Expr;
-use tego_parser::ast::{Match, MatchVal, ExprValue};
 use crate::environment::{Env, EnvVal};
 use crate::interpreter::{eval_expr, VarEnv, WrappedEnv};
 use crate::type_::Type;
+use crate::value::command::Command;
+use crate::value::function::Function;
+use crate::value::tuple::Tuple;
 use std::cell::RefCell;
 use std::fmt;
 use std::ops;
-use std::rc::{Weak, Rc};
+use std::rc::{Rc, Weak};
+use tego_parser::ast::Expr;
+use tego_parser::ast::{ExprValue, Match, MatchVal};
 
 macro_rules! impl_op {
     ($op:ty, $func:ident, $name:literal: $( $type_:pat $( if $cond:expr )? => $new_val:expr ),+) => {
@@ -92,9 +92,9 @@ macro_rules! conversion {
     };
 }
 
-mod tuple;
 pub mod command;
 mod function;
+mod tuple;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
@@ -112,7 +112,6 @@ pub enum Value {
     },
     Error(String),
 }
-
 
 impl Value {
     pub fn eval(self, env: Option<WrappedEnv>) -> Self {
@@ -163,7 +162,9 @@ impl Value {
     }
 
     pub fn internal_fn<F>(f: F) -> Self
-    where F: Fn(Value) -> Value + 'static {
+    where
+        F: Fn(Value) -> Value + 'static,
+    {
         Value::Function(Function::Internal(Rc::new(f)))
     }
 
@@ -217,7 +218,7 @@ impl Value {
         a, b =>
             Value::Tuple(vec![a, b].into())
     );
-    
+
     impl_op!(flat_join, "flat join":
         Value::Boxed(a), Value::Boxed(b) => Value::join(*a, *b),
         Value::Boxed(a), b => Value::join(*a, b),
@@ -248,13 +249,16 @@ impl EnvVal for Value {
             (Match::Ident(ident), val) => Ok(vec![(ident.into(), val.clone())]),
             (Match::Tuple(tup_match), Value::Tuple(tup_val)) => unwrap_tuple(&tup_match, &tup_val),
             (Match::Tuple(tup_match), val) => unwrap_tuple(&tup_match, &vec![val.clone()].into()),
-            (Match::Unit, Value::Tuple(tup_val)) =>
+            (Match::Unit, Value::Tuple(tup_val)) => {
                 if tup_val.len() == 0 {
                     Ok(vec![])
                 } else {
                     Err("Tried to match non-empty tuple against '()'".into())
                 }
-            (Match::Boxed(boxed_match), Value::Boxed(boxed_value)) => boxed_value.unwrap_matches(boxed_match),
+            }
+            (Match::Boxed(boxed_match), Value::Boxed(boxed_value)) => {
+                boxed_value.unwrap_matches(boxed_match)
+            }
             (Match::Value(MatchVal::Int(a)), Value::Int(b)) => {
                 if a == b {
                     Ok(vec![])
@@ -277,10 +281,11 @@ impl EnvVal for Value {
                 }
             }
             (Match::Value(MatchVal::String(a)), Value::Tuple(b)) => {
-                if a.chars().map(Value::Char).zip(b.into_iter()).all(
-                    |(val_a, val_b): (Value, Value)|
-                    val_a == val_b
-                ) {
+                if a.chars()
+                    .map(Value::Char)
+                    .zip(b.into_iter())
+                    .all(|(val_a, val_b): (Value, Value)| val_a == val_b)
+                {
                     Ok(vec![])
                 } else {
                     Err(format!("Expected string \"{}\", found {}", a, b))
@@ -316,7 +321,8 @@ fn unwrap_tuple(tup_match: &[Match], tup_val: &Tuple) -> Result<Vec<(String, Val
                     Ok(vals)
                 })
             }),
-        (_, _) => tup_val.index(0)
+        (_, _) => tup_val
+            .index(0)
             .unwrap_matches(&tup_match[0])
             .and_then(|mut vals| {
                 unwrap_tuple(&tup_match[1..], &tup_val.from(1)).and_then(|mut rest| {
@@ -440,7 +446,7 @@ conversion!( Value[vec: Vec<Value>] => Value::Tuple(vec.into()));
 conversion!( Value[slice: &[Value]] => Value::Tuple(slice.into()));
 conversion!( Value[string: String] => Value::Boxed(Box::new(Value::Tuple(string.into()))));
 conversion!( Value[string: &str] => Value::Boxed(Box::new(Value::Tuple(string.into()))));
-conversion!{
+conversion! {
     Value[expr_val: ExprValue] => match expr_val {
         ExprValue::Bool(b) => Value::Bool(b),
         ExprValue::Char(c) => Value::Char(c),
@@ -455,8 +461,6 @@ pub enum StoredEnv {
     Expr(WrappedEnv),
     Decl(Weak<RefCell<VarEnv>>), // To avoid memory leaks
 }
-
-
 
 impl StoredEnv {
     pub fn unwrap(self) -> WrappedEnv {

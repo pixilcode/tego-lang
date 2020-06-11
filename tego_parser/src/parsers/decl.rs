@@ -1,9 +1,9 @@
-use crate::DeclOutput;
-use crate::ExprOutput;
 use crate::error::*;
 use crate::expr;
 use crate::match_;
 use crate::parsers::tokens::*;
+use crate::DeclOutput;
+use crate::ExprOutput;
 use crate::Input;
 use crate::ParseResult;
 
@@ -12,12 +12,16 @@ use nom::{multi::many0, sequence::tuple};
 type DeclResult<'a, D> = ParseResult<'a, D>;
 
 pub fn decl<D>(input: Input<'_>) -> DeclResult<'_, D>
-where D: DeclOutput {
+where
+    D: DeclOutput,
+{
     req_nl(expression)(input)
 }
 
 fn expression<D>(input: Input<'_>) -> DeclResult<'_, D>
-where D: DeclOutput {
+where
+    D: DeclOutput,
+{
     tuple((identifier, many0(match_), opt_nl(assign), expr))(input)
         .map_err(decl_expr_error)
         .map(|(input, (ident, params, _, body))| {
@@ -37,9 +41,9 @@ where D: DeclOutput {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ast::{Decl, Expr, Match};
     use crate::test::*;
     use crate::Span;
-    use crate::ast::{Decl, Expr, Match};
 
     parser_test! {
         expression_test

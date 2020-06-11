@@ -1,7 +1,7 @@
-use crate::ExprOutput;
 use crate::error::*;
 use crate::parsers::match_::*;
 use crate::parsers::tokens::*;
+use crate::ExprOutput;
 use crate::Input;
 use crate::ParseResult;
 
@@ -17,7 +17,9 @@ type ExprResult<'a, E> = ParseResult<'a, E>;
 macro_rules! binary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
         fn $name<E>(input: Input<'_>) -> ExprResult<'_, E>
-        where E: ExprOutput {
+        where
+            E: ExprOutput,
+        {
             pair(
                 $next_precedence,
                 opt(many1(pair(opt_nl($op_func), $next_precedence))),
@@ -40,7 +42,9 @@ macro_rules! binary_expr {
 macro_rules! unary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
         fn $name<E>(input: Input<'_>) -> ExprResult<'_, E>
-        where E: ExprOutput {
+        where
+            E: ExprOutput,
+        {
             pair($op_func, $name)(input)
                 .and_then(|(input, (op, a))| Ok((input, E::unary(op.to_str(), a))))
                 .or_else(try_parser($next_precedence, input))
@@ -49,12 +53,16 @@ macro_rules! unary_expr {
 }
 
 pub fn expr<E>(input: Input<'_>) -> ExprResult<'_, E>
-where E: ExprOutput {
+where
+    E: ExprOutput,
+{
     let_expr(input)
 }
 
 pub fn let_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
-where E: ExprOutput {
+where
+    E: ExprOutput,
+{
     alt((let_, delay))(input)
         .and_then(|(input, let_token)| match let_token.into() {
             "let" => {
@@ -77,7 +85,9 @@ where E: ExprOutput {
 }
 
 pub fn if_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
-where E: ExprOutput {
+where
+    E: ExprOutput,
+{
     if_(input)
         .and_then(|(input, _)| {
             terminated(join_expr, opt_nl(alt((then, q_mark))))(input)
@@ -92,7 +102,9 @@ where E: ExprOutput {
 }
 
 pub fn match_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
-where E: ExprOutput {
+where
+    E: ExprOutput,
+{
     match_kw(input)
         .and_then(|(input, _)| {
             terminated(join_expr, to)(input)
@@ -108,7 +120,9 @@ where E: ExprOutput {
 }
 
 pub fn match_arm<E>(input: Input<'_>) -> ParseResult<'_, (E::Match, E)>
-where E: ExprOutput {
+where
+    E: ExprOutput,
+{
     preceded(bar, separated_pair(match_, opt_nl(arrow), expr))(input).map_err(match_arm_error)
 }
 
@@ -130,7 +144,9 @@ unary_expr!(negate_expr, minus, not_expr);
 unary_expr!(not_expr, not, fn_expr);
 
 fn fn_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
-where E: ExprOutput {
+where
+    E: ExprOutput,
+{
     fn_(input)
         .and_then(|(input, _)| {
             separated_pair(match_, opt_nl(arrow), expr)(input)
@@ -141,12 +157,16 @@ where E: ExprOutput {
 }
 
 fn fn_application<E>(input: Input<'_>) -> ExprResult<'_, E>
-where E: ExprOutput {
+where
+    E: ExprOutput,
+{
     grouping(input).and_then(|(input, val)| fold_many0(grouping, val, E::fn_app)(input))
 }
 
 fn grouping<E>(input: Input<'_>) -> ExprResult<'_, E>
-where E: ExprOutput {
+where
+    E: ExprOutput,
+{
     opt_nl(left_paren)(input)
         .and_then(|(input, open_paren)| {
             right_paren(input)
@@ -157,22 +177,26 @@ where E: ExprOutput {
                     open_paren.column(),
                 )))
         })
-        .or_else(try_parser(|input| opt_nl(left_bracket)(input)
-            .and_then(|(input, open_bracket)| {
-                terminated(opt_nl(expr), right_bracket)(input)
-                .map(|(input, inner)| (input, E::boxed(inner)))
-                .map_err(terminating_bracket_error((
-                    open_bracket.line(),
-                    open_bracket.column()
-                )))
-            }),
-            input)
-        )
+        .or_else(try_parser(
+            |input| {
+                opt_nl(left_bracket)(input).and_then(|(input, open_bracket)| {
+                    terminated(opt_nl(expr), right_bracket)(input)
+                        .map(|(input, inner)| (input, E::boxed(inner)))
+                        .map_err(terminating_bracket_error((
+                            open_bracket.line(),
+                            open_bracket.column(),
+                        )))
+                })
+            },
+            input,
+        ))
         .or_else(try_parser(literal, input))
 }
 
 fn literal<E>(input: Input<'_>) -> ExprResult<'_, E>
-where E: ExprOutput {
+where
+    E: ExprOutput,
+{
     alt((true_val, false_val, number, identifier))(input)
         .and_then(|(new_input, token)| match token.to_str() {
             "true" => Ok((new_input, E::bool(true))),

@@ -106,63 +106,63 @@ impl Expr {
 impl ExprOutput for Expr {
     type Match = Match;
 
-	fn binary(a: Self, op: &str, b: Self) -> Self {
+    fn binary(a: Self, op: &str, b: Self) -> Self {
         Expr::Binary(Box::new(a), op.into(), Box::new(b))
     }
 
-	fn unary(op: &str, a: Self) -> Self {
+    fn unary(op: &str, a: Self) -> Self {
         Expr::Unary(op.into(), Box::new(a))
     }
 
-	fn let_expr(ident: Match, value: Self, inner: Self) -> Self {
+    fn let_expr(ident: Match, value: Self, inner: Self) -> Self {
         Expr::Let(ident, Box::new(value), Box::new(inner))
     }
-    
+
     fn delayed(ident: Match, value: Self, inner: Self) -> Self {
         Expr::Delayed(ident, Box::new(value), Box::new(inner))
     }
-    
+
     fn if_expr(cond: Self, t: Self, f: Self) -> Self {
         Expr::If(Box::new(cond), Box::new(t), Box::new(f))
     }
-    
+
     fn match_(val: Self, patterns: Vec<(Match, Self)>) -> Self {
         Expr::Match(Box::new(val), patterns)
     }
 
-	fn fn_expr(param: Match, body: Self) -> Self {
+    fn fn_expr(param: Match, body: Self) -> Self {
         Expr::Fn_(param, Box::new(body))
     }
 
-	fn fn_app(function: Self, arg: Self) -> Self {
+    fn fn_app(function: Self, arg: Self) -> Self {
         Expr::FnApp(Box::new(function), Box::new(arg))
     }
 
-	fn unit() -> Self {
+    fn unit() -> Self {
         Expr::Literal(ExprValue::Unit)
     }
 
-	fn boxed(expr: Self) -> Self {
+    fn boxed(expr: Self) -> Self {
         Expr::Boxed(Box::new(expr))
     }
 
-	fn bool(b: bool) -> Self {
+    fn bool(b: bool) -> Self {
         Expr::Literal(ExprValue::Bool(b))
     }
 
-	fn int(i: i32) -> Self {
+    fn int(i: i32) -> Self {
         Expr::Literal(ExprValue::Int(i))
     }
 
-	fn variable(ident: &str) -> Self {
+    fn variable(ident: &str) -> Self {
         Expr::Variable(ident.into())
     }
 
-	fn string(s: &str) -> Self {
+    fn string(s: &str) -> Self {
         Expr::Literal(ExprValue::String(s.into()))
     }
 
-	fn char(c: char) -> Self {
+    fn char(c: char) -> Self {
         Expr::Literal(ExprValue::Char(c))
     }
 }
@@ -173,7 +173,7 @@ pub enum ExprValue {
     Bool(bool),
     Unit,
     String(String),
-    Char(char)
+    Char(char),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -202,7 +202,7 @@ pub enum BinaryOp {
     And,
     Or,
     Xor,
-    Join, // ',' operator, creates a tuple
+    Join,     // ',' operator, creates a tuple
     FlatJoin, // ',,' operator
     Equal,
     NotEqual,

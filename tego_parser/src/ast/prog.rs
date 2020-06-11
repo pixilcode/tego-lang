@@ -8,12 +8,12 @@ pub enum Prog {
 }
 
 impl ProgOutput for Prog {
-	type Decl = Decl;
+    type Decl = Decl;
 
-	fn binary(main: Expr, decls: Vec<Decl>) -> Self {
+    fn binary(main: Expr, decls: Vec<Decl>) -> Self {
         Prog::Binary(main, decls)
     }
-	fn library(decls: Vec<Decl>) -> Self {
+    fn library(decls: Vec<Decl>) -> Self {
         Prog::Library(decls)
     }
 }

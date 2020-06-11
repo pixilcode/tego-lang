@@ -2,9 +2,9 @@ use crate::error::*;
 use crate::{Input, ParseResult};
 use nom::{
     branch::alt,
-    bytes::complete::{is_not, tag, take_while1, take_until},
+    bytes::complete::{is_not, tag, take_until, take_while1},
     character::complete::{anychar, digit1, line_ending, multispace0, not_line_ending, space0},
-    combinator::{all_consuming, map, map_res, opt, verify, peek, rest_len},
+    combinator::{all_consuming, map, map_res, opt, peek, rest_len, verify},
     multi::many0,
     sequence::{preceded, terminated, tuple},
 };
@@ -97,18 +97,18 @@ where
 macro_rules! reserved {
     (keyword $lexeme:ident, $lexeme_str:literal) => {
         pub fn $lexeme(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
-            token(
-                terminated(
-                    tag($lexeme_str),
-                    alt((
-                        peek(verify(anychar, |c| !is_identifier_char(*c))),
-                        map( // Only used for typechecking purposes
-                            verify(rest_len, |len| *len == 0),
-                            |_| char::from(0) // This character will be ignored
-                        )
-                    ))
-                )
-            )(input).map_err(reserved_error($lexeme_str))
+            token(terminated(
+                tag($lexeme_str),
+                alt((
+                    peek(verify(anychar, |c| !is_identifier_char(*c))),
+                    map(
+                        // Only used for typechecking purposes
+                        verify(rest_len, |len| *len == 0),
+                        |_| char::from(0), // This character will be ignored
+                    ),
+                )),
+            ))(input)
+            .map_err(reserved_error($lexeme_str))
         }
     };
 
@@ -136,10 +136,9 @@ pub fn number(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
 }
 
 pub fn identifier(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
-    token(verify(
-        take_while1(is_identifier_char),
-        |id: &Input| !is_keyword(id.to_str()) && !id.to_str().starts_with('\''),
-    ))(input)
+    token(verify(take_while1(is_identifier_char), |id: &Input| {
+        !is_keyword(id.to_str()) && !id.to_str().starts_with('\'')
+    }))(input)
     .map_err(ident_error)
 }
 

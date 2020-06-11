@@ -1,5 +1,5 @@
-use std::fmt;
 use crate::MatchOutput;
+use std::fmt;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Match {
@@ -12,7 +12,7 @@ pub enum Match {
 }
 
 impl MatchOutput for Match {
-	fn tuple(a: Self, b: Self) -> Self {
+    fn tuple(a: Self, b: Self) -> Self {
         match (a, b) {
             (Match::Tuple(mut a), Match::Tuple(mut b)) => {
                 a.append(&mut b);
@@ -30,35 +30,35 @@ impl MatchOutput for Match {
         }
     }
 
-	fn unit() -> Self {
+    fn unit() -> Self {
         Match::Unit
     }
 
-	fn boxed(a: Self) -> Self {
+    fn boxed(a: Self) -> Self {
         Match::Boxed(Box::new(a))
     }
 
-	fn ignore() -> Self {
+    fn ignore() -> Self {
         Match::Ignore
     }
 
-	fn bool(b: bool) -> Self {
+    fn bool(b: bool) -> Self {
         Match::Value(MatchVal::Bool(b))
     }
 
-	fn int(i: i32) -> Self {
+    fn int(i: i32) -> Self {
         Match::Value(MatchVal::Int(i))
     }
 
-	fn ident(lexeme: &str) -> Match {
+    fn ident(lexeme: &str) -> Match {
         Match::Ident(lexeme.into())
     }
 
-	fn string(s: &str) -> Self {
+    fn string(s: &str) -> Self {
         Match::Boxed(Box::new(Match::Value(MatchVal::String(s.into()))))
     }
 
-	fn char(c: char) -> Self {
+    fn char(c: char) -> Self {
         Match::Value(MatchVal::Char(c))
     }
 }
@@ -68,16 +68,16 @@ pub enum MatchVal {
     Int(i32),
     Bool(bool),
     Char(char),
-    String(String)
+    String(String),
 }
 
 impl fmt::Display for MatchVal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            match self {
-                MatchVal::Int(i) => write!(f, "{}", i),
-                MatchVal::Bool(b) => write!(f, "{}", b),
-                MatchVal::Char(c) => write!(f, "'{}'", c),
-                MatchVal::String(s) => write!(f, "\"{}\"", s)
-            }
+        match self {
+            MatchVal::Int(i) => write!(f, "{}", i),
+            MatchVal::Bool(b) => write!(f, "{}", b),
+            MatchVal::Char(c) => write!(f, "'{}'", c),
+            MatchVal::String(s) => write!(f, "\"{}\"", s),
+        }
     }
 }

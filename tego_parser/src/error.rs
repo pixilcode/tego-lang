@@ -190,7 +190,7 @@ impl<'a> From<nom::Err<(Input<'a>, ParseError)>> for ParseError {
             nom::Err::Incomplete(_) => ParseError {
                 column: 1,
                 line: 1,
-                kind: ErrorKind::Incomplete
+                kind: ErrorKind::Incomplete,
             },
             nom::Err::Error((_, error)) | nom::Err::Failure((_, error)) => error,
         }
@@ -429,7 +429,7 @@ impl From<&ErrorKind> for u16 {
             ErrorKind::UnhandledError => 22,
             ErrorKind::EndOfExpr => 23,
             ErrorKind::TerminatingBracket(_, _) => 24,
-            ErrorKind::Incomplete => 25
+            ErrorKind::Incomplete => 25,
         }
     }
 }

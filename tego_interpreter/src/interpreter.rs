@@ -1,8 +1,8 @@
-use tego_parser::ast::{Decl, Expr, Prog, BinaryOp, UnaryOp};
 use crate::environment::{Env, EnvWrapper};
-use crate::value::Value;
 use crate::prelude::prelude;
+use crate::value::Value;
 use std::rc::Rc;
+use tego_parser::ast::{BinaryOp, Decl, Expr, Prog, UnaryOp};
 
 pub type VarEnv = Env<Value>;
 pub type WrappedEnv = EnvWrapper<VarEnv>;
@@ -69,7 +69,7 @@ fn fill_decl_env(decls: &[Decl], decl_ptrs: &[WrappedEnv], env: WrappedEnv) -> W
 
 pub fn eval_expr(expr: Expr, env: &WrappedEnv) -> Value {
     match expr {
-        Expr::Unary(op, a) => eval_unary(op ,eval_expr(*a, env)),
+        Expr::Unary(op, a) => eval_unary(op, eval_expr(*a, env)),
         Expr::Binary(a, op, b) => eval_binary(op, eval_expr(*a, env), eval_expr(*b, env)),
         Expr::Literal(val) => val.into(),
         Expr::If(cond, a, b) => match eval_expr(*cond, env) {
@@ -91,15 +91,11 @@ pub fn eval_expr(expr: Expr, env: &WrappedEnv) -> Value {
         Expr::FnApp(function, arg) => {
             let function = eval_expr(*function, env);
             match function {
-                Value::Function(function) => {
-                    function.eval(eval_expr(*arg, env))
-                }
-                Value::Int(index) if index >= 0 => {
-                    match eval_expr(*arg, env) {
-                        Value::Tuple(tuple) => tuple.get(index as usize),
-                        arg => error(&format!("Can't index type '{}'", arg.type_()))
-                    }
-                }
+                Value::Function(function) => function.eval(eval_expr(*arg, env)),
+                Value::Int(index) if index >= 0 => match eval_expr(*arg, env) {
+                    Value::Tuple(tuple) => tuple.get(index as usize),
+                    arg => error(&format!("Can't index type '{}'", arg.type_())),
+                },
                 Value::Int(_) => error("Cannot have a negative index of a tuple"),
                 _ => error(&format!(
                     "Can't apply argument to type '{}'",
@@ -168,7 +164,7 @@ fn error(message: &str) -> Value {
 mod tests {
     use super::*;
     use tego_parser::ast::Match;
-    use tego_parser::{MatchOutput, ExprOutput};
+    use tego_parser::{ExprOutput, MatchOutput};
 
     #[test]
     fn eval_literal() {

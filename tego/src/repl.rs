@@ -1,8 +1,8 @@
 use std::io::{self, Write};
 use std::rc::Rc;
-use tego_parser::ast::Decl;
 use tego_interpreter as interpreter;
 use tego_parser as parser;
+use tego_parser::ast::Decl;
 
 pub fn run() -> io::Result<()> {
     let mut stdout = io::BufWriter::new(io::stdout());

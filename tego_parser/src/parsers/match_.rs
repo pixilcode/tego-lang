@@ -1,7 +1,7 @@
-use crate::MatchOutput;
 use crate::error::*;
 use crate::parsers::tokens::*;
 use crate::Input;
+use crate::MatchOutput;
 use crate::ParseResult;
 use nom::branch::alt;
 
@@ -13,12 +13,16 @@ use nom::{
 type MatchResult<'a, M> = ParseResult<'a, M>;
 
 pub fn match_<M>(input: Input<'_>) -> MatchResult<'_, M>
-where M: MatchOutput {
+where
+    M: MatchOutput,
+{
     tuple(input)
 }
 
 fn tuple<M>(input: Input<'_>) -> MatchResult<'_, M>
-where M: MatchOutput {
+where
+    M: MatchOutput,
+{
     pair(grouping, opt(comma))(input).and_then(|(input, (a, comma))| match comma {
         Some(_) => tuple(input).map(|(input, b)| (input, M::tuple(a, b))),
         None => Ok((input, a)),
@@ -26,7 +30,9 @@ where M: MatchOutput {
 }
 
 pub fn grouping<M>(input: Input<'_>) -> MatchResult<'_, M>
-where M: MatchOutput {
+where
+    M: MatchOutput,
+{
     left_paren(input)
         .and_then(|(input, open_paren)| {
             right_paren(input)
@@ -37,23 +43,26 @@ where M: MatchOutput {
                     open_paren.column(),
                 )))
         })
-        .or_else(
-            try_parser(|input| opt_nl(left_bracket)(input)
-            .and_then(|(input, open_bracket)| {
-                terminated(opt_nl(match_), right_bracket)(input)
-                .map(|(input, inner)| (input, M::boxed(inner)))
-                .map_err(terminating_bracket_error((
-                    open_bracket.line(),
-                    open_bracket.column()
-                )))
-            }),
-            input)
-        )
+        .or_else(try_parser(
+            |input| {
+                opt_nl(left_bracket)(input).and_then(|(input, open_bracket)| {
+                    terminated(opt_nl(match_), right_bracket)(input)
+                        .map(|(input, inner)| (input, M::boxed(inner)))
+                        .map_err(terminating_bracket_error((
+                            open_bracket.line(),
+                            open_bracket.column(),
+                        )))
+                })
+            },
+            input,
+        ))
         .or_else(try_parser(atom, input))
 }
 
 fn atom<M>(input: Input<'_>) -> MatchResult<'_, M>
-where M: MatchOutput {
+where
+    M: MatchOutput,
+{
     alt((true_val, false_val, underscore, number, identifier))(input)
         .and_then(|(new_input, token)| match token.into() {
             "true" => Ok((new_input, M::bool(true))),
@@ -73,7 +82,9 @@ where M: MatchOutput {
 }
 
 pub fn variable<M>(input: Input<'_>) -> MatchResult<'_, M>
-where M: MatchOutput {
+where
+    M: MatchOutput,
+{
     identifier(input)
         .map(|(input, lexeme)| (input, M::ident(lexeme.into())))
         .map_err(ident_match_error)
@@ -82,8 +93,8 @@ where M: MatchOutput {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test::*;
     use crate::ast::Match;
+    use crate::test::*;
 
     parser_test! {
         ident_test

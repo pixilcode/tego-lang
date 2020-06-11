@@ -16,7 +16,7 @@ impl DeclOutput for Decl {
     fn to_main(&self, main_fn_ident: &str) -> Option<Expr> {
         match self {
             Decl::Expression(ref ident, ref body) if ident == main_fn_ident => Some(body.clone()),
-            _ => None
+            _ => None,
         }
     }
 }

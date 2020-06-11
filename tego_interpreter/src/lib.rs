@@ -9,10 +9,10 @@ macro_rules! basic_test {
     };
 }
 
-mod interpreter;
 mod environment;
-mod type_;
+mod interpreter;
 pub mod prelude;
+mod type_;
 pub mod value;
 
 pub use interpreter::*;

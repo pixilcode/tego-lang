@@ -1,15 +1,17 @@
-use crate::{ProgOutput, DeclOutput};
 use crate::decl;
 use crate::parsers::tokens::newlines;
 use crate::Input;
 use crate::ParseResult;
+use crate::{DeclOutput, ProgOutput};
 use nom::combinator::all_consuming;
 use nom::sequence::preceded;
 
 type ProgResult<'a, P> = ParseResult<'a, P>;
 
 pub fn prog<P>(input: Input<'_>) -> ProgResult<'_, P>
-where P: ProgOutput {
+where
+    P: ProgOutput,
+{
     all_consuming(parse_prog)(input).map(|(input, (main, decl))| match main {
         Some(main) => (input, P::binary(main, decl)),
         None => (input, P::library(decl)),
@@ -17,7 +19,9 @@ where P: ProgOutput {
 }
 
 fn parse_prog<D>(input: Input<'_>) -> ParseResult<'_, (Option<<D as DeclOutput>::Expr>, Vec<D>)>
-where D: DeclOutput {
+where
+    D: DeclOutput,
+{
     let decl_res = preceded(newlines(false), decl)(input);
     decl_res.and_then(|(input, decl): (Input, D)| {
         let (input, (main, mut decls)) = if input.to_str().is_empty() {
@@ -36,8 +40,8 @@ where D: DeclOutput {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::ast::{Decl, Expr, Match, Prog};
     use crate::test::*;
-    use crate::ast::{Prog, Decl, Expr, Match};
 
     parser_test! {
         binary_test
