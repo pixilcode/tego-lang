@@ -160,6 +160,8 @@ impl fmt::Display for ParseError {
             ErrorKind::DelayAssign => "missing '=' in delay assignment".into(),
             ErrorKind::DelayIn => "missing 'in' in delay expression".into(),
             ErrorKind::EndOfExpr => "unexpected end of expr".into(),
+            ErrorKind::DoIn => "missing 'in' in do expression".into(),
+            ErrorKind::DoThen => "missing 'then' in do expression".into(),
 
             // Decl Errors
             ErrorKind::DeclAssign => "missing '=' in expression declaration".into(),
@@ -329,6 +331,11 @@ error_type! {
     "=" => ErrorKind::DelayAssign,
     "in" => ErrorKind::DelayIn
 }
+error_type! {
+    token [do_error]
+    "in" => ErrorKind::DoIn,
+    "then" => ErrorKind::DoThen
+}
 
 // Match Errors
 error_type!(ident_match_error, ErrorKind::Keyword);
@@ -374,6 +381,8 @@ enum ErrorKind {
     DelayAssign,
     DelayIn,
     EndOfExpr,
+    DoIn,
+    DoThen,
 
     // Decl Errors
     DeclAssign,
@@ -430,6 +439,8 @@ impl From<&ErrorKind> for u16 {
             ErrorKind::EndOfExpr => 23,
             ErrorKind::TerminatingBracket(_, _) => 24,
             ErrorKind::Incomplete => 25,
+            ErrorKind::DoIn => 26,
+            ErrorKind::DoThen => 27,
         }
     }
 }

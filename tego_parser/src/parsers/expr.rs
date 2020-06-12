@@ -9,7 +9,7 @@ use nom::{
     branch::alt,
     combinator::opt,
     multi::{fold_many0, many1},
-    sequence::{pair, preceded, separated_pair, terminated},
+    sequence::{pair, preceded, separated_pair, terminated, tuple},
 };
 
 type ExprResult<'a, E> = ParseResult<'a, E>;
@@ -56,7 +56,22 @@ pub fn expr<E>(input: Input<'_>) -> ExprResult<'_, E>
 where
     E: ExprOutput,
 {
-    let_expr(input)
+    do_expr(input)
+}
+
+pub fn do_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
+where
+    E: ExprOutput,
+{
+    do_(input)
+        .and_then(|(input, _)|
+            tuple((let_expr, in_, match_, opt_nl(then), expr))(input)
+            .map_err(do_error)
+            .map(|(input, (command, _, command_match, _, body))|
+                (input, E::do_expr(command, command_match, body))
+            )
+        )
+        .or_else(try_parser(let_expr, input))
 }
 
 pub fn let_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
@@ -433,6 +448,21 @@ mod tests {
             Expr::delayed(
                 Match::ident("a"),
                 Expr::int(1),
+                Expr::variable("a")
+            )
+    }
+    parser_test! {
+        do_expr_test
+        (expr): "do println 1 in a then b" =>
+            Expr::do_expr(
+                Expr::fn_app(Expr::variable("println"), Expr::int(1)),
+                Match::ident("a"),
+                Expr::variable("b")
+            );
+        (expr): "do println 1 then a" =>
+            Expr::do_expr(
+                Expr::fn_app(Expr::variable("println"), Expr::int(1)), 
+                Match::ignore(),
                 Expr::variable("a")
             )
     }

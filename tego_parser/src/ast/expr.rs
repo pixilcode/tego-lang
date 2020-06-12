@@ -3,6 +3,7 @@ use crate::ExprOutput;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
+    Do(Box<Expr>, Match, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     Let(Match, Box<Expr>, Box<Expr>),
     Fn_(Match, Box<Expr>),
@@ -164,6 +165,10 @@ impl ExprOutput for Expr {
 
     fn char(c: char) -> Self {
         Expr::Literal(ExprValue::Char(c))
+    }
+
+    fn do_expr(command: Self, result_match: Match, body: Self) -> Self {
+        Expr::Do(Box::new(command), result_match, Box::new(body))
     }
 }
 

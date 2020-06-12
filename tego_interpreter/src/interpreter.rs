@@ -125,6 +125,7 @@ pub fn eval_expr(expr: Expr, env: &WrappedEnv) -> Value {
             eval_expr(*inner, &new_env)
         }
         Expr::Boxed(value) => Value::Boxed(Box::new(eval_expr(*value, env))),
+        Expr::Do(_, _, _) => unimplemented!()
     }
 }
 

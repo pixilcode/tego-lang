@@ -6,8 +6,9 @@ use std::rc::Rc;
 #[derive(Clone)]
 pub enum Command {
     Unit(Rc<Value>),
-    Compound(Rc<Command>, Rc<dyn Fn(Value) -> Command>),
+    Compound(Rc<Command>, Rc<dyn Fn(Value) -> Result<Command, Value>>),
     Println(Rc<Value>),
+
 }
 
 impl Command {
@@ -17,7 +18,7 @@ impl Command {
 
     pub fn bind<F>(&self, f: F) -> Self
     where
-        F: Fn(Value) -> Command + 'static,
+        F: Fn(Value) -> Result<Command, Value> + 'static,
     {
         Command::Compound(Rc::new(self.clone()), Rc::new(f))
     }
@@ -58,9 +59,12 @@ fn run_unit(value: &Value) -> Value {
     value.clone()
 }
 
-fn run_compound(first: &Command, next: &Rc<dyn Fn(Value) -> Command>) -> Value {
+fn run_compound(first: &Command, next: &Rc<dyn Fn(Value) -> Result<Command, Value>>) -> Value {
     let result = first.run();
-    next(result).run()
+    match next(result) {
+        Ok(command) => command.run(),
+        Err(value) => value
+    }
 }
 
 fn run_println(value: &Value) -> Value {

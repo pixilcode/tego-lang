@@ -28,6 +28,7 @@ pub trait ExprOutput: Sized + Clone {
     fn variable(ident: &str) -> Self;
     fn string(s: &str) -> Self;
     fn char(c: char) -> Self;
+    fn do_expr(command: Self, result_match: Self::Match, body: Self) -> Self;
 }
 
 pub trait DeclOutput {
@@ -80,6 +81,7 @@ impl ExprOutput for () {
     fn variable(_: &str) -> Self {}
     fn string(_: &str) -> Self {}
     fn char(_: char) -> Self {}
+    fn do_expr(_: Self, _: Self::Match, _: Self) -> Self {}
 }
 
 impl DeclOutput for () {
