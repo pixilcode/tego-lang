@@ -125,7 +125,22 @@ pub fn eval_expr(expr: Expr, env: &WrappedEnv) -> Value {
             eval_expr(*inner, &new_env)
         }
         Expr::Boxed(value) => Value::Boxed(Box::new(eval_expr(*value, env))),
-        Expr::Do(_, _, _) => unimplemented!()
+        Expr::Do(command, result_match, body) => {
+            let env = env.clone();
+            match eval_expr(*command, &env) {
+                Value::Command(command) => Value::Command(command.bind(
+                    move |value| {
+                        let env = VarEnv::associate(result_match.clone(), value, &env).map_err(Value::Error)?;
+                        let result = eval_expr(*body.clone(), &env);
+                        match result {
+                            Value::Command(command) => Ok(command),
+                            _ => Err(error("'do' expressions must evaluate to a Command"))
+                        }
+                    }
+                )),
+                _ => error("'do' expressions only accept Commands")
+            }
+        }
     }
 }
 
@@ -375,6 +390,16 @@ mod tests {
                 &env
             ))
         );
+    }
+    #[test]
+    fn do_expr_test() {
+        let expr = Expr::do_expr(
+            Expr::fn_app(Expr::variable("return"), Expr::int(1)),
+            Match::ident("a"),
+            Expr::fn_app(Expr::variable("return"), Expr::variable("a"))
+        );
+        let result = run(eval_expr(expr, &prelude()));
+        assert_eq!(Value::Int(1), result);
     }
 
     fn run(val: Value) -> Value {

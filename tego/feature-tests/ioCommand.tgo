@@ -16,4 +16,4 @@ addInput =
 	-- the values can be manipulated as regular values
 	-- but the end result must be a Command
 	-- `return` wraps a regular value in a Command
-	return valA + valB
+	return (valA + valB)

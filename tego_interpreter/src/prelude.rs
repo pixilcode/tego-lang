@@ -3,7 +3,12 @@ use crate::value::command::Command;
 use crate::value::Value;
 
 pub fn prelude() -> WrappedEnv {
-    let prelude_decls = vec![("return", return_fn()), ("println", println_fn())];
+    let prelude_decls = vec![
+        ("return", return_fn()),
+        ("println", println_fn()),
+        ("readLine", readline_fn()),
+        ("readInt", readint_fn())
+    ];
     prelude_decls
         .into_iter()
         .fold(VarEnv::empty(), |parent, (ident, val)| {
@@ -17,4 +22,12 @@ fn return_fn() -> Value {
 
 fn println_fn() -> Value {
     Value::internal_fn(|val| Value::Command(Command::println(val)))
+}
+
+fn readline_fn() -> Value {
+    Value::Command(Command::readline())
+}
+
+fn readint_fn() -> Value {
+    Value::Command(Command::readint())
 }
