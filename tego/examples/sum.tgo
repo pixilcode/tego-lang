@@ -1,0 +1,18 @@
+main = (sumTo 15, sumTo' 15)
+
+-- Sums numbers from 0 to 'n'
+sumTo n =
+    match n to
+    | 0 -> 0
+    | n -> n + sumTo (n - 1)
+
+
+-- Sums numbers from 0 to 'n' that are divisible by 3 or 5
+sumTo' n =
+    match n to
+    | 0 -> 0
+    | n ->
+        if n % 3 == 0 or n % 5 == 0 then
+            n + (sumTo' (n - 1))
+        else
+            sumTo' (n - 1)

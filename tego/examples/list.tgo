@@ -1,0 +1,25 @@
+max list =
+	match list to
+	| head, () -> head
+	| head, tail ->
+		let tailMax = max tail in
+		if head > tailMax then
+			head
+		else
+			tailMax
+
+min list =
+	match list to
+	| head, () -> head
+	| head, tail ->
+		let tailMin = min tail in
+		if head < tailMin then
+			head
+		else
+			tailMin
+
+a = ()
+b = 3
+c = 4, 2, 3, 1
+
+main = [max a], [min a], [max b], [min b], [max c], [min c]

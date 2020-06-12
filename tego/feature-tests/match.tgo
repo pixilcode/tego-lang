@@ -1,0 +1,51 @@
+main = matchBool true, matchInt 1, matchChar 'a', matchStr "a", tupMatchA, tupMatchB
+
+matchBool b =
+	match b to
+	| true -> true
+	| _ -> false
+
+matchInt i =
+	match i to
+	| 1 -> true
+	| _ -> false
+
+matchChar c =
+	match c to
+	| 'a' -> true
+	| _ -> false
+
+matchStr s =
+	match s to
+	| "a" -> true
+	| _ -> false
+
+-- This function adds one to each value in the tuple
+addOneA t =
+	match t to
+	-- only matches an empty tuple
+	| () -> ()
+	-- matches everything else
+	-- `tail` could be a tuple, a value, or `()`, an empty tuple
+	-- if `t` is a single value, `tail` is `()`
+	| head, tail -> head + 1, addOneA tail
+
+-- This function adds one to each value in the tuple except the last
+addOneB t =
+	match t to
+	-- matches only the last value in the tuple
+	-- also, `head == ()` if the tuple is empty
+	| head, () -> head
+	-- head is the first item in the tuple
+	-- tail is the rest of the tuple
+	| head, tail -> head + 1, addOneB tail
+
+tupMatchA =
+	addOneA () == (),
+	addOneA 1 == 2,
+	addOneA (1, 2, 3) == (2, 3, 4)
+
+tupMatchB =
+	addOneB () == (),
+	addOneB 1 == 1,
+	addOneB (1, 2, 3) == (2, 3, 3)
