@@ -153,6 +153,13 @@ impl Value {
         }
     }
 
+    pub fn run(&self) -> Result<Value, ()> {
+        match self {
+            Value::Command(command) => Ok(command.run()),
+            _ => Err(()),
+        }
+    }
+
     pub fn function(param: Match, body: Box<Expr>, env: WrappedEnv) -> Self {
         Value::Function(Function::UserDef(param, body, StoredEnv::Expr(env)))
     }

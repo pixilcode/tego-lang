@@ -9,13 +9,13 @@ pub type WrappedEnv = EnvWrapper<VarEnv>;
 
 pub fn run_prog(prog: Prog) -> Result<Value, String> {
     match prog {
-        Prog::Binary(main, decls) => Ok(eval_expr(main, &env_from_decls(&decls))),
+        Prog::Binary(main, decls) => Ok(eval_expr(main, &import_prelude(&env_from_decls(&decls)))),
         Prog::Library(_) => Err("No 'main' found in file".into()),
     }
 }
 
-fn import_prelude(env: &WrappedEnv) -> WrappedEnv {
-    VarEnv::with_parent(&env, &prelude())
+pub fn import_prelude(env: &WrappedEnv) -> WrappedEnv {
+    VarEnv::add_parent(env, &prelude())
 }
 
 pub fn new_env() -> WrappedEnv {
@@ -163,6 +163,7 @@ fn error(message: &str) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::value::command::Command;
     use tego_parser::ast::Match;
     use tego_parser::{ExprOutput, MatchOutput};
 
@@ -340,5 +341,45 @@ mod tests {
             ),
             &VarEnv::empty()
         ) => Value::Int(2)
+    }
+    #[test]
+    fn import_prelude_test() {
+        let env = VarEnv::empty();
+        let env = VarEnv::associate_ident("a".into(), Value::Error("Not initialized".into()), env);
+        let a_env = Rc::clone(&env);
+        let env = VarEnv::associate_ident("b".into(), Value::Error("Not initialized".into()), env);
+        let b_env = Rc::clone(&env);
+        VarEnv::set_value(
+            &a_env,
+            Value::delayed_decl(
+                Expr::fn_expr(Match::unit(), Expr::unit()),
+                Rc::downgrade(&a_env),
+                Rc::downgrade(&env),
+            ),
+        );
+        VarEnv::set_value(
+            &b_env,
+            Value::delayed_decl(Expr::int(1), Rc::downgrade(&b_env), Rc::downgrade(&env)),
+        );
+        let env = import_prelude(&env);
+        assert_eq!(
+            Value::unit(),
+            eval_expr(Expr::fn_app(Expr::variable("a"), Expr::unit()), &env)
+        );
+        assert_eq!(Value::Int(1), eval_expr(Expr::variable("b"), &env));
+        assert_eq!(
+            run(Value::Command(Command::unit(Value::Int(1)))),
+            run(eval_expr(
+                Expr::fn_app(Expr::variable("return"), Expr::int(1)),
+                &env
+            ))
+        );
+    }
+
+    fn run(val: Value) -> Value {
+        match val {
+            Value::Command(command) => command.run(),
+            v => panic!("Cannot run {}", v),
+        }
     }
 }

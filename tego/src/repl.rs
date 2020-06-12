@@ -1,5 +1,4 @@
 use std::io::{self, Write};
-use std::rc::Rc;
 use tego_interpreter as interpreter;
 use tego_parser as parser;
 use tego_parser::ast::Decl;
@@ -21,7 +20,11 @@ pub fn run() -> io::Result<()> {
     )?;
     writeln!(stdout, "Type ':q' or ':quit' to exit\n")?;
     stdout.flush()?;
-    repl_loop(Some(interpreter::new_env()), vec![], stdout)
+    repl_loop(
+        Some(interpreter::import_prelude(&interpreter::new_env())),
+        vec![],
+        stdout,
+    )
 }
 
 fn repl_loop(
@@ -44,9 +47,18 @@ fn repl_loop(
     } else {
         match parser::complete(parser::expr)(code.into()) {
             Ok((_, e)) => {
-                let env = env.unwrap_or_else(|| interpreter::env_from_decls(&decls));
-                let result = interpreter::eval_expr(e, &Rc::clone(&env));
-                writeln!(stdout, "{} : {}", result, result.type_())?;
+                let env = env.unwrap_or_else(|| {
+                    let decl_env = interpreter::env_from_decls(&decls);
+                    interpreter::import_prelude(&decl_env)
+                });
+                let result = interpreter::eval_expr(e, &env);
+                if result.is_error() {
+                    writeln!(stdout, "{}", result)?;
+                } else if let Err(()) = result.run() {
+                    writeln!(stdout, "{} : {}", result, result.type_())?;
+                } else {
+                    // Command was run
+                }
                 (Some(env), decls)
             }
             Err(error) => {

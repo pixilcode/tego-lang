@@ -82,6 +82,33 @@ where
             })),
         }
     }
+    // Only should be used for imports
+    // Modifies the `env` environment to add on `env_parent` as a parent
+    // Used to solve the problem of having `Weak` Rcs that are lost when `with_parent`
+    // creates a *new* Rc/RefCell, meaning that once the original environment is
+    // dropped, the *Weak* Rcs are 'dropped', too
+    pub fn add_parent(env: &EnvWrapper<Self>, env_parent: &EnvWrapper<Self>) -> EnvWrapper<Self> {
+        let mut inner_env = env.borrow_mut();
+        let result = match &*inner_env {
+            Env::Entry {
+                ident,
+                value,
+                parent,
+            } => Some(Env::Entry {
+                ident: ident.into(),
+                value: value.clone(),
+                parent: Env::add_parent(parent, env_parent),
+            }),
+            Env::Empty => None,
+        };
+
+        let result = result.map(|new_inner_env| {
+            *inner_env = new_inner_env;
+            Rc::clone(env)
+        });
+
+        result.unwrap_or_else(|| Rc::clone(env_parent))
+    }
     // Only should be used with declarations and delayed values to solve recursive problem
     // Also used with evaluation of lazy values
     // I strongly dislike the fact that I have to do this
@@ -103,7 +130,7 @@ where
     }
 }
 
-pub trait EnvVal: Clone + Debug {
+pub trait EnvVal: Clone + Debug + PartialEq {
     fn unwrap_matches(&self, pattern: &Match) -> Result<Vec<(String, Self)>, String>;
     fn is_evaluated(&self) -> bool;
 }
@@ -239,6 +266,59 @@ mod tests {
             )
         )
     }
+    // Make sure that 'add_parent' works the same way
+    // as 'with_parent' (other than the fact that it
+    // adds the parent in place)
+    basic_test! {
+        add_parent_fn_test
+        Env::with_parent(&Env::empty(), &Env::empty()) =>
+            Env::<DummyValue>::empty();
+        Env::with_parent(
+            &Env::empty(),
+            &Env::associate_ident(
+                "a".into(),
+                DummyValue::Int(1),
+                Env::empty()
+            )
+        ) => Env::associate_ident(
+            "a".into(),
+            DummyValue::Int(1),
+            Env::empty()
+        );
+        Env::with_parent(
+            &Env::associate_ident(
+                "a".into(),
+                DummyValue::Int(1),
+                Env::empty()
+            ),
+            &Env::empty()
+        ) => Env::associate_ident(
+            "a".into(),
+            DummyValue::Int(1),
+            Env::empty()
+        );
+        Env::with_parent(
+            &Env::associate_ident(
+                "a".into(),
+                DummyValue::Int(1),
+                Env::empty()
+            ),
+            &Env::associate_ident(
+                "b".into(),
+                DummyValue::Int(2),
+                Env::empty()
+            )
+        ) => Env::associate_ident(
+            "a".into(),
+            DummyValue::Int(1),
+            Env::associate_ident(
+                "b".into(),
+                DummyValue::Int(2),
+                Env::empty()
+            )
+        )
+    }
+
     #[derive(Debug, Clone, PartialEq)]
     enum DummyValue {
         Int(u32),
