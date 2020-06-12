@@ -1,7 +1,7 @@
 use crate::error::*;
 use crate::parsers::match_::*;
 use crate::parsers::tokens::*;
-use crate::ExprOutput;
+use crate::{ExprOutput, MatchOutput};
 use crate::Input;
 use crate::ParseResult;
 
@@ -65,10 +65,10 @@ where
 {
     do_(input)
         .and_then(|(input, _)|
-            tuple((let_expr, in_, match_, opt_nl(then), expr))(input)
+            tuple((let_expr, opt(preceded(in_, match_)), opt_nl(then), expr))(input)
             .map_err(do_error)
-            .map(|(input, (command, _, command_match, _, body))|
-                (input, E::do_expr(command, command_match, body))
+            .map(|(input, (command, command_match, _, body))|
+                (input, E::do_expr(command, command_match.unwrap_or_else(E::Match::ignore), body))
             )
         )
         .or_else(try_parser(let_expr, input))
