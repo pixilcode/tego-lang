@@ -7,13 +7,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 * Commands
   * Also known as IO Monads
+* `do` expressions
+  * Used to chain together commands
+  * `do <expr> in <match> then <expr>`
+  * Performs the Command resulting from the first expression
+  * Uses match pattern to assign result
+  * Performs the Command resulting from the second expression
+  * Both expressions must evaluate to a Command
+  * `in <match>` is optional
+  * If skipped, `_` is used as the match pattern
 * Internal functions
   * Internal functions are functions built in to the compiler
   * Helps with constructing Commands
 * Prelude
   * Contains predefined functions
-  * `return` creates a Command from a function
-  * `println` prints out it's argument, then prints a line
+  * `return a` creates a Command from `a` (type: `a -> Command a`)
+  * `println a` prints out `a`, then prints a line (type: `a -> Command ()`)
+  * `readLine` reads a line from standard input (Command) (type: `Command String`)
+  * `readInt` reads an integer from standard input (not perfect yet) (type: `Command Int`)
 
 ### Fixed
 * Matching on '()' actually matches on '()'
