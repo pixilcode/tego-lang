@@ -1,0 +1,11 @@
+[package]
+name = "tego_analysis"
+version = "0.1.0"
+authors = ["Brendon Bown <bhbochikens@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tego_parser = { path = "../tego_parser" }
+slotmap = "0.4.0"

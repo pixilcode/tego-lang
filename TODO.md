@@ -47,3 +47,5 @@
 * Make an issue where people can put parse error codes that they don't understand
 * Use `Cow<'a, str>` instead of `String` in tuple representation
 * Add generators to language (should be easy, just modify `Tuple` to add a new type)
+* Use spans in the AST instead of Strings
+* Add 'keywords' to AST (ex. `if`, `do`, etc.)
