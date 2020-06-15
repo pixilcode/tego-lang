@@ -1,11 +1,10 @@
 # TODO
 
 * Priorities
-  1. IO Monad
-  2. Type Inference
-  3. Sum types (`|` operator)
+  1. Type Inference
+  2. Sum types (`|` operator)
      * See [Or types](http://journal.stuffwithstuff.com/2010/08/23/void-null-maybe-and-nothing/)
-  4. Custom types
+  3. Custom types
      * Named tuples (`Item a`, `Point (Int, Int)`, `Color (Int, Int, Int)`, etc.)
      * Named enums
      * `type` declaration
@@ -15,10 +14,10 @@
      * Right side is type, left side is type constructor
      * Type/type constructor can only have one argument
      * Named types can be matched and unwrapped in match patterns using type constructor
-  5. Add `.` composition/application(?) operator
+  4. Add `.` composition/application(?) operator
      * `id 1` == `1.id`
      * `fn x -> id (id x)` ~= `id . id`
-  6. Match functions
+  5. Match functions
      * `fn[ a, true -> a + 1 | a, false -> a ]`
      * Creates a function that has a match expression built in
 * Build compiler (maybe use craftinginterpreters.com?)
@@ -58,3 +57,10 @@
 * Improve interactions between `Int`s and `Char`s
   * Interactions like `+`, `==`, `<=`, etc.
 * Check to make sure adding/subtracting/etc. don't overflow (see `checked_add` method on `i32`)
+* Add 'symbols'
+  * Kind of like static strings
+  * `:foo`
+  * Can be compared for equality, matched on
+  * Can be used to create types w/o type declaration
+  * Can be used for 'user keywords'
+  * Can be statically checked
