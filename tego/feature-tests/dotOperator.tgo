@@ -1,0 +1,92 @@
+main =
+	regularApplication,
+	dotApplication,
+	desugar,
+	precedence,
+	readable,
+	monkeyPatchA,
+	monkeyPatchB,
+	usability
+
+-- A function can be applied normally
+regularApplication =
+	1 ('a', 'b', 'c') == 'b'
+
+-- The dot operator can also be applied to make code more readable
+dotApplication =
+	('a', 'b', 'c').1 == 'b'
+
+-- This takes the left operand and provides it as an argument to the right operand
+-- The dot operator is really just syntactic sugar for function application as shown below
+addOne x = x + 1
+
+desugar =
+	1.addOne == addOne 1
+
+-- The dot operator has the highest precedence on the right (aside from grouping and literals)
+-- However, on the left, function application takes higher precedence
+join a b =
+	a, b
+
+precedence =
+	1.join 2 == join 2 1, -- This is the desugaring,
+	1.join 2 /= join 1 2  -- not this
+
+-- The reason for this design choice is the following
+
+-- The dot syntax can be a lot more readable
+isEven i = i % 2 == 0
+
+readable =
+	if 4.isEven then
+		true
+	else
+		false
+
+-- The dot syntax allows for a kind of monkey-patching
+-- For example, given a tuple of three ints, one can define three 'fields', `x`, `y`, and `z`
+-- that allow the tuple to be treated as a 3D point
+x (a, b, c) = a
+y (a, b, c) = b
+z (a, b, c) = c
+
+moveUp distance point = point.x, point.y + distance, point.z
+
+-- `moveUp` can also now be used as a `method` for tuples of three ints
+-- and it can be done in a way that is comfortable for programmers coming from
+-- imperative languages
+monkeyPatchA = 
+	(1, 2, 3).moveUp 3 == (1, 5, 3), -- This works
+	(1, 2, 3).moveUp(3) == (1, 5, 3) {- (because broken comments) -- This does too 
+
+-- All that's necessary is to have the `self` or `this` param
+-- as the last argument to the function
+-- (Note: it is recommended to name it descriptively as done with `moveUp`, not just `this`;
+--  this example is just to demonstrate which param is the `this` object))
+-}
+move (moveX, moveY) this = this.x + moveX, this.y + moveY, this.z
+
+monkeyPatchB =
+	(1, 2, 3).move(1, 1) == (2, 3, 3)
+
+-- The reason that the `this` param is last is to allow for use of the dot operator
+-- and the use of currying at the same time
+map f list =
+	match list to
+	| () -> ()
+	| head, tail -> f head, map f tail
+
+-- Given a function that determines whether `string` begins with `char`
+startsWith char string =
+	let [first, _] = string in
+	first == char
+
+usability =
+	-- It can be used with the dot operator
+	"foo".startsWith('f'),
+
+	-- It can also be used with currying
+	map (startsWith 'f') ("foo", "bar", "baz") == (true, false, false),
+
+	-- Actually, both can be used in the above expression ;)
+	("foo", "bar", "baz").map(startsWith 'f') == (true, false, false)

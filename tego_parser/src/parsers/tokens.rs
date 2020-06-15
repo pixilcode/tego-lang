@@ -186,6 +186,7 @@ reserved!(left_bracket, "[");
 reserved!(right_bracket, "]");
 reserved!(double_comma, ",,");
 reserved!(keyword do_, "do");
+reserved!(dot, ".");
 
 fn is_keyword(lexeme: &str) -> bool {
     KEYWORDS.iter().any(|keyword| keyword == &lexeme)
@@ -242,6 +243,7 @@ mod tests {
     parser_test!(close_bracket_test (right_bracket): "]" => "]".into());
     parser_test!(double_comma_test (double_comma): ",," => ",,".into());
     parser_test!(do_test (do_): "do" => "do".into());
+    parser_test!(dot_test (dot): "." => ".".into());
     // Use find and replace
     // Find: reserved!\(([a-z_]+), ("[^"]+")\);
     // Replace: parser_test!($1_test ($1): $2 => $2.into());

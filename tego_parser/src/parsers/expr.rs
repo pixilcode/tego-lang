@@ -175,7 +175,28 @@ fn fn_application<E>(input: Input<'_>) -> ExprResult<'_, E>
 where
     E: ExprOutput,
 {
-    grouping(input).and_then(|(input, val)| fold_many0(grouping, val, E::fn_app)(input))
+    dot_expr(input).and_then(|(input, val)| fold_many0(dot_expr, val, E::fn_app)(input))
+}
+
+fn dot_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
+where
+    E: ExprOutput,
+{
+    pair(
+        grouping,
+        opt(many1(pair(opt_nl(dot), fn_application))),
+    )(input)
+    .and_then(|(input, (a, other))| match other {
+        // Operators found (left to right)
+        Some(others) => Ok((
+            input,
+            others
+                .into_iter()
+                .fold(a, |a, (_, b)| E::fn_app(b, a)),
+        )),
+        // No operators found
+        None => Ok((input, a)),
+    })
 }
 
 fn grouping<E>(input: Input<'_>) -> ExprResult<'_, E>

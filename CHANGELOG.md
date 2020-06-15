@@ -25,6 +25,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   * `println a` prints out `a`, then prints a line (type: `a -> Command ()`)
   * `readLine` reads a line from standard input (Command) (type: `Command String`)
   * `readInt` reads an integer from standard input (not perfect yet) (type: `Command Int`)
+* `.` operator
+  * Applies the first operand to the second operand
+  * `a . b` === `b a`
+  * `1 . id` == `id 1`
+  * `1 . const 2` == `const 2 1`
+  * For more details, see `tego/feature-tests/dotOperator.tgo`
 
 ### Fixed
 * Matching on '()' actually matches on '()'

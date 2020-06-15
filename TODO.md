@@ -48,4 +48,10 @@
 * Use `Cow<'a, str>` instead of `String` in tuple representation
 * Add generators to language (should be easy, just modify `Tuple` to add a new type)
 * Use spans in the AST instead of Strings
-* Add 'keywords' to AST (ex. `if`, `do`, etc.)
+* Add keyword Spans to AST (ex. `if`, `do`, etc.)
+* Write test for 'ioCommand.tgo' (it requires user input)
+* Write tests for Commands
+* Add generator functions (potential for infinite lists)
+  * `ones = yield 1 then ones`
+  * `naturals n = yield n then naturals (n + 1)`
+  * Consider memoizing results
