@@ -55,3 +55,6 @@
   * `ones = yield 1 then ones`
   * `naturals n = yield n then naturals (n + 1)`
   * Consider memoizing results
+* Improve interactions between `Int`s and `Char`s
+  * Interactions like `+`, `==`, `<=`, etc.
+* Check to make sure adding/subtracting/etc. don't overflow (see `checked_add` method on `i32`)

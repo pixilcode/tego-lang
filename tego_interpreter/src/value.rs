@@ -234,19 +234,23 @@ impl Value {
     );
 
     impl_op!(less_than, "less than":
-        Value::Int(a), Value::Int(b) => Value::Bool(a < b)
+        Value::Int(a), Value::Int(b) => Value::Bool(a < b),
+        Value::Char(a), Value::Char(b) => Value::Bool(a < b)
     );
 
     impl_op!(greater_than, "greater than":
-        Value::Int(a), Value::Int(b) => Value::Bool(a > b)
+        Value::Int(a), Value::Int(b) => Value::Bool(a > b),
+        Value::Char(a), Value::Char(b) => Value::Bool(a > b)
     );
 
     impl_op!(less_than_equal, "less than/equal to":
-        Value::Int(a), Value::Int(b) => Value::Bool(a <= b)
+        Value::Int(a), Value::Int(b) => Value::Bool(a <= b),
+        Value::Char(a), Value::Char(b) => Value::Bool(a <= b)
     );
 
     impl_op!(greater_than_equal, "greater than/equal to":
-        Value::Int(a), Value::Int(b) => Value::Bool(a >= b)
+        Value::Int(a), Value::Int(b) => Value::Bool(a >= b),
+        Value::Char(a), Value::Char(b) => Value::Bool(a >= b)
     );
 }
 

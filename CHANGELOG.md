@@ -31,6 +31,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   * `1 . id` == `id 1`
   * `1 . const 2` == `const 2 1`
   * For more details, see `tego/feature-tests/dotOperator.tgo`
+* `Char` comparison
+  * `<`, `>`, `<=`, `>=` work with `Char`s
 
 ### Fixed
 * Matching on '()' actually matches on '()'
