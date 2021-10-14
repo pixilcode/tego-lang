@@ -1,9 +1,30 @@
 #![warn(missing_docs)]
 
+//! The parser for the Tego programming language
+//! 
+//! This crate makes certain parts of the parser available for
+//! public use:
+//!   * Parsers:
+//!     * `decl`—parse a Tego declaration
+//!     * `expr`—parse a Tego expression
+//!     * `match_`—parse a Tego match pattern
+//!     * `prog`—parse a Tego program
+//!     * `complete`—ensure that the complete text is consumed
+//!   * AST: a general-use output for the parser in the form
+//!     of an abstract syntax tree
+//!   * Output traits: traits that can be implemented in order
+//!     to customize the output of the parser
+//!   * Other utilities:
+//!     * `ParseError`: the error returned by the parser when it
+//!       fails
+//!     * `Span`: an input for the parser that tracks the line,
+//!       column, and character offset of the string in the program
+
 #[allow(unused_macros)]
 macro_rules! basic_test {
     ( $name:ident $( $actual:expr => $expected:expr );+) => {
         #[allow(clippy::eq_op)]
+        #[allow(clippy::bool_assert_comparison)]
         #[test]
         fn $name() {
             $( assert_eq!($expected, $actual); )+
@@ -29,21 +50,31 @@ mod span;
 mod traits;
 
 // Parsers
+#[doc(inline)]
 pub use crate::parsers::decl::decl;
+#[doc(inline)]
 pub use crate::parsers::expr::expr;
+#[doc(inline)]
 pub use crate::parsers::match_::match_;
+#[doc(inline)]
 pub use crate::parsers::prog::prog;
 pub use nom::combinator::all_consuming as complete;
 
-// Utilities
-pub use crate::error::ParseError;
-pub use crate::span::Span;
-
 // Traits for parser output
+#[doc(inline)]
 pub use crate::traits::DeclOutput;
+#[doc(inline)]
 pub use crate::traits::ExprOutput;
+#[doc(inline)]
 pub use crate::traits::MatchOutput;
+#[doc(inline)]
 pub use crate::traits::ProgOutput;
+
+// Utilities
+#[doc(inline)]
+pub use crate::error::ParseError;
+#[doc(inline)]
+pub use crate::span::Span;
 
 type Input<'a> = Span<'a>;
 type ParseResult<'a, O> = nom::IResult<Input<'a>, O, (Input<'a>, ParseError)>;
