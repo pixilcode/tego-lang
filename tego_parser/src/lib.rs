@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 #[allow(unused_macros)]
 macro_rules! basic_test {
     ( $name:ident $( $actual:expr => $expected:expr );+) => {
