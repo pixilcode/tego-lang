@@ -347,10 +347,7 @@ mod tests {
             }
         }
         fn is_evaluated(&self) -> bool {
-            match self {
-                DummyValue::Delayed(_) => false,
-                _ => true,
-            }
+            !matches!(self, DummyValue::Delayed(_))
         }
     }
 }

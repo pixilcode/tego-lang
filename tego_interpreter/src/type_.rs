@@ -22,10 +22,7 @@ impl fmt::Display for Type {
                 Type::Bool => "Bool".into(),
                 Type::Char => "Char".into(),
                 Type::Tuple(types) => {
-                    if types.iter().all(|t| match t {
-                        Type::Char => true,
-                        _ => false,
-                    }) {
+                    if types.iter().all(|t| matches!(t, Type::Char)) {
                         "String".into()
                     } else {
                         let result = types

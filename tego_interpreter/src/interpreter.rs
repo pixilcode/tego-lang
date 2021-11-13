@@ -59,7 +59,7 @@ fn fill_decl_env(decls: &[Decl], decl_ptrs: &[WrappedEnv], env: WrappedEnv) -> W
                 decl_ptr,
                 Value::delayed_decl(
                     expr.clone(), // Could probably fix this so it doesn't clone...
-                    Rc::downgrade(&decl_ptr),
+                    Rc::downgrade(decl_ptr),
                     Rc::downgrade(&env),
                 ),
             ),
@@ -120,7 +120,7 @@ pub fn eval_expr(expr: Expr, env: &WrappedEnv) -> Value {
                     .unwrap(); // This will never fail because the ident is always a variable identifier
             VarEnv::set_value(
                 &new_env,
-                Value::delayed(*value, Rc::downgrade(&new_env), Rc::clone(&env)),
+                Value::delayed(*value, Rc::downgrade(&new_env), Rc::clone(env)),
             );
             eval_expr(*inner, &new_env)
         }

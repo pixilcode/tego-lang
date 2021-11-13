@@ -147,16 +147,13 @@ impl Value {
     }
 
     pub fn is_error(&self) -> bool {
-        match self {
-            Value::Error(_) => true,
-            _ => false,
-        }
+        matches!(self, Value::Error(_))
     }
 
-    pub fn run(&self) -> Result<Value, ()> {
+    pub fn run(&self) -> Result<Value, String> {
         match self {
             Value::Command(command) => Ok(command.run()),
-            _ => Err(()),
+            _ => Err(format!("Cannot run value of type {}", self.type_())),
         }
     }
 
@@ -258,8 +255,8 @@ impl EnvVal for Value {
     fn unwrap_matches(&self, pattern: &Match) -> Result<Vec<(String, Self)>, String> {
         match (pattern, self) {
             (Match::Ident(ident), val) => Ok(vec![(ident.into(), val.clone())]),
-            (Match::Tuple(tup_match), Value::Tuple(tup_val)) => unwrap_tuple(&tup_match, &tup_val),
-            (Match::Tuple(tup_match), val) => unwrap_tuple(&tup_match, &vec![val.clone()].into()),
+            (Match::Tuple(tup_match), Value::Tuple(tup_val)) => unwrap_tuple(tup_match, tup_val),
+            (Match::Tuple(tup_match), val) => unwrap_tuple(tup_match, &vec![val.clone()].into()),
             (Match::Unit, Value::Tuple(tup_val)) => {
                 if tup_val.len() == 0 {
                     Ok(vec![])
@@ -308,10 +305,7 @@ impl EnvVal for Value {
     }
 
     fn is_evaluated(&self) -> bool {
-        match self {
-            Value::Delayed { .. } => false,
-            _ => true,
-        }
+        !matches!(self, Value::Delayed { .. })
     }
 }
 
@@ -327,18 +321,18 @@ fn unwrap_tuple(tup_match: &[Match], tup_val: &Tuple) -> Result<Vec<(String, Val
         (_, 0) => Value::unit()
             .unwrap_matches(&tup_match[0])
             .and_then(|mut vals| {
-                unwrap_tuple(&tup_match[1..], tup_val).and_then(|mut rest| {
+                unwrap_tuple(&tup_match[1..], tup_val).map(|mut rest| {
                     vals.append(&mut rest);
-                    Ok(vals)
+                    vals
                 })
             }),
         (_, _) => tup_val
             .index(0)
             .unwrap_matches(&tup_match[0])
             .and_then(|mut vals| {
-                unwrap_tuple(&tup_match[1..], &tup_val.from(1)).and_then(|mut rest| {
+                unwrap_tuple(&tup_match[1..], &tup_val.from(1)).map(|mut rest| {
                     vals.append(&mut rest);
-                    Ok(vals)
+                    vals
                 })
             }),
     }
