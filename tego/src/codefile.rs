@@ -30,7 +30,7 @@ pub fn run<P: AsRef<Path>>(path: P) -> io::Result<()> {
     };
     if result.is_error() {
         writeln!(stderr, "Error running file: {}", result)?;
-    } else if let Err(_) = result.run() {
+    } else if result.run().is_err() {
         writeln!(stdout, "{}", result)?;
     } else {
         // Command was run

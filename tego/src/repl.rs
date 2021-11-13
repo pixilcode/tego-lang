@@ -54,7 +54,7 @@ fn repl_loop(
                 let result = interpreter::eval_expr(e, &env);
                 if result.is_error() {
                     writeln!(stdout, "{}", result)?;
-                } else if let Err(_) = result.run() {
+                } else if result.run().is_err() {
                     writeln!(stdout, "{} : {}", result, result.type_())?;
                 } else {
                     // Command was run
