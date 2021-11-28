@@ -3,5 +3,4 @@ members = [
 	"tego_parser",
 	"tego_interpreter",
 	"tego",
-	"tego_analysis"
 ]
