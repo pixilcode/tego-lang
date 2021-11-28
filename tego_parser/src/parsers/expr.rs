@@ -128,7 +128,7 @@ where
                     // nl has to be preceding so as not to conflict with
                     // the `req_nl` parser that likely directly follows the match expr
                     many1(preceding_opt_nl(match_arm))(input)
-                        .and_then(|(input, patterns)| Ok((input, E::match_(val, patterns))))
+                        .map(|(input, patterns)| (input, E::match_(val, patterns)))
                 })
         })
         .or_else(try_parser(join_expr, input))
@@ -186,16 +186,16 @@ where
         grouping,
         opt(many1(pair(opt_nl(dot), fn_application))),
     )(input)
-    .and_then(|(input, (a, other))| match other {
+    .map(|(input, (a, other))| match other {
         // Operators found (left to right)
-        Some(others) => Ok((
+        Some(others) => (
             input,
             others
                 .into_iter()
                 .fold(a, |a, (_, b)| E::fn_app(b, a)),
-        )),
+        ),
         // No operators found
-        None => Ok((input, a)),
+        None => (input, a),
     })
 }
 
@@ -234,14 +234,14 @@ where
     E: ExprOutput,
 {
     alt((true_val, false_val, number, identifier))(input)
-        .and_then(|(new_input, token)| match token.to_str() {
-            "true" => Ok((new_input, E::bool(true))),
-            "false" => Ok((new_input, E::bool(false))),
+        .map(|(new_input, token)| match token.to_str() {
+            "true" => (new_input, E::bool(true)),
+            "false" => (new_input, E::bool(false)),
             lexeme => {
                 if let Ok(i) = lexeme.parse::<i32>() {
-                    Ok((new_input, E::int(i)))
+                    (new_input, E::int(i))
                 } else {
-                    Ok((new_input, E::variable(lexeme)))
+                    (new_input, E::variable(lexeme))
                 }
             } // Has to be done seperately so that it doesn't get mixed up as an identifier
         })

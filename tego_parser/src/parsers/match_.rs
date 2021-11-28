@@ -64,15 +64,15 @@ where
     M: MatchOutput,
 {
     alt((true_val, false_val, underscore, number, identifier))(input)
-        .and_then(|(new_input, token)| match token.into() {
-            "true" => Ok((new_input, M::bool(true))),
-            "false" => Ok((new_input, M::bool(false))),
-            "_" => Ok((new_input, M::ignore())),
+        .map(|(new_input, token)| match token.into() {
+            "true" => (new_input, M::bool(true)),
+            "false" => (new_input, M::bool(false)),
+            "_" => (new_input, M::ignore()),
             lexeme => {
                 if let Ok(i) = lexeme.parse::<i32>() {
-                    Ok((new_input, M::int(i)))
+                    (new_input, M::int(i))
                 } else {
-                    Ok((new_input, M::ident(lexeme)))
+                    (new_input, M::ident(lexeme))
                 }
             }
         })

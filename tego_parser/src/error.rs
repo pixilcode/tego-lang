@@ -13,16 +13,14 @@ pub struct ParseError {
 
 impl ParseError {
     fn is_unhandled(&self) -> bool {
-        match self.kind {
+        matches!(self.kind, 
             ErrorKind::Reserved(_)
             | ErrorKind::Char
             | ErrorKind::String
             | ErrorKind::Number
             | ErrorKind::Keyword
             | ErrorKind::UnknownNomError
-            | ErrorKind::UnhandledError => true,
-            _ => false,
-        }
+        )
     }
 
     fn new_from(input: Input<'_>, error: Self, kind: ErrorKind) -> nom::Err<(Input<'_>, Self)> {
@@ -171,7 +169,6 @@ impl fmt::Display for ParseError {
             ErrorKind::Eof => "reached end of file before parsing was completed".into(),
             ErrorKind::Incomplete => "incomplete information found".into(),
             ErrorKind::UnknownNomError => "unknown error from parsing".into(),
-            ErrorKind::UnhandledError => "unhandled parsing error".into(),
         };
         write!(
             f,
@@ -392,7 +389,6 @@ enum ErrorKind {
     Eof,
     Incomplete,
     UnknownNomError,
-    UnhandledError,
 }
 
 impl From<NomErrorKind> for ErrorKind {
@@ -435,12 +431,11 @@ impl From<&ErrorKind> for u16 {
             ErrorKind::TerminatingNewline => 19,
             ErrorKind::Eof => 20,
             ErrorKind::UnknownNomError => 21,
-            ErrorKind::UnhandledError => 22,
-            ErrorKind::EndOfExpr => 23,
-            ErrorKind::TerminatingBracket(_, _) => 24,
-            ErrorKind::Incomplete => 25,
-            ErrorKind::DoIn => 26,
-            ErrorKind::DoThen => 27,
+            ErrorKind::EndOfExpr => 22,
+            ErrorKind::TerminatingBracket(_, _) => 23,
+            ErrorKind::Incomplete => 24,
+            ErrorKind::DoIn => 25,
+            ErrorKind::DoThen => 26,
         }
     }
 }

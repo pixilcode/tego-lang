@@ -2,6 +2,7 @@
 macro_rules! basic_test {
     ( $name:ident $( $actual:expr => $expected:expr );+) => {
         #[allow(clippy::eq_op)]
+        #[allow(clippy::bool_assert_comparison)]
         #[test]
         fn $name() {
             $( assert_eq!($expected, $actual); )+
