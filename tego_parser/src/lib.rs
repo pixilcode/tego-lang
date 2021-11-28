@@ -35,7 +35,7 @@ pub use crate::parsers::prog::prog;
 pub use nom::combinator::all_consuming as complete;
 
 // Utilities
-pub use crate::error::ParseError;
+pub use crate::error::parser::ParseError;
 pub use crate::span::Span;
 
 // Traits for parser output

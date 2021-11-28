@@ -1,4 +1,4 @@
-use crate::error::*;
+use crate::error::parser::*;
 use crate::{Input, ParseResult};
 use nom::{
     branch::alt,
