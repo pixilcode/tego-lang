@@ -264,32 +264,38 @@ mod tests {
         multi_comment_test
         (multi_comment): "{- multi\ncomment -}" => span_at(" multi\ncomment ", 3, 1, 2)
     }
-    basic_test! {
-        comment_error_test
-        inline_comment("{- \n -}".into()).is_err() => true;
-        inline_comment("{- unclosed".into()).is_err() => true;
-        multi_comment("{- unclosed".into()).is_err() => true
-    }
     parser_test! {
         comment0_test
-            (comment0): " \t {- comment -} \t " =>
-                vec![
-                    span_at(" comment ", 9, 1, 5)
-                ];
+        (comment0): " \t {- comment -} \t " =>
+        vec![
+            span_at(" comment ", 9, 1, 5)
+            ];
             (comment0): " \t " => vec![];
             (comment0): "" => vec![]
     }
     parser_test! {
         multicomment0_test
-            (multicomment0):
-                "
-                \t
-                -- end of line
-                {- multi \n\
-                line -}
-                " => vec![
-                    span_at(" end of line", 19, 3, 37),
-                    span_at(" multi \nline ", 19, 4, 68)
+        (multicomment0):
+        "
+        \t
+        -- end of line
+        {- multi \n\
+            line -}
+            " => vec![
+                span_at(" end of line", 19, 3, 37),
+                span_at(" multi \nline ", 19, 4, 68)
                 ]
     }
+    basic_test! {
+        error_tests
+        // char parsing
+        char("'".into()) => todo!("put the error here");
+        char("'a".into()) => todo!("put the error here");
+
+        // comment parsing
+        inline_comment("{- \n -}".into()) => todo!("put the error here");
+        inline_comment("{- unclosed".into()) => todo!("put the error here");
+        multi_comment("{- unclosed".into()) => todo!("put the error here")
+    }
 }
+            
