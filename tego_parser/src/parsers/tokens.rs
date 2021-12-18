@@ -1,10 +1,11 @@
 use crate::error::parser::*;
-use crate::{Input, ParseResult};
+use crate::error::scanner::{ScanError, ScanErrorKind, char_error_scan};
+use crate::{Input, ParseResult, ScanResult};
 use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, take_until, take_while1},
     character::complete::{anychar, digit1, line_ending, multispace0, not_line_ending, space0},
-    combinator::{all_consuming, map, map_res, opt, peek, rest_len, verify},
+    combinator::{all_consuming, map, map_res, opt, peek, rest_len, verify, recognize},
     multi::many0,
     sequence::{preceded, terminated, tuple},
 };
@@ -94,6 +95,22 @@ where
     preceded(space0, parser)
 }
 
+pub fn token_scan<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> nom::IResult<Input<'a>, O>
+where
+    F: Fn(Input<'a>) -> nom::IResult<Input<'a>, O>,
+{
+    preceded(
+        space0,
+        // If there is an error, ignore anything that was parsed by the
+        // parser and just return the original input
+        move |input| parser(input).map_err(|error| match error {
+            nom::Err::Error((_, error)) => nom::Err::Error((input, error)),
+            nom::Err::Failure((_, error)) => nom::Err::Failure((input, error)),
+            error => error
+        })
+    )
+}
+
 macro_rules! reserved {
     (keyword $lexeme:ident, $lexeme_str:literal) => {
         pub fn $lexeme(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
@@ -121,6 +138,10 @@ macro_rules! reserved {
 
 pub fn char(input: Input<'_>) -> ParseResult<'_, char> {
     token(terminated(preceded(single_quote, anychar), single_quote))(input).map_err(char_error)
+}
+
+fn char_scan(input: Input<'_>) -> ScanResult<'_, char> {
+    token_scan(preceded(tag("'"), terminated(anychar, tag("'"))))(input).map_err(char_error_scan)
 }
 
 pub fn string(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
@@ -277,25 +298,36 @@ mod tests {
         multicomment0_test
         (multicomment0):
         "
-        \t
-        -- end of line
-        {- multi \n\
-            line -}
+\t
+-- end of line
+{- multi \n
+    line -}
             " => vec![
-                span_at(" end of line", 19, 3, 37),
-                span_at(" multi \nline ", 19, 4, 68)
+                span_at(" end of line", 3, 3, 5),
+                span_at(" multi \n\n    line ", 3, 4, 20)
                 ]
     }
     basic_test! {
         error_tests
         // char parsing
-        char("'".into()) => todo!("put the error here");
-        char("'a".into()) => todo!("put the error here");
+        char_scan("'".into()) => scan_error("'".into(), 1, 1, ScanErrorKind::CharUnclosed)
+        // char("'a".into()) => todo!("put the error here");
+        // char("'ab'".into()) => todo!("put the error here");
+        // char("'\n'".into()) => todo!("put the error here");
 
-        // comment parsing
-        inline_comment("{- \n -}".into()) => todo!("put the error here");
-        inline_comment("{- unclosed".into()) => todo!("put the error here");
-        multi_comment("{- unclosed".into()) => todo!("put the error here")
+        // // comment parsing
+        // inline_comment("{- \n -}".into()) => todo!("put the error here");
+        // inline_comment("{- unclosed".into()) => todo!("put the error here");
+        // multi_comment("{- unclosed".into()) => todo!("put the error here")
+    }
+
+    fn scan_error<O>(remaining: Input<'_>, column: usize, line: usize, kind: ScanErrorKind)
+        -> ScanResult<'_, O> {
+            Err(nom::Err::Error((remaining, ScanError::new_from(
+                column,
+                line,
+                kind
+            ))))
     }
 }
             

@@ -36,6 +36,7 @@ pub use nom::combinator::all_consuming as complete;
 
 // Utilities
 pub use crate::error::parser::ParseError;
+pub use crate::error::scanner::ScanError;
 pub use crate::span::Span;
 
 // Traits for parser output
@@ -46,6 +47,7 @@ pub use crate::traits::ProgOutput;
 
 type Input<'a> = Span<'a>;
 type ParseResult<'a, O> = nom::IResult<Input<'a>, O, (Input<'a>, ParseError)>;
+type ScanResult<'a, O> = nom::IResult<Input<'a>, O, (Input<'a>, ScanError)>;
 
 mod test {
     use crate::span;
