@@ -1,4 +1,5 @@
 use crate::Input;
+use crate::parsers::tokens;
 use nom::error::ErrorKind as NomErrorKind;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -23,15 +24,20 @@ impl ScanError {
 }
 
 pub fn char_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ScanError)> {
-	println!("=> YAY {:?}", error);
 	match error {
-		nom::Err::Error((input, error)) => {
-			if (error == NomErrorKind::Tag || error == NomErrorKind::Eof) && input.to_str().starts_with('\'') {
-				nom::Err::Error((input, ScanError::new(input, ScanErrorKind::CharUnclosed)))
-			} else if error == NomErrorKind::Tag || error == NomErrorKind::Eof {
-				todo!("figure this out")
-			} else {
-				todo!("figure this out, too")
+		nom::Err::Error((input, _)) => {
+
+			if !input.to_str().starts_with('\'') {
+				return nom::Err::Error((input, ScanError::new(input, ScanErrorKind::NoMatch)));
+			}
+
+			let c = input.to_str().chars().nth(1);
+			match c {
+				Some(c) if c == '\\' =>
+					nom::Err::Error((input, ScanError::new(input, ScanErrorKind::InvalidEscapedChar))),
+				Some(c) if tokens::INVALID_CHARS.contains(&c) =>
+					nom::Err::Error((input, ScanError::new(input, ScanErrorKind::InvalidChar))),
+				_ => nom::Err::Error((input, ScanError::new(input, ScanErrorKind::CharUnclosed)))
 			}
 		},
 		nom::Err::Failure((input, error)) => todo!("fill this in"),
@@ -41,5 +47,11 @@ pub fn char_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ScanErrorKind {
+	// CHAR ERRORS
 	CharUnclosed,
+	InvalidChar,
+	InvalidEscapedChar,
+
+	// NO MATCH ERROR
+	NoMatch,
 }

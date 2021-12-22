@@ -1,4 +1,4 @@
-use crate::error::parser::*;
+use crate::error::{err_retain_all, parser::*};
 use crate::error::scanner::{ScanError, ScanErrorKind, char_error_scan};
 use crate::{Input, ParseResult, ScanResult};
 use nom::{
@@ -13,6 +13,17 @@ use nom::{
 const KEYWORDS: &[&str; 16] = &[
     "and", "or", "xor", "not", "true", "false", "if", "then", "else", "let", "in", "fn", "match",
     "to", "delay", "do"
+];
+
+pub const INVALID_CHARS: &[char] = &[
+    '\n', '\t', '\\'
+];
+
+const ESCAPE_CHARS: &[(char, char)] = &[
+    ('n', '\n'),
+    ('t', '\t'),
+    ('"', '"'),
+    ('\'', '\'')
 ];
 
 pub fn newlines<'a>(
@@ -101,13 +112,7 @@ where
 {
     preceded(
         space0,
-        // If there is an error, ignore anything that was parsed by the
-        // parser and just return the original input
-        move |input| parser(input).map_err(|error| match error {
-            nom::Err::Error((_, error)) => nom::Err::Error((input, error)),
-            nom::Err::Failure((_, error)) => nom::Err::Failure((input, error)),
-            error => error
-        })
+        err_retain_all(parser)
     )
 }
 
@@ -141,7 +146,29 @@ pub fn char(input: Input<'_>) -> ParseResult<'_, char> {
 }
 
 fn char_scan(input: Input<'_>) -> ScanResult<'_, char> {
-    token_scan(preceded(tag("'"), terminated(anychar, tag("'"))))(input).map_err(char_error_scan)
+    token_scan(preceded(
+        tag("'"),
+        terminated(
+            alt((valid_char, escaped_char)),
+            tag("'"))
+        )
+    )(input).map_err(char_error_scan)
+}
+
+fn valid_char<'a, E>(input: Input<'a>) -> nom::IResult<Input<'a>, char, E>
+where E: nom::error::ParseError<Input<'a>> {
+    verify(anychar, |c| !INVALID_CHARS.contains(c))(input)
+}
+
+fn escaped_char<'a, E>(input: Input<'a>) -> nom::IResult<Input<'a>, char, E>
+where E: nom::error::ParseError<Input<'a>> {
+    map_res(
+        preceded(tag("\\"), anychar),
+        |c| ESCAPE_CHARS.iter().fold(
+            Err(()),
+            |acc, (escape, result)| if &c == escape { Ok(*result) } else { acc }
+        )
+    )(input)
 }
 
 pub fn string(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
@@ -272,7 +299,11 @@ mod tests {
     // Literal parsing
     parser_test!(number_test (number): "12" => "12".into());
     parser_test!(string_test (string): "\"abc\"" => span_at("abc", 2, 1, 1));
-    basic_test!(char_test char("'a'".into()) => Ok((span_at("", 4, 1, 3), 'a')));
+    basic_test!(char_test char_scan("'a'".into()) => Ok((span_at("", 4, 1, 3), 'a')));
+    basic_test! {
+        char_escape_test
+        char_scan("'\\n'".into()) => Ok((span_at("", 5, 1, 4), '\n'))
+    }
 
     // Comment tests
     parser_test!(inline_comment_test (inline_comment): "{- inline -}" => span_at(" inline ", 3, 1, 2));
@@ -291,8 +322,8 @@ mod tests {
         vec![
             span_at(" comment ", 9, 1, 5)
             ];
-            (comment0): " \t " => vec![];
-            (comment0): "" => vec![]
+        (comment0): " \t " => vec![];
+        (comment0): "" => vec![]
     }
     parser_test! {
         multicomment0_test
@@ -310,10 +341,14 @@ mod tests {
     basic_test! {
         error_tests
         // char parsing
-        char_scan("'".into()) => scan_error("'".into(), 1, 1, ScanErrorKind::CharUnclosed)
-        // char("'a".into()) => todo!("put the error here");
-        // char("'ab'".into()) => todo!("put the error here");
-        // char("'\n'".into()) => todo!("put the error here");
+        char_scan("".into()) => scan_error("".into(), 1, 1, ScanErrorKind::NoMatch);
+        char_scan("'".into()) => scan_error("'".into(), 1, 1, ScanErrorKind::CharUnclosed);
+        char_scan("'a".into()) => scan_error("'a".into(), 1, 1, ScanErrorKind::CharUnclosed);
+        char_scan("'ab'".into()) => scan_error("'ab'".into(), 1, 1, ScanErrorKind::CharUnclosed);
+        char_scan("'\n'".into()) => scan_error("'\n'".into(), 1, 1, ScanErrorKind::InvalidChar);
+        char_scan("'\t'".into()) => scan_error("'\t'".into(), 1, 1, ScanErrorKind::InvalidChar);
+        char_scan("'\\'".into()) => scan_error("'\\'".into(), 1, 1, ScanErrorKind::InvalidEscapedChar);
+        char_scan("'\\a'".into()) => scan_error("'\\a'".into(), 1, 1, ScanErrorKind::InvalidEscapedChar)
 
         // // comment parsing
         // inline_comment("{- \n -}".into()) => todo!("put the error here");
