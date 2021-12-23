@@ -1,6 +1,6 @@
 use nom::{
     Compare, CompareResult, FindSubstring, InputIter, InputLength, InputTake, Offset, Slice,
-    UnspecializedInput,
+    UnspecializedInput, ExtendInto
 };
 use std::ops::{Range, RangeFrom, RangeFull, RangeTo};
 
@@ -127,6 +127,25 @@ impl<'a> InputTake for Span<'a> {
                 offset: self.offset,
             },
         )
+    }
+}
+
+impl<'a> Offset for Span<'a> {
+    fn offset(&self, second: &Self) -> usize {
+        self.lexeme.offset(second.lexeme)
+    }
+}
+
+impl<'a> ExtendInto for Span<'a> {
+    type Item = char;
+    type Extender = String;
+
+    fn new_builder(&self) -> Self::Extender {
+        String::new()
+    }
+
+    fn extend_into(&self, acc: &mut Self::Extender) {
+        acc.push_str(self.lexeme)
     }
 }
 

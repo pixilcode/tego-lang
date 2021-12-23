@@ -1,10 +1,13 @@
 use crate::error::{err_retain_all, parser::*};
-use crate::error::scanner::{ScanError, ScanErrorKind, char_error_scan};
+use crate::error::scanner::{
+    ScanError, ScanErrorKind,
+    char_error_scan, string_error_scan
+};
 use crate::{Input, ParseResult, ScanResult};
 use nom::{
     branch::alt,
-    bytes::complete::{is_not, tag, take_until, take_while1},
-    character::complete::{anychar, digit1, line_ending, multispace0, not_line_ending, space0},
+    bytes::complete::{is_not, tag, take_until, take_while1, escaped_transform},
+    character::complete::{anychar, digit1, line_ending, multispace0, not_line_ending, space0, one_of},
     combinator::{all_consuming, map, map_res, opt, peek, rest_len, verify, recognize},
     multi::many0,
     sequence::{preceded, terminated, tuple},
@@ -19,7 +22,7 @@ pub const INVALID_CHARS: &[char] = &[
     '\n', '\t', '\\'
 ];
 
-const ESCAPE_CHARS: &[(char, char)] = &[
+const ESCAPE_CHARS_MAP: &[(char, char)] = &[
     ('n', '\n'),
     ('t', '\t'),
     ('"', '"'),
@@ -164,9 +167,13 @@ fn escaped_char<'a, E>(input: Input<'a>) -> nom::IResult<Input<'a>, char, E>
 where E: nom::error::ParseError<Input<'a>> {
     map_res(
         preceded(tag("\\"), anychar),
-        |c| ESCAPE_CHARS.iter().fold(
+        |c| ESCAPE_CHARS_MAP.iter().fold(
             Err(()),
-            |acc, (escape, result)| if &c == escape { Ok(*result) } else { acc }
+            |acc, (escape_char, mapped_char)| if &c == escape_char {
+                Ok(mapped_char.to_owned())
+            } else {
+                acc
+            }
         )
     )(input)
 }
@@ -177,6 +184,35 @@ pub fn string(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
         double_quote,
     ))(input)
     .map_err(string_error)
+}
+
+pub fn string_scan(input: Input<'_>) -> ScanResult<'_, String> {
+    token_scan(preceded(
+        tag("\""),
+        terminated(
+            inner_string,
+            tag("\""))
+        )
+    )(input).map_err(string_error_scan)
+}
+
+fn inner_string<'a, E>(input: Input<'a>) -> nom::IResult<Input<'a>, String, E>
+where E: nom::error::ParseError<Input<'a>> {
+    escaped_transform(
+        is_not("\"\\"),
+        '\\',
+        map_res(
+            anychar,
+            |c| ESCAPE_CHARS_MAP.iter().fold(
+                Err(()),
+                |acc, (escape_char, mapped_char)| if &c == escape_char {
+                    Ok(mapped_char.to_owned())
+                } else {
+                    acc
+                }
+            )
+        )
+    )(input)
 }
 
 pub fn number(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
@@ -299,6 +335,7 @@ mod tests {
     // Literal parsing
     parser_test!(number_test (number): "12" => "12".into());
     parser_test!(string_test (string): "\"abc\"" => span_at("abc", 2, 1, 1));
+    parser_test!(string_escape_test (string_scan): "\"\\n\\t\\\"\"" => "\n\t\"".into());
     basic_test!(char_test char_scan("'a'".into()) => Ok((span_at("", 4, 1, 3), 'a')));
     basic_test! {
         char_escape_test
@@ -339,8 +376,7 @@ mod tests {
                 ]
     }
     basic_test! {
-        error_tests
-        // char parsing
+        char_error_tests
         char_scan("".into()) => scan_error("".into(), 1, 1, ScanErrorKind::NoMatch);
         char_scan("'".into()) => scan_error("'".into(), 1, 1, ScanErrorKind::CharUnclosed);
         char_scan("'a".into()) => scan_error("'a".into(), 1, 1, ScanErrorKind::CharUnclosed);
@@ -349,12 +385,22 @@ mod tests {
         char_scan("'\t'".into()) => scan_error("'\t'".into(), 1, 1, ScanErrorKind::InvalidChar);
         char_scan("'\\'".into()) => scan_error("'\\'".into(), 1, 1, ScanErrorKind::InvalidEscapedChar);
         char_scan("'\\a'".into()) => scan_error("'\\a'".into(), 1, 1, ScanErrorKind::InvalidEscapedChar)
+    }
+    basic_test! {
+        string_error_tests
+        string_scan("".into()) => scan_error("".into(), 1, 1, ScanErrorKind::NoMatch);
+        string_scan("\"".into()) => scan_error("\"".into(), 1, 1, ScanErrorKind::StringUnclosed);
+        string_scan("\"a".into()) => scan_error("\"a".into(), 1, 1, ScanErrorKind::StringUnclosed);
+        string_scan("\"a\\b\"".into()) => scan_error("\"a\\b\"".into(), 1, 1, ScanErrorKind::InvalidEscapedString)
+    }
+    /*basic_test! {
+        error_tests
 
         // // comment parsing
         // inline_comment("{- \n -}".into()) => todo!("put the error here");
         // inline_comment("{- unclosed".into()) => todo!("put the error here");
         // multi_comment("{- unclosed".into()) => todo!("put the error here")
-    }
+    }*/
 
     fn scan_error<O>(remaining: Input<'_>, column: usize, line: usize, kind: ScanErrorKind)
         -> ScanResult<'_, O> {
