@@ -52,8 +52,20 @@ pub fn string_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom
 			ScanError::nom_error(input, ScanErrorKind::NoMatch),
 		nom::Err::Error((input, nom::error::ErrorKind::Tag)) => // the last `"` match failed
 			ScanError::nom_error(input, ScanErrorKind::StringUnclosed),
-		nom::Err::Error((input, _)) => // 
+		nom::Err::Error((input, _)) => // a 
 			ScanError::nom_error(input, ScanErrorKind::InvalidEscapedString),
+		nom::Err::Failure((input, _)) =>
+			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+pub fn number_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ScanError)> {
+	match error {
+		nom::Err::Error((input, nom::error::ErrorKind::MapRes)) =>
+			ScanError::nom_error(input, ScanErrorKind::NumberTooBig),
+		nom::Err::Error((input, _)) =>
+			ScanError::nom_error(input, ScanErrorKind::NoMatch),
 		nom::Err::Failure((input, _)) =>
 			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
 		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
@@ -70,6 +82,9 @@ pub enum ScanErrorKind {
 	// STRING ERRORS
 	StringUnclosed,
 	InvalidEscapedString,
+
+	// NUMBER ERRORS
+	NumberTooBig,
 
 	// NO MATCH ERROR
 	NoMatch,

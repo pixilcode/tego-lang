@@ -1,7 +1,7 @@
 use crate::error::{err_retain_all, parser::*};
 use crate::error::scanner::{
     ScanError, ScanErrorKind,
-    char_error_scan, string_error_scan
+    char_error_scan, string_error_scan, number_error_scan
 };
 use crate::{Input, ParseResult, ScanResult};
 use nom::{
@@ -219,6 +219,13 @@ pub fn number(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     token(digit1)(input).map_err(number_error)
 }
 
+pub fn number_scan(input: Input<'_>) -> ScanResult<'_, i32> {
+    map_res(
+        token_scan(digit1),
+        |i| i.to_str().parse()
+    )(input).map_err(number_error_scan)
+}
+
 pub fn identifier(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     token(verify(take_while1(is_identifier_char), |id: &Input| {
         !is_keyword(id.to_str()) && !id.to_str().starts_with('\'')
@@ -333,8 +340,8 @@ mod tests {
     // Replace: parser_test!($1_test ($1): $2 => $2.into());
 
     // Literal parsing
-    parser_test!(number_test (number): "12" => "12".into());
-    parser_test!(string_test (string): "\"abc\"" => span_at("abc", 2, 1, 1));
+    parser_test!(number_test (number_scan): "12" => 12);
+    parser_test!(string_test (string_scan): "\"abc\"" => "abc".into());
     parser_test!(string_escape_test (string_scan): "\"\\n\\t\\\"\"" => "\n\t\"".into());
     basic_test!(char_test char_scan("'a'".into()) => Ok((span_at("", 4, 1, 3), 'a')));
     basic_test! {
@@ -392,6 +399,11 @@ mod tests {
         string_scan("\"".into()) => scan_error("\"".into(), 1, 1, ScanErrorKind::StringUnclosed);
         string_scan("\"a".into()) => scan_error("\"a".into(), 1, 1, ScanErrorKind::StringUnclosed);
         string_scan("\"a\\b\"".into()) => scan_error("\"a\\b\"".into(), 1, 1, ScanErrorKind::InvalidEscapedString)
+    }
+    basic_test! {
+        number_error_tests
+        number_scan("".into()) => scan_error("".into(), 1, 1, ScanErrorKind::NoMatch);
+        number_scan("2147483648".into()) => scan_error("2147483648".into(), 1, 1, ScanErrorKind::NumberTooBig)
     }
     /*basic_test! {
         error_tests
