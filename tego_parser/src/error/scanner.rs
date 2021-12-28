@@ -72,6 +72,98 @@ pub fn number_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom
 	}
 }
 
+pub fn ident_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ScanError)> {
+	match error {
+		nom::Err::Error((input, nom::error::ErrorKind::Verify)) =>
+			ScanError::nom_error(input, ScanErrorKind::KeywordIdentifier),
+		nom::Err::Error((input, _)) =>
+			ScanError::nom_error(input, ScanErrorKind::NoMatch),
+		nom::Err::Failure((input, _)) =>
+			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+pub fn multi_comment_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ScanError)> {
+	match error {
+		nom::Err::Error((input, nom::error::ErrorKind::Tag)) if !input.to_str().starts_with("{-") =>
+			ScanError::nom_error(input, ScanErrorKind::UnclosedComment),
+		nom::Err::Error((input, _)) =>
+			ScanError::nom_error(input, ScanErrorKind::NoMatch),
+		nom::Err::Failure((input, _)) =>
+			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+pub fn inline_comment_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ScanError)> {
+	match error {
+		nom::Err::Error((input, nom::error::ErrorKind::Verify)) =>
+			ScanError::nom_error(input, ScanErrorKind::UnexpectedNewline),
+		nom::Err::Error((input, nom::error::ErrorKind::Tag)) if !input.to_str().starts_with("{-") =>
+			ScanError::nom_error(input, ScanErrorKind::UnclosedComment),
+		nom::Err::Error((input, _)) =>
+			ScanError::nom_error(input, ScanErrorKind::NoMatch),
+		nom::Err::Failure((input, _)) =>
+			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+pub fn single_comment_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ScanError)> {
+	match error {
+		nom::Err::Error((input, _)) =>
+			ScanError::nom_error(input, ScanErrorKind::NoMatch),
+		nom::Err::Failure((input, _)) =>
+			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+pub fn newline_error_scan<'a>(error: nom::Err<(Input, ScanError)>) -> nom::Err<(Input, ScanError)> {
+	match error {
+		nom::Err::Error((input, _)) =>
+			ScanError::nom_error(input, ScanErrorKind::ExpectedNewline),
+		nom::Err::Failure((input, _)) =>
+			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+pub fn reserved_error_scan(token: &'static str) -> impl Fn(nom::Err<(Input<'_>, nom::error::ErrorKind)>) -> nom::Err<(Input<'_>, ScanError)> {
+	move |error|
+	match error {
+		// `true` and `false` are expressions, not keywords
+		nom::Err::Error((input, _)) if token == "true" || token == "false" =>
+			ScanError::nom_error(input, ScanErrorKind::NoMatch),
+		nom::Err::Error((input, _)) =>
+			ScanError::nom_error(input, ScanErrorKind::ExpectedKeyword(token)),
+		nom::Err::Failure((input, _)) =>
+			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+impl<'a> nom::error::ParseError<Input<'a>> for (Input<'a>, ScanError) {
+    fn from_error_kind(input: Input<'a>, kind: nom::error::ErrorKind) -> Self {
+        (
+            input,
+            ScanError {
+                column: input.column(),
+                line: input.line(),
+                kind: ScanErrorKind::UnhandledNomError,
+            },
+        )
+    }
+
+    fn append(_: Input, _: nom::error::ErrorKind, other: Self) -> Self {
+        // All errors should already be handled...
+		// I need to figure out how to use this
+		// effectively
+		other
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ScanErrorKind {
 	// CHAR ERRORS
@@ -86,9 +178,21 @@ pub enum ScanErrorKind {
 	// NUMBER ERRORS
 	NumberTooBig,
 
-	// NO MATCH ERROR
-	NoMatch,
+	// IDENTIFIER ERRORS
+	KeywordIdentifier,
 
-	// FAILURE ERROR
+	// COMMENT ERRORS
+	UnexpectedNewline,
+	UnclosedComment,
+
+	// WHITESPACE ERRORS
+	ExpectedNewline,
+
+	// NO MATCH ERRORS
+	NoMatch,
+	ExpectedKeyword(&'static str),
+
+	// NOM ERRORS
 	UnknownFailure,
+	UnhandledNomError,
 }

@@ -1,14 +1,19 @@
-use crate::error::{err_retain_all, parser::*};
+use crate::error::err_retain_all;
 use crate::error::scanner::{
-    ScanError, ScanErrorKind,
-    char_error_scan, string_error_scan, number_error_scan
+    char_error_scan, string_error_scan,
+    number_error_scan, ident_error_scan,
+    multi_comment_error_scan,
+    inline_comment_error_scan,
+    single_comment_error_scan,
+    newline_error_scan,
+    reserved_error_scan,
 };
-use crate::{Input, ParseResult, ScanResult};
+use crate::{Input, ScanResult};
 use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, take_until, take_while1, escaped_transform},
-    character::complete::{anychar, digit1, line_ending, multispace0, not_line_ending, space0, one_of},
-    combinator::{all_consuming, map, map_res, opt, peek, rest_len, verify, recognize},
+    character::complete::{anychar, digit1, line_ending, multispace0, not_line_ending, space0},
+    combinator::{all_consuming, map, map_res, opt, peek, rest_len, verify},
     multi::many0,
     sequence::{preceded, terminated, tuple},
 };
@@ -31,7 +36,7 @@ const ESCAPE_CHARS_MAP: &[(char, char)] = &[
 
 pub fn newlines<'a>(
     is_req: bool,
-) -> impl Fn(Input<'a>) -> ParseResult<'a, (Vec<Input<'a>>, Option<Input<'a>>, Vec<Input<'a>>)> {
+) -> impl Fn(Input<'a>) -> ScanResult<'a, (Vec<Input<'a>>, Option<Input<'a>>, Vec<Input<'a>>)> {
     move |input| {
         map_res(
             tuple((
@@ -45,56 +50,64 @@ pub fn newlines<'a>(
                 (_, nl) => Ok((ws1, nl, ws2)),
             },
         )(input)
-        .map_err(newline_error)
+        .map_err(newline_error_scan)
     }
 }
 
-pub fn comment0(input: Input<'_>) -> ParseResult<'_, Vec<Input<'_>>> {
-    terminated(many0(preceded(space0, inline_comment)), space0)(input)
+pub fn comment0(input: Input<'_>) -> ScanResult<'_, Vec<Input<'_>>> {
+    terminated(
+        many0(
+            preceded(space0, inline_comment)
+        ),
+        space0
+    )(input)
 }
 
-pub fn multicomment0(input: Input<'_>) -> ParseResult<'_, Vec<Input<'_>>> {
+pub fn multicomment0(input: Input<'_>) -> ScanResult<'_, Vec<Input<'_>>> {
     terminated(
         many0(preceded(multispace0, alt((single_comment, multi_comment)))),
         multispace0,
     )(input)
 }
 
-fn single_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+fn single_comment(input: Input<'_>) -> ScanResult<'_, Input<'_>> {
     preceded(
         tag("--"),
         alt((terminated(not_line_ending, line_ending), not_line_ending)),
     )(input)
+    .map_err(single_comment_error_scan)
 }
 
-fn inline_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+fn inline_comment(input: Input<'_>) -> ScanResult<'_, Input<'_>> {
     verify(
         terminated(preceded(tag("{-"), take_until("-}")), tag("-}")),
         |s: &Input| !s.to_str().contains('\n'),
     )(input)
+    .map_err(inline_comment_error_scan)
 }
 
-fn multi_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+fn multi_comment(input: Input<'_>) -> ScanResult<'_, Input<'_>> {
     terminated(preceded(tag("{-"), take_until("-}")), tag("-}"))(input)
+        .map_err(multi_comment_error_scan)
 }
 
-pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ScanResult<'a, O>
 where
-    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+    F: Fn(Input<'a>) -> ScanResult<'a, O>,
 {
     terminated(parser, newlines(false))
 }
 
-pub fn preceding_opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+pub fn preceding_opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ScanResult<'a, O>
 where
-    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+    F: Fn(Input<'a>) -> ScanResult<'a, O>,
 {
     preceded(newlines(false), parser)
 }
 
-pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ScanResult<'a, O>
 where
-    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+    F: Fn(Input<'a>) -> ScanResult<'a, O>,
 {
     terminated(
         parser,
@@ -102,14 +115,7 @@ where
     )
 }
 
-pub fn token<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
-where
-    F: Fn(Input<'a>) -> ParseResult<'a, O>,
-{
-    preceded(space0, parser)
-}
-
-pub fn token_scan<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> nom::IResult<Input<'a>, O>
+pub fn token<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> nom::IResult<Input<'a>, O>
 where
     F: Fn(Input<'a>) -> nom::IResult<Input<'a>, O>,
 {
@@ -121,35 +127,33 @@ where
 
 macro_rules! reserved {
     (keyword $lexeme:ident, $lexeme_str:literal) => {
-        pub fn $lexeme(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+        pub fn $lexeme(input: Input<'_>) -> ScanResult<'_, Input<'_>> {
             token(terminated(
                 tag($lexeme_str),
                 alt((
                     peek(verify(anychar, |c| !is_identifier_char(*c))),
                     map(
-                        // Only used for typechecking purposes
+                        // Check if it's at the end of the file
                         verify(rest_len, |len| *len == 0),
+
+                        // Only used for typechecking purposes
                         |_| char::from(0), // This character will be ignored
                     ),
                 )),
             ))(input)
-            .map_err(reserved_error($lexeme_str))
+            .map_err(reserved_error_scan($lexeme_str))
         }
     };
 
     ($lexeme:ident, $lexeme_str:literal) => {
-        pub fn $lexeme(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
-            token(tag($lexeme_str))(input).map_err(reserved_error($lexeme_str))
+        pub fn $lexeme(input: Input<'_>) -> ScanResult<'_, Input<'_>> {
+            token(tag($lexeme_str))(input).map_err(reserved_error_scan($lexeme_str))
         }
     };
 }
 
-pub fn char(input: Input<'_>) -> ParseResult<'_, char> {
-    token(terminated(preceded(single_quote, anychar), single_quote))(input).map_err(char_error)
-}
-
-fn char_scan(input: Input<'_>) -> ScanResult<'_, char> {
-    token_scan(preceded(
+pub fn char(input: Input<'_>) -> ScanResult<'_, char> {
+    token(preceded(
         tag("'"),
         terminated(
             alt((valid_char, escaped_char)),
@@ -178,16 +182,8 @@ where E: nom::error::ParseError<Input<'a>> {
     )(input)
 }
 
-pub fn string(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
-    token(terminated(
-        preceded(double_quote, is_not("\"")),
-        double_quote,
-    ))(input)
-    .map_err(string_error)
-}
-
-pub fn string_scan(input: Input<'_>) -> ScanResult<'_, String> {
-    token_scan(preceded(
+pub fn string(input: Input<'_>) -> ScanResult<'_, String> {
+    token(preceded(
         tag("\""),
         terminated(
             inner_string,
@@ -215,22 +211,18 @@ where E: nom::error::ParseError<Input<'a>> {
     )(input)
 }
 
-pub fn number(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
-    token(digit1)(input).map_err(number_error)
-}
-
-pub fn number_scan(input: Input<'_>) -> ScanResult<'_, i32> {
+pub fn number(input: Input<'_>) -> ScanResult<'_, i32> {
     map_res(
-        token_scan(digit1),
+        token(digit1),
         |i| i.to_str().parse()
     )(input).map_err(number_error_scan)
 }
 
-pub fn identifier(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+pub fn identifier(input: Input<'_>) -> ScanResult<'_, Input<'_>> {
     token(verify(take_while1(is_identifier_char), |id: &Input| {
         !is_keyword(id.to_str()) && !id.to_str().starts_with('\'')
     }))(input)
-    .map_err(ident_error)
+    .map_err(ident_error_scan)
 }
 
 fn is_identifier_char(c: char) -> bool {
@@ -288,6 +280,7 @@ mod tests {
     use super::*;
     use crate::span::span_at;
     use crate::test::*;
+    use crate::error::scanner::{ScanError, ScanErrorKind};
 
     #[test]
     fn token_parser_test() {
@@ -339,14 +332,22 @@ mod tests {
     // Find: reserved!\(([a-z_]+), ("[^"]+")\);
     // Replace: parser_test!($1_test ($1): $2 => $2.into());
 
+    // Identifier parsing
+    parser_test!{
+        ident_test
+        (identifier): "abc" => "abc".into();
+        (identifier): "ab'" => "ab'".into();
+        (identifier): "AbC" => "AbC".into()
+    }
+
     // Literal parsing
-    parser_test!(number_test (number_scan): "12" => 12);
-    parser_test!(string_test (string_scan): "\"abc\"" => "abc".into());
-    parser_test!(string_escape_test (string_scan): "\"\\n\\t\\\"\"" => "\n\t\"".into());
-    basic_test!(char_test char_scan("'a'".into()) => Ok((span_at("", 4, 1, 3), 'a')));
+    parser_test!(number_test (number): "12" => 12);
+    parser_test!(string_test (string): "\"abc\"" => "abc".into());
+    parser_test!(string_escape_test (string): "\"\\n\\t\\\"\"" => "\n\t\"".into());
+    basic_test!(char_test char("'a'".into()) => Ok((span_at("", 4, 1, 3), 'a')));
     basic_test! {
         char_escape_test
-        char_scan("'\\n'".into()) => Ok((span_at("", 5, 1, 4), '\n'))
+        char("'\\n'".into()) => Ok((span_at("", 5, 1, 4), '\n'))
     }
 
     // Comment tests
@@ -382,37 +383,42 @@ mod tests {
                 span_at(" multi \n\n    line ", 3, 4, 20)
                 ]
     }
+
+    // Error tests
     basic_test! {
         char_error_tests
-        char_scan("".into()) => scan_error("".into(), 1, 1, ScanErrorKind::NoMatch);
-        char_scan("'".into()) => scan_error("'".into(), 1, 1, ScanErrorKind::CharUnclosed);
-        char_scan("'a".into()) => scan_error("'a".into(), 1, 1, ScanErrorKind::CharUnclosed);
-        char_scan("'ab'".into()) => scan_error("'ab'".into(), 1, 1, ScanErrorKind::CharUnclosed);
-        char_scan("'\n'".into()) => scan_error("'\n'".into(), 1, 1, ScanErrorKind::InvalidChar);
-        char_scan("'\t'".into()) => scan_error("'\t'".into(), 1, 1, ScanErrorKind::InvalidChar);
-        char_scan("'\\'".into()) => scan_error("'\\'".into(), 1, 1, ScanErrorKind::InvalidEscapedChar);
-        char_scan("'\\a'".into()) => scan_error("'\\a'".into(), 1, 1, ScanErrorKind::InvalidEscapedChar)
+        char("".into()) => scan_error("".into(), 1, 1, ScanErrorKind::NoMatch);
+        char("'".into()) => scan_error("'".into(), 1, 1, ScanErrorKind::CharUnclosed);
+        char("'a".into()) => scan_error("'a".into(), 1, 1, ScanErrorKind::CharUnclosed);
+        char("'ab'".into()) => scan_error("'ab'".into(), 1, 1, ScanErrorKind::CharUnclosed);
+        char("'\n'".into()) => scan_error("'\n'".into(), 1, 1, ScanErrorKind::InvalidChar);
+        char("'\t'".into()) => scan_error("'\t'".into(), 1, 1, ScanErrorKind::InvalidChar);
+        char("'\\'".into()) => scan_error("'\\'".into(), 1, 1, ScanErrorKind::InvalidEscapedChar);
+        char("'\\a'".into()) => scan_error("'\\a'".into(), 1, 1, ScanErrorKind::InvalidEscapedChar)
     }
     basic_test! {
         string_error_tests
-        string_scan("".into()) => scan_error("".into(), 1, 1, ScanErrorKind::NoMatch);
-        string_scan("\"".into()) => scan_error("\"".into(), 1, 1, ScanErrorKind::StringUnclosed);
-        string_scan("\"a".into()) => scan_error("\"a".into(), 1, 1, ScanErrorKind::StringUnclosed);
-        string_scan("\"a\\b\"".into()) => scan_error("\"a\\b\"".into(), 1, 1, ScanErrorKind::InvalidEscapedString)
+        string("".into()) => scan_error("".into(), 1, 1, ScanErrorKind::NoMatch);
+        string("\"".into()) => scan_error("\"".into(), 1, 1, ScanErrorKind::StringUnclosed);
+        string("\"a".into()) => scan_error("\"a".into(), 1, 1, ScanErrorKind::StringUnclosed);
+        string("\"a\\b\"".into()) => scan_error("\"a\\b\"".into(), 1, 1, ScanErrorKind::InvalidEscapedString)
     }
     basic_test! {
         number_error_tests
-        number_scan("".into()) => scan_error("".into(), 1, 1, ScanErrorKind::NoMatch);
-        number_scan("2147483648".into()) => scan_error("2147483648".into(), 1, 1, ScanErrorKind::NumberTooBig)
+        number("".into()) => scan_error("".into(), 1, 1, ScanErrorKind::NoMatch);
+        number("2147483648".into()) => scan_error("2147483648".into(), 1, 1, ScanErrorKind::NumberTooBig)
     }
-    /*basic_test! {
-        error_tests
-
-        // // comment parsing
-        // inline_comment("{- \n -}".into()) => todo!("put the error here");
-        // inline_comment("{- unclosed".into()) => todo!("put the error here");
-        // multi_comment("{- unclosed".into()) => todo!("put the error here")
-    }*/
+    basic_test! {
+        identifier_error_tests
+        identifier("".into()) => scan_error("".into(), 1, 1, ScanErrorKind::NoMatch);
+        identifier("true".into()) => scan_error("true".into(), 1, 1, ScanErrorKind::KeywordIdentifier)
+    }
+    basic_test! {
+        comment_error_tests
+        inline_comment("{- \n -}".into()) => scan_error("{- \n -}".into(), 1, 1, ScanErrorKind::UnexpectedNewline);
+        inline_comment("{- unclosed".into()) => scan_error("{- unclosed".into(), 1, 1, ScanErrorKind::UnclosedComment);
+        multi_comment("{- unclosed".into()) => scan_error("{- unclosed".into(), 1, 1, ScanErrorKind::UnclosedComment)
+    }
 
     fn scan_error<O>(remaining: Input<'_>, column: usize, line: usize, kind: ScanErrorKind)
         -> ScanResult<'_, O> {
