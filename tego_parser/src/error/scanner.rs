@@ -1,7 +1,7 @@
 use crate::Input;
 use crate::parsers::tokens;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub struct ScanError {
 	column: usize,
 	line: usize,
@@ -23,6 +23,22 @@ impl ScanError {
 
 	pub fn new_from(column: usize, line: usize, kind: ScanErrorKind) -> Self {
 		Self {column, line, kind}
+	}
+
+	pub fn column(&self) -> usize {
+		self.column
+	}
+
+	pub fn line(&self) -> usize {
+		self.line
+	}
+
+	pub fn kind(&self) -> ScanErrorKind {
+		self.kind
+	}
+
+	pub fn is_partial_match(&self) -> bool {
+		!matches!(self.kind, ScanErrorKind::NoMatch)
 	}
 }
 
@@ -130,14 +146,18 @@ pub fn newline_error_scan<'a>(error: nom::Err<(Input, ScanError)>) -> nom::Err<(
 	}
 }
 
-pub fn reserved_error_scan(token: &'static str) -> impl Fn(nom::Err<(Input<'_>, nom::error::ErrorKind)>) -> nom::Err<(Input<'_>, ScanError)> {
+pub fn reserved_error_scan(keyword: &'static str) -> impl Fn(nom::Err<(Input<'_>, nom::error::ErrorKind)>) -> nom::Err<(Input<'_>, ScanError)> {
 	move |error|
 	match error {
 		// `true` and `false` are expressions, not keywords
-		nom::Err::Error((input, _)) if token == "true" || token == "false" =>
+		nom::Err::Error((input, _)) if keyword == "true" || keyword == "false" =>
 			ScanError::nom_error(input, ScanErrorKind::NoMatch),
 		nom::Err::Error((input, _)) =>
-			ScanError::nom_error(input, ScanErrorKind::ExpectedKeyword(token)),
+			ScanError::nom_error(input, ScanErrorKind::ExpectedKeyword {
+				keyword,
+				line: input.line(),
+				column: input.column(),
+			}),
 		nom::Err::Failure((input, _)) =>
 			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
 		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
@@ -164,7 +184,7 @@ impl<'a> nom::error::ParseError<Input<'a>> for (Input<'a>, ScanError) {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ScanErrorKind {
 	// CHAR ERRORS
 	CharUnclosed,
@@ -190,7 +210,11 @@ pub enum ScanErrorKind {
 
 	// NO MATCH ERRORS
 	NoMatch,
-	ExpectedKeyword(&'static str),
+	ExpectedKeyword {
+		keyword: &'static str,
+		line: usize,
+		column: usize,
+	},
 
 	// NOM ERRORS
 	UnknownFailure,

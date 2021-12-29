@@ -95,6 +95,7 @@ mod tests {
     use super::*;
     use crate::ast::Match;
     use crate::test::*;
+    use crate::error::scanner::{ScanError, ScanErrorKind};
 
     parser_test! {
         ident_test
@@ -164,5 +165,34 @@ mod tests {
         boxed_test
         (match_): "[ 1 ]" =>
             Match::boxed(Match::int(1))
+    }
+
+    // Error tests
+    basic_test! {
+        variable_error_test
+        variable::<()>("".into()) => 
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        variable::<()>("1".into()) =>
+            parse_error("1".into(), 1, 1, ParseErrorKind::NoMatch);
+        variable::<()>("if".into()) =>
+            scan_error("if".into(), 1, 1, ScanErrorKind::KeywordIdentifier)
+    }
+
+    fn parse_error<O>(remaining: Input<'_>, column: usize, line: usize, kind: ParseErrorKind)
+        -> ParseResult<'_, O> {
+            Err(nom::Err::Error((remaining, ParseError::new(
+                column,
+                line,
+                kind
+            ))))
+    }
+
+    fn scan_error<O>(remaining: Input<'_>, column: usize, line: usize, kind: ScanErrorKind)
+        -> ParseResult<'_, O> {
+            Err(nom::Err::Error((remaining, ScanError::new_from(
+                column,
+                line,
+                kind,
+            ).into())))
     }
 }
