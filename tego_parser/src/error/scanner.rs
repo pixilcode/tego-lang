@@ -21,6 +21,10 @@ impl ScanError {
 		nom::Err::Error((input, ScanError::new(input, kind)))
 	}
 
+	fn nom_failure(input: Input, kind: ScanErrorKind) -> nom::Err<(Input, ScanError)> {
+		nom::Err::Failure((input, ScanError::new(input, kind)))
+	}
+
 	pub fn new_from(column: usize, line: usize, kind: ScanErrorKind) -> Self {
 		Self {column, line, kind}
 	}
@@ -36,10 +40,6 @@ impl ScanError {
 	pub fn kind(&self) -> ScanErrorKind {
 		self.kind
 	}
-
-	pub fn is_partial_match(&self) -> bool {
-		!matches!(self.kind, ScanErrorKind::NoMatch)
-	}
 }
 
 pub fn char_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ScanError)> {
@@ -50,14 +50,14 @@ pub fn char_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::
 			let c = input.to_str().chars().nth(1);
 			match c {
 				Some(c) if c == '\\' =>
-					ScanError::nom_error(input, ScanErrorKind::InvalidEscapedChar),
+					ScanError::nom_failure(input, ScanErrorKind::InvalidEscapedChar),
 				Some(c) if tokens::INVALID_CHARS.contains(&c) =>
-					ScanError::nom_error(input, ScanErrorKind::InvalidChar),
-				_ => ScanError::nom_error(input, ScanErrorKind::CharUnclosed)
+					ScanError::nom_failure(input, ScanErrorKind::InvalidChar),
+				_ => ScanError::nom_failure(input, ScanErrorKind::CharUnclosed)
 			}
 		},
 		nom::Err::Failure((input, _)) =>
-			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+			ScanError::nom_failure(input, ScanErrorKind::UnknownFailure),
 		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
 	}
 }
@@ -67,11 +67,11 @@ pub fn string_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom
 		nom::Err::Error((input, _)) if !input.to_str().starts_with('"') =>
 			ScanError::nom_error(input, ScanErrorKind::NoMatch),
 		nom::Err::Error((input, nom::error::ErrorKind::Tag)) => // the last `"` match failed
-			ScanError::nom_error(input, ScanErrorKind::StringUnclosed),
+			ScanError::nom_failure(input, ScanErrorKind::StringUnclosed),
 		nom::Err::Error((input, _)) => // a 
-			ScanError::nom_error(input, ScanErrorKind::InvalidEscapedString),
+			ScanError::nom_failure(input, ScanErrorKind::InvalidEscapedString),
 		nom::Err::Failure((input, _)) =>
-			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+			ScanError::nom_failure(input, ScanErrorKind::UnknownFailure),
 		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
 	}
 }
@@ -79,11 +79,11 @@ pub fn string_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom
 pub fn number_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ScanError)> {
 	match error {
 		nom::Err::Error((input, nom::error::ErrorKind::MapRes)) =>
-			ScanError::nom_error(input, ScanErrorKind::NumberTooBig),
+			ScanError::nom_failure(input, ScanErrorKind::NumberTooBig),
 		nom::Err::Error((input, _)) =>
 			ScanError::nom_error(input, ScanErrorKind::NoMatch),
 		nom::Err::Failure((input, _)) =>
-			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+			ScanError::nom_failure(input, ScanErrorKind::UnknownFailure),
 		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
 	}
 }
@@ -91,11 +91,11 @@ pub fn number_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom
 pub fn ident_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ScanError)> {
 	match error {
 		nom::Err::Error((input, nom::error::ErrorKind::Verify)) =>
-			ScanError::nom_error(input, ScanErrorKind::KeywordIdentifier),
+			ScanError::nom_failure(input, ScanErrorKind::KeywordIdentifier),
 		nom::Err::Error((input, _)) =>
 			ScanError::nom_error(input, ScanErrorKind::NoMatch),
 		nom::Err::Failure((input, _)) =>
-			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+			ScanError::nom_failure(input, ScanErrorKind::UnknownFailure),
 		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
 	}
 }
@@ -103,11 +103,11 @@ pub fn ident_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom:
 pub fn multi_comment_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ScanError)> {
 	match error {
 		nom::Err::Error((input, nom::error::ErrorKind::Tag)) if !input.to_str().starts_with("{-") =>
-			ScanError::nom_error(input, ScanErrorKind::UnclosedComment),
+			ScanError::nom_failure(input, ScanErrorKind::UnclosedComment),
 		nom::Err::Error((input, _)) =>
 			ScanError::nom_error(input, ScanErrorKind::NoMatch),
 		nom::Err::Failure((input, _)) =>
-			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+			ScanError::nom_failure(input, ScanErrorKind::UnknownFailure),
 		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
 	}
 }
@@ -115,13 +115,13 @@ pub fn multi_comment_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>)
 pub fn inline_comment_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ScanError)> {
 	match error {
 		nom::Err::Error((input, nom::error::ErrorKind::Verify)) =>
-			ScanError::nom_error(input, ScanErrorKind::UnexpectedNewline),
+			ScanError::nom_failure(input, ScanErrorKind::UnexpectedNewline),
 		nom::Err::Error((input, nom::error::ErrorKind::Tag)) if !input.to_str().starts_with("{-") =>
-			ScanError::nom_error(input, ScanErrorKind::UnclosedComment),
+			ScanError::nom_failure(input, ScanErrorKind::UnclosedComment),
 		nom::Err::Error((input, _)) =>
 			ScanError::nom_error(input, ScanErrorKind::NoMatch),
 		nom::Err::Failure((input, _)) =>
-			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+			ScanError::nom_failure(input, ScanErrorKind::UnknownFailure),
 		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
 	}
 }
@@ -131,7 +131,7 @@ pub fn single_comment_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>
 		nom::Err::Error((input, _)) =>
 			ScanError::nom_error(input, ScanErrorKind::NoMatch),
 		nom::Err::Failure((input, _)) =>
-			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+			ScanError::nom_failure(input, ScanErrorKind::UnknownFailure),
 		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
 	}
 }
@@ -139,9 +139,9 @@ pub fn single_comment_error_scan(error: nom::Err<(Input, nom::error::ErrorKind)>
 pub fn newline_error_scan<'a>(error: nom::Err<(Input, ScanError)>) -> nom::Err<(Input, ScanError)> {
 	match error {
 		nom::Err::Error((input, _)) =>
-			ScanError::nom_error(input, ScanErrorKind::ExpectedNewline),
+			ScanError::nom_failure(input, ScanErrorKind::ExpectedNewline),
 		nom::Err::Failure((input, _)) =>
-			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+			ScanError::nom_failure(input, ScanErrorKind::UnknownFailure),
 		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
 	}
 }
@@ -153,13 +153,13 @@ pub fn reserved_error_scan(keyword: &'static str) -> impl Fn(nom::Err<(Input<'_>
 		nom::Err::Error((input, _)) if keyword == "true" || keyword == "false" =>
 			ScanError::nom_error(input, ScanErrorKind::NoMatch),
 		nom::Err::Error((input, _)) =>
-			ScanError::nom_error(input, ScanErrorKind::ExpectedKeyword {
+			ScanError::nom_failure(input, ScanErrorKind::ExpectedKeyword {
 				keyword,
 				line: input.line(),
 				column: input.column(),
 			}),
 		nom::Err::Failure((input, _)) =>
-			nom::Err::Failure((input, ScanError::new(input, ScanErrorKind::UnknownFailure))),
+			ScanError::nom_failure(input, ScanErrorKind::UnknownFailure),
 		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
 	}
 }

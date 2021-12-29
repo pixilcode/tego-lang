@@ -212,10 +212,18 @@ impl<'a> From<nom::Err<(Input<'a>, ParseError)>> for ParseError {
 
 impl From<ScanError> for ParseError {
     fn from(error: ScanError) -> Self {
-        Self {
-            column: error.column(),
-            line: error.line(),
-            kind: ParseErrorKind::TokenError(error.kind()),
+        if matches!(error.kind(), ScanErrorKind::NoMatch) {
+            Self {
+                column: error.column(),
+                line: error.line(),
+                kind: ParseErrorKind::NoMatch,
+            }
+        } else {
+            Self {
+                column: error.column(),
+                line: error.line(),
+                kind: ParseErrorKind::TokenError(error.kind()),
+            }
         }
     }
 }
@@ -360,6 +368,19 @@ error_type! {
 
 // Match Errors
 pub fn ident_match_error(error: nom::Err<(Input, ScanError)>) -> nom::Err<(Input, ParseError)> {
+    match error {
+        nom::Err::Error((input, error)) 
+            if input.to_str().is_empty() => nom::Err::Error((
+                input, 
+                ParseError::new_from_kind(input, ParseErrorKind::Eof)
+            )),
+        nom::Err::Error((input, error)) => nom::Err::Error((input, error.into())),
+        nom::Err::Failure((input, error)) => nom::Err::Error((input, error.into())),
+        nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+    }
+}
+
+pub fn basic_match_error(error: nom::Err<(Input, ScanError)>) -> nom::Err<(Input, ParseError)> {
     match error {
         nom::Err::Error((input, error))
             if error.is_partial_match() => nom::Err::Error((input, error.into())),
