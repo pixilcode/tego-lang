@@ -7,7 +7,7 @@ use crate::ParseResult;
 
 use nom::{
     branch::alt,
-    combinator::opt,
+    combinator::{opt, map},
     multi::{fold_many0, many1},
     sequence::{pair, preceded, separated_pair, terminated, tuple},
 };
@@ -208,20 +208,20 @@ where
             right_paren(input)
                 .map(|(input, _)| (input, E::unit()))
                 .or_else(try_parser(terminated(opt_nl(expr), right_paren), input))
-                .map_err(terminating_paren_error((
+                .map_err(terminating_paren_error(
                     open_paren.line(),
                     open_paren.column(),
-                )))
+                ))
         })
         .or_else(try_parser(
             |input| {
                 opt_nl(left_bracket)(input).and_then(|(input, open_bracket)| {
                     terminated(opt_nl(expr), right_bracket)(input)
                         .map(|(input, inner)| (input, E::boxed(inner)))
-                        .map_err(terminating_bracket_error((
+                        .map_err(terminating_bracket_error(
                             open_bracket.line(),
                             open_bracket.column(),
-                        )))
+                        ))
                 })
             },
             input,
@@ -233,21 +233,39 @@ fn literal<E>(input: Input<'_>) -> ExprResult<'_, E>
 where
     E: ExprOutput,
 {
-    alt((true_val, false_val, number, identifier))(input)
-        .map(|(new_input, token)| match token.to_str() {
-            "true" => (new_input, E::bool(true)),
-            "false" => (new_input, E::bool(false)),
-            lexeme => {
-                if let Ok(i) = lexeme.parse::<i32>() {
-                    (new_input, E::int(i))
-                } else {
-                    (new_input, E::variable(lexeme))
-                }
-            } // Has to be done seperately so that it doesn't get mixed up as an identifier
-        })
-        .or_else(|_| string(input).map(|(input, s)| (input, E::string(s.into()))))
-        .or_else(|_| char(input).map(|(input, c)| (input, E::char(c))))
-        .map_err(literal_error)
+    map(
+        alt((true_val, false_val)),
+        |token| match token.into() {
+            "true" => E::bool(true),
+            "false" => E::bool(false),
+            _ => unreachable!(),
+        }
+    )(input)
+    .or_else(
+        try_parser(
+            map(number, |int| E::int(int)),
+            input
+        )
+    )
+    .or_else(
+        try_parser(
+            map(identifier, |lexeme| E::variable(lexeme.into())),
+            input
+        )
+    )
+    .or_else(
+        try_parser(
+            map(string, |s| E::string(s)),
+            input
+        )
+    )
+    .or_else(
+        try_parser(
+            map(char, |c| E::char(c)),
+            input
+        )
+    )
+    .map_err(literal_error)
 }
 
 #[cfg(test)]
@@ -489,7 +507,7 @@ mod tests {
     }
     parser_test! {
         string_test
-        (expr): "\"abc\"" => Expr::string("abc")
+        (expr): "\"abc\"" => Expr::string("abc".into())
     }
     parser_test! {
         char_test

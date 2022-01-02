@@ -1,6 +1,7 @@
-use crate::parsers::tokens::{newlines, token};
-use crate::{Input, ParseResult, ScanResult};
-use crate::error::scanner::{ScanError, ScanErrorKind};
+use crate::parsers::tokens::{self, newlines};
+use crate::{Input, ParseResult};
+use nom::sequence::preceded;
+use nom::character::complete::space0;
 use std::fmt;
 use std::io;
 
@@ -19,7 +20,7 @@ impl ParseError {
             | ParseErrorKind::String
             | ParseErrorKind::Number
             | ParseErrorKind::Keyword
-            | ParseErrorKind::UnknownNomError
+            | ParseErrorKind::UnhandledNomError
         )
     }
 
@@ -37,12 +38,20 @@ impl ParseError {
         }
     }
 
-    fn new_from(input: Input<'_>, error: Self, kind: ParseErrorKind) -> nom::Err<(Input<'_>, Self)> {
+    fn new_from_deprecated(input: Input<'_>, error: Self, kind: ParseErrorKind) -> nom::Err<(Input<'_>, Self)> {
         nom::Err::Error((input, ParseError { kind, ..error }))
     }
 
     fn new_with(input: Input<'_>, error: Self) -> nom::Err<(Input<'_>, Self)> {
         nom::Err::Error((input, error))
+    }
+
+    fn nom_error(input: Input<'_>, kind: ParseErrorKind) -> nom::Err<(Input<'_>, Self)> {
+        nom::Err::Error((input, Self::new_from_kind(input, kind)))
+    }
+
+    fn nom_failure(input: Input<'_>, kind: ParseErrorKind) -> nom::Err<(Input<'_>, Self)> {
+        nom::Err::Error((input, Self::new_from_kind(input, kind)))
     }
 
     pub fn verbose_from_source(&self, source: &str, writer: &mut impl io::Write) -> io::Result<()> {
@@ -155,6 +164,34 @@ impl fmt::Display for ParseError {
             ParseErrorKind::Number => "error parsing number literal".into(),
             ParseErrorKind::Keyword => "found keyword where an identifier was expected".into(),
 
+            ParseErrorKind::CharUnclosed => todo!("write this"),
+            ParseErrorKind::InvalidChar => todo!("write this"),
+            ParseErrorKind::InvalidEscapedChar => todo!("write this"),
+        
+            // STRING ERRORS
+            ParseErrorKind::StringUnclosed => todo!("write this"),
+            ParseErrorKind::InvalidEscapedString => todo!("write this"),
+        
+            // NUMBER ERRORS
+            ParseErrorKind::NumberTooBig => todo!("write this"),
+        
+            // IDENTIFIER ERRORS
+            ParseErrorKind::KeywordIdentifier => todo!("write this"),
+        
+            // COMMENT ERRORS
+            ParseErrorKind::UnexpectedNewline => todo!("write this"),
+            ParseErrorKind::UnclosedComment => todo!("write this"),
+        
+            // WHITESPACE ERRORS
+            ParseErrorKind::ExpectedNewline => todo!("write this"),
+        
+            // NO MATCH ERRORS
+            ParseErrorKind::ExpectedKeyword {
+                keyword,
+                line,
+                column,
+            } => todo!("write this"),
+
             // Expr Errors
             ParseErrorKind::InvalidCharacter => "encountered invalid character".into(),
             ParseErrorKind::TerminatingParen(_, _) => "missing closing parenthesis".into(),
@@ -182,7 +219,9 @@ impl fmt::Display for ParseError {
             ParseErrorKind::TerminatingNewline => "missing newline (expected here)".into(),
             ParseErrorKind::Eof => "reached end of file before parsing was completed".into(),
             ParseErrorKind::Incomplete => "incomplete information found".into(),
-            ParseErrorKind::UnknownNomError => "unknown error from parsing".into(),
+            ParseErrorKind::UnhandledNomError => "unknown error from parsing".into(),
+            ParseErrorKind::UnknownFailure => todo!("write this"),
+            ParseErrorKind::NoMatch => todo!("write this"),
         };
         write!(
             f,
@@ -197,42 +236,11 @@ impl fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
-impl<'a> From<nom::Err<(Input<'a>, ParseError)>> for ParseError {
-    fn from(error: nom::Err<(Input, ParseError)>) -> Self {
-        match error {
-            nom::Err::Incomplete(_) => ParseError {
-                column: 1,
-                line: 1,
-                kind: ParseErrorKind::Incomplete,
-            },
-            nom::Err::Error((_, error)) | nom::Err::Failure((_, error)) => error,
-        }
-    }
-}
-
-impl From<ScanError> for ParseError {
-    fn from(error: ScanError) -> Self {
-        if matches!(error.kind(), ScanErrorKind::NoMatch) {
-            Self {
-                column: error.column(),
-                line: error.line(),
-                kind: ParseErrorKind::NoMatch,
-            }
-        } else {
-            Self {
-                column: error.column(),
-                line: error.line(),
-                kind: ParseErrorKind::TokenError(error.kind()),
-            }
-        }
-    }
-}
-
 macro_rules! error_type {
     ( $name:ident, $kind:expr ) => {
         pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
             match error {
-                nom::Err::Error((input, error)) if error.is_unhandled() => ParseError::new_from(input, error, $kind),
+                nom::Err::Error((input, error)) if error.is_unhandled() => ParseError::new_from_deprecated(input, error, $kind),
                 e => e
             }
         }
@@ -242,7 +250,7 @@ macro_rules! error_type {
         pub fn $name($param_name: $param_type) -> impl Fn(nom::Err<(Input<'_>, ParseError)>) -> nom::Err<(Input<'_>, ParseError)> {
             move |error|
             match error {
-                nom::Err::Error((input, error)) if error.is_unhandled() => ParseError::new_from(input, error, $kind),
+                nom::Err::Error((input, error)) if error.is_unhandled() => ParseError::new_from_deprecated(input, error, $kind),
                 e => e
             }
         }
@@ -254,7 +262,7 @@ macro_rules! error_type {
         pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
             match error {
                 $( $error $( if $cond:expr )? => $result, )+
-                nom::Err::Error((input, error)) if error.is_unhandled() => ParseError::new_from(input, error, ParseErrorKind::UnhandledError),
+                nom::Err::Error((input, error)) if error.is_unhandled() => ParseError::new_from_deprecated(input, error, ParseErrorKind::UnhandledError),
                 e => e
             }
         }
@@ -266,7 +274,7 @@ macro_rules! error_type {
             match error {
                 nom::Err::Error((input, error)) if error.is_unhandled() =>
                     match error.kind {
-                        $( ParseErrorKind::Reserved($reserved) => ParseError::new_from(input, error, $kind), )+
+                        $( ParseErrorKind::Reserved($reserved) => ParseError::new_from_deprecated(input, error, $kind), )+
                         _ => ParseError::new_with(input, error)
                     },
                 e => e
@@ -279,13 +287,13 @@ macro_rules! error_type {
         pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
             match error {
                 nom::Err::Error((input, error))
-                    if input.to_str().is_empty() || token(newlines(true))(input).is_ok() =>
-                        ParseError::new_from(input, error, ParseErrorKind::EndOfExpr),
+                    if input.to_str().is_empty() || preceded(space0, newlines(true))(input).is_ok() =>
+                        ParseError::new_from_deprecated(input, error, ParseErrorKind::EndOfExpr),
                 $( nom::Err::Error((input, error))
                     if error.is_unhandled() && input.to_str().starts_with($pattern) =>
-                        ParseError::new_from(input, error, $kind), )+
+                        ParseError::new_from_deprecated(input, error, $kind), )+
                 $( nom::Err::Error((input, error)) if error.is_unhandled() =>
-                    ParseError::new_from(input, error, $default_kind), )?
+                    ParseError::new_from_deprecated(input, error, $default_kind), )?
                 e => e
             }
         }
@@ -295,12 +303,12 @@ macro_rules! error_type {
 // Error handlers
 
 /// Try a different scanner
-pub fn try_parser<'a, P, O, E>(
+pub fn try_parser<'a, P, O>(
     parser: P,
     input: Input<'a>,
-) -> impl FnOnce(nom::Err<(Input<'a>, E)>) -> nom::IResult<Input<'a>, O, (Input<'a>, E)>
+) -> impl Fn(nom::Err<(Input<'a>, ParseError)>) -> ParseResult<'a, O>
 where
-    P: FnOnce(Input<'a>) -> nom::IResult<Input<'a>, O, (Input<'a>, E)>,
+    P: Fn(Input<'a>) -> ParseResult<'a, O>,
 {
     move |error| match error {
         failure @ nom::Err::Failure((_, _)) => Err(failure),
@@ -323,45 +331,142 @@ where
 /// error
 pub fn begin_phrase<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
 where
-	F: Fn(Input<'a>) -> ScanResult<'a, O>,
+	F: Fn(Input<'a>) -> ParseResult<'a, O>,
 {
 	move |input|
     parser(input).map_err(|err| match err {
 		nom::Err::Failure((input, error))
-			if matches!(error.kind(), ScanErrorKind::ExpectedKeyword { .. }) =>
+			if matches!(error.kind, ParseErrorKind::ExpectedKeyword { .. }) =>
 			nom::Err::Error((input, ParseError::new_from_kind(
                 input, ParseErrorKind::NoMatch,
             ))),
-		nom::Err::Error((input, error)) => nom::Err::Error((input, error.into())),
-        nom::Err::Failure((input, error)) => nom::Err::Failure((input, error.into())),
-        nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+		error => error,
 	})
 }
 
-/// Turn a scanner into a parser
-/// 
-/// A scanner produces `ScanErrors`, while
-/// a parser produces `ParseErrors`
-/// 
-/// This simply wraps ScanErrors into ParseErrors
-pub fn into_parser<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
-where
-    F: Fn(Input<'a>) -> ScanResult<'a, O>
-{
-    move |input|
-    parser(input).map_err(|err| match err {
-        nom::Err::Error((input, error)) => nom::Err::Error((input, error.into())),
-        nom::Err::Failure((input, error)) => nom::Err::Failure((input, error.into())),
-        nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
-    })
+// Token Errors
+
+pub fn char_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ParseError)> {
+	match error {
+		nom::Err::Error((input, _)) if !input.to_str().starts_with('\'') =>
+			ParseError::nom_error(input, ParseErrorKind::NoMatch),
+		nom::Err::Error((input, _)) => {
+			let c = input.to_str().chars().nth(1);
+			match c {
+				Some(c) if c == '\\' =>
+					ParseError::nom_failure(input, ParseErrorKind::InvalidEscapedChar),
+				Some(c) if tokens::INVALID_CHARS.contains(&c) =>
+					ParseError::nom_failure(input, ParseErrorKind::InvalidChar),
+				_ => ParseError::nom_failure(input, ParseErrorKind::CharUnclosed)
+			}
+		},
+		nom::Err::Failure((input, _)) =>
+			ParseError::nom_failure(input, ParseErrorKind::UnknownFailure),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
 }
 
-// Token Errors
-error_type!(reserved_error, ParseErrorKind::Reserved(token); token: &'static str);
-error_type!(char_error, ParseErrorKind::Char);
-error_type!(string_error, ParseErrorKind::String);
-error_type!(number_error, ParseErrorKind::Number);
-error_type!(ident_error, ParseErrorKind::Keyword);
+pub fn string_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ParseError)> {
+	match error {
+		nom::Err::Error((input, _)) if !input.to_str().starts_with('"') =>
+			ParseError::nom_error(input, ParseErrorKind::NoMatch),
+		nom::Err::Error((input, nom::error::ErrorKind::Tag)) => // the last `"` match failed
+			ParseError::nom_failure(input, ParseErrorKind::StringUnclosed),
+		nom::Err::Error((input, _)) => // a 
+			ParseError::nom_failure(input, ParseErrorKind::InvalidEscapedString),
+		nom::Err::Failure((input, _)) =>
+			ParseError::nom_failure(input, ParseErrorKind::UnknownFailure),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+pub fn number_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ParseError)> {
+	match error {
+		nom::Err::Error((input, nom::error::ErrorKind::MapRes)) =>
+			ParseError::nom_failure(input, ParseErrorKind::NumberTooBig),
+		nom::Err::Error((input, _)) =>
+			ParseError::nom_error(input, ParseErrorKind::NoMatch),
+		nom::Err::Failure((input, _)) =>
+			ParseError::nom_failure(input, ParseErrorKind::UnknownFailure),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+pub fn ident_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ParseError)> {
+	match error {
+		nom::Err::Error((input, nom::error::ErrorKind::Verify)) =>
+			ParseError::nom_failure(input, ParseErrorKind::KeywordIdentifier),
+		nom::Err::Error((input, _)) =>
+			ParseError::nom_error(input, ParseErrorKind::NoMatch),
+		nom::Err::Failure((input, _)) =>
+			ParseError::nom_failure(input, ParseErrorKind::UnknownFailure),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+pub fn multi_comment_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ParseError)> {
+	match error {
+		nom::Err::Error((input, nom::error::ErrorKind::Tag)) if !input.to_str().starts_with("{-") =>
+			ParseError::nom_failure(input, ParseErrorKind::UnclosedComment),
+		nom::Err::Error((input, _)) =>
+			ParseError::nom_error(input, ParseErrorKind::NoMatch),
+		nom::Err::Failure((input, _)) =>
+			ParseError::nom_failure(input, ParseErrorKind::UnknownFailure),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+pub fn inline_comment_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ParseError)> {
+	match error {
+		nom::Err::Error((input, nom::error::ErrorKind::Verify)) =>
+			ParseError::nom_failure(input, ParseErrorKind::UnexpectedNewline),
+		nom::Err::Error((input, nom::error::ErrorKind::Tag)) if !input.to_str().starts_with("{-") =>
+			ParseError::nom_failure(input, ParseErrorKind::UnclosedComment),
+		nom::Err::Error((input, _)) =>
+			ParseError::nom_error(input, ParseErrorKind::NoMatch),
+		nom::Err::Failure((input, _)) =>
+			ParseError::nom_failure(input, ParseErrorKind::UnknownFailure),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+pub fn single_comment_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ParseError)> {
+	match error {
+		nom::Err::Error((input, _)) =>
+			ParseError::nom_error(input, ParseErrorKind::NoMatch),
+		nom::Err::Failure((input, _)) =>
+			ParseError::nom_failure(input, ParseErrorKind::UnknownFailure),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+pub fn newline_error<'a>(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+	match error {
+		nom::Err::Error((input, _)) =>
+			ParseError::nom_failure(input, ParseErrorKind::ExpectedNewline),
+		nom::Err::Failure((input, _)) =>
+			ParseError::nom_failure(input, ParseErrorKind::UnknownFailure),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
+
+pub fn reserved_error(keyword: &'static str) -> impl Fn(nom::Err<(Input<'_>, nom::error::ErrorKind)>) -> nom::Err<(Input<'_>, ParseError)> {
+	move |error|
+	match error {
+		// `true` and `false` are expressions, not keywords
+		nom::Err::Error((input, _)) if keyword == "true" || keyword == "false" =>
+			ParseError::nom_error(input, ParseErrorKind::NoMatch),
+		nom::Err::Error((input, _)) =>
+			ParseError::nom_failure(input, ParseErrorKind::ExpectedKeyword {
+				keyword,
+				line: input.line(),
+				column: input.column(),
+			}),
+		nom::Err::Failure((input, _)) =>
+			ParseError::nom_failure(input, ParseErrorKind::UnknownFailure),
+		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	}
+}
 
 // Expr Errors
 error_type! {
@@ -371,8 +476,7 @@ error_type! {
     |c: char| c.is_digit(10) => ParseErrorKind::Number,
     char::is_alphabetic => ParseErrorKind::Keyword
 }
-error_type!(terminating_paren_error, ParseErrorKind::TerminatingParen(open_paren_loc.0, open_paren_loc.1); open_paren_loc: (usize, usize));
-error_type!(terminating_bracket_error, ParseErrorKind::TerminatingBracket(open_bracket_loc.0, open_bracket_loc.1); open_bracket_loc: (usize, usize));
+
 error_type! {
     token [fn_expr_error]
     "->" => ParseErrorKind::FnArrow
@@ -413,7 +517,7 @@ error_type! {
 }
 
 // Match Errors
-pub fn ident_match_error(error: nom::Err<(Input, ScanError)>) -> nom::Err<(Input, ParseError)> {
+pub fn ident_match_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
     match error {
         nom::Err::Error((input, error)) 
             if input.to_str().is_empty() => nom::Err::Error((
@@ -426,7 +530,7 @@ pub fn ident_match_error(error: nom::Err<(Input, ScanError)>) -> nom::Err<(Input
     }
 }
 
-pub fn basic_match_error(error: nom::Err<(Input, ScanError)>) -> nom::Err<(Input, ParseError)> {
+pub fn basic_match_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
     match error {
         nom::Err::Error((input, error))
             if input.to_str().is_empty() => nom::Err::Error((input, ParseError::new_from_kind(input, ParseErrorKind::Eof))),
@@ -436,7 +540,7 @@ pub fn basic_match_error(error: nom::Err<(Input, ScanError)>) -> nom::Err<(Input
     }
 }
 
-pub fn grouping_error(line: usize, column: usize) -> impl Fn(nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+pub fn terminating_paren_error(line: usize, column: usize) -> impl Fn(nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
     move |error|
     match error {
         nom::Err::Failure((input, _)) => // The only possible error is a 'right_paren' error
@@ -444,11 +548,11 @@ pub fn grouping_error(line: usize, column: usize) -> impl Fn(nom::Err<(Input, Pa
                 input,
                 ParseError::new_from_kind(input, ParseErrorKind::TerminatingParen(line, column))
             )),
-        
+        error => error,
     }
 }
 
-pub fn terminating_bracket_error(line: usize, column: usize) -> impl Fn(nom::Err<(Input, ScanError)>) -> nom::Err<(Input, ParseError)> {
+pub fn terminating_bracket_error(line: usize, column: usize) -> impl Fn(nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
     move |error|
     match error {
         nom::Err::Failure((input, _)) => // The only possible error is a 'right_paren' error
@@ -456,7 +560,7 @@ pub fn terminating_bracket_error(line: usize, column: usize) -> impl Fn(nom::Err
                 input,
                 ParseError::new_from_kind(input, ParseErrorKind::TerminatingBracket(line, column))
             )),
-        
+        error => error,
     }
 }
 
@@ -466,13 +570,42 @@ error_type! {
     "=" => ParseErrorKind::DeclAssign
 }
 
-// Other Errors
-error_type!(newline_error, ParseErrorKind::TerminatingNewline);
-
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum ParseErrorKind {
     // Token Errors
-    TokenError(ScanErrorKind),
+
+    // CHAR ERRORS
+	CharUnclosed,
+	InvalidChar,
+	InvalidEscapedChar,
+
+	// STRING ERRORS
+	StringUnclosed,
+	InvalidEscapedString,
+
+	// NUMBER ERRORS
+	NumberTooBig,
+
+	// IDENTIFIER ERRORS
+	KeywordIdentifier,
+
+	// COMMENT ERRORS
+	UnexpectedNewline,
+	UnclosedComment,
+
+	// WHITESPACE ERRORS
+	ExpectedNewline,
+
+	// NO MATCH ERRORS
+	ExpectedKeyword {
+		keyword: &'static str,
+		line: usize,
+		column: usize,
+	},
+
+	// NOM ERRORS
+	
+
     Reserved(&'static str),
     Char,
     String,
@@ -501,18 +634,19 @@ pub enum ParseErrorKind {
     DeclAssign,
 
     // Other Errors
+    UnknownFailure,
+	UnhandledNomError,
     TerminatingNewline,
     Eof,
     NoMatch,
     Incomplete,
-    UnknownNomError,
 }
 
 impl From<nom::error::ErrorKind> for ParseErrorKind {
     fn from(error: nom::error::ErrorKind) -> Self {
         match error {
             nom::error::ErrorKind::Eof => ParseErrorKind::Eof,
-            _ => ParseErrorKind::UnknownNomError,
+            _ => ParseErrorKind::UnhandledNomError,
         }
     }
 }
@@ -547,12 +681,29 @@ impl From<&ParseErrorKind> for u16 {
             ParseErrorKind::DeclAssign => 18,
             ParseErrorKind::TerminatingNewline => 19,
             ParseErrorKind::Eof => 20,
-            ParseErrorKind::UnknownNomError => 21,
+            ParseErrorKind::UnhandledNomError => 21,
             ParseErrorKind::EndOfExpr => 22,
             ParseErrorKind::TerminatingBracket(_, _) => 23,
             ParseErrorKind::Incomplete => 24,
             ParseErrorKind::DoIn => 25,
             ParseErrorKind::DoThen => 26,
+            ParseErrorKind::CharUnclosed => todo!("write this"),
+            ParseErrorKind::InvalidChar => todo!("write this"),
+            ParseErrorKind::InvalidEscapedChar => todo!("write this"),
+            ParseErrorKind::StringUnclosed => todo!("write this"),
+            ParseErrorKind::InvalidEscapedString => todo!("write this"),
+            ParseErrorKind::NumberTooBig => todo!("write this"),
+            ParseErrorKind::KeywordIdentifier => todo!("write this"),
+            ParseErrorKind::UnexpectedNewline => todo!("write this"),
+            ParseErrorKind::UnclosedComment => todo!("write this"),
+            ParseErrorKind::ExpectedNewline => todo!("write this"),
+            ParseErrorKind::ExpectedKeyword {
+                keyword,
+                line,
+                column,
+            } => todo!("write this"),
+            ParseErrorKind::UnknownFailure => todo!("write this"),
+            ParseErrorKind::NoMatch => todo!("write this"),
         }
     }
 }

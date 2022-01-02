@@ -62,7 +62,7 @@ fn repl_loop(
                 (Some(env), decls)
             }
             Err(error) => {
-                parser::ParseError::from(error).verbose_from_source(code, &mut stdout)?;
+                todo!(); // parser::ParseError::from(error).verbose_from_source(code, &mut stdout)?;
                 (env, decls)
             }
         }

@@ -26,7 +26,7 @@ pub trait ExprOutput: Sized + Clone {
     fn bool(b: bool) -> Self;
     fn int(i: i32) -> Self;
     fn variable(ident: &str) -> Self;
-    fn string(s: &str) -> Self;
+    fn string(s: String) -> Self;
     fn char(c: char) -> Self;
     fn do_expr(command: Self, result_match: Self::Match, body: Self) -> Self;
 }
@@ -79,7 +79,7 @@ impl ExprOutput for () {
     fn bool(_: bool) -> Self {}
     fn int(_: i32) -> Self {}
     fn variable(_: &str) -> Self {}
-    fn string(_: &str) -> Self {}
+    fn string(_: String) -> Self {}
     fn char(_: char) -> Self {}
     fn do_expr(_: Self, _: Self::Match, _: Self) -> Self {}
 }

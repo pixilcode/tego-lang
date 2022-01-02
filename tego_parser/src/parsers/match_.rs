@@ -36,13 +36,13 @@ where
     begin_phrase(opt_nl(left_paren))(input)
         .and_then(|(input, open_paren)| {
             map(
-                terminated(opt(match_), into_parser(right_paren)),
+                terminated(opt(match_), right_paren),
                 |match_result| match match_result {
                     Some(match_result) => match_result,
                     None => M::unit(),
                 }
             )(input)
-                .map_err(grouping_error(
+                .map_err(terminating_paren_error(
                     open_paren.line(),
                     open_paren.column(),
                 ))
@@ -51,13 +51,13 @@ where
             |input| {
                 begin_phrase(opt_nl(left_bracket))(input).and_then(|(input, open_bracket)| {
                     map(
-                        terminated(opt_nl(match_), into_parser(right_bracket)),
+                        terminated(opt_nl(match_), right_bracket),
                         |inner| M::boxed(inner)
                     )(input)
-                        .map_err(terminating_bracket_error((
+                        .map_err(terminating_bracket_error(
                             open_bracket.line(),
                             open_bracket.column(),
-                        )))
+                        ))
                 })
             },
             input,
@@ -83,7 +83,6 @@ where
             input
         )
     )
-    .map(|(input, _)| (input, M::ignore()))
     .or_else(
         try_parser(
             map(number, |int| M::int(int)),
@@ -125,7 +124,6 @@ mod tests {
     use super::*;
     use crate::ast::Match;
     use crate::test::*;
-    use crate::error::scanner::{ScanError, ScanErrorKind};
 
     parser_test! {
         ident_test
@@ -205,7 +203,7 @@ mod tests {
         variable::<()>("1".into()) =>
             parse_error("1".into(), 1, 1, ParseErrorKind::NoMatch);
         variable::<()>("if".into()) =>
-            scan_error("if".into(), 1, 1, ScanErrorKind::KeywordIdentifier)
+            parse_error("if".into(), 1, 1, ParseErrorKind::KeywordIdentifier)
     }
 
     basic_test! {
@@ -241,14 +239,5 @@ mod tests {
                 line,
                 kind
             ))))
-    }
-
-    fn scan_error<O>(remaining: Input<'_>, column: usize, line: usize, kind: ScanErrorKind)
-        -> ParseResult<'_, O> {
-            Err(nom::Err::Error((remaining, ScanError::new_from(
-                column,
-                line,
-                kind,
-            ).into())))
     }
 }

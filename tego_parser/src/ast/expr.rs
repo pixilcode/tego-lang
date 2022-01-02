@@ -159,8 +159,8 @@ impl ExprOutput for Expr {
         Expr::Variable(ident.into())
     }
 
-    fn string(s: &str) -> Self {
-        Expr::Literal(ExprValue::String(s.into()))
+    fn string(s: String) -> Self {
+        Expr::Literal(ExprValue::String(s))
     }
 
     fn char(c: char) -> Self {
