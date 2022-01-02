@@ -54,8 +54,8 @@ impl MatchOutput for Match {
         Match::Ident(lexeme.into())
     }
 
-    fn string(s: &str) -> Self {
-        Match::Boxed(Box::new(Match::Value(MatchVal::String(s.into()))))
+    fn string(s: String) -> Self {
+        Match::Boxed(Box::new(Match::Value(MatchVal::String(s))))
     }
 
     fn char(c: char) -> Self {

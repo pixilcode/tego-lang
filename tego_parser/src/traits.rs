@@ -6,7 +6,7 @@ pub trait MatchOutput {
     fn bool(b: bool) -> Self;
     fn int(i: i32) -> Self;
     fn ident(s: &str) -> Self;
-    fn string(s: &str) -> Self;
+    fn string(s: String) -> Self;
     fn char(c: char) -> Self;
 }
 
@@ -59,7 +59,7 @@ impl MatchOutput for () {
     fn bool(_: bool) -> Self {}
     fn int(_: i32) -> Self {}
     fn ident(_: &str) -> Self {}
-    fn string(_: &str) -> Self {}
+    fn string(_: String) -> Self {}
     fn char(_: char) -> Self {}
 }
 

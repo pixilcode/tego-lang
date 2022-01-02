@@ -6,7 +6,7 @@ use crate::ParseResult;
 use nom::branch::alt;
 
 use nom::{
-    combinator::opt,
+    combinator::{opt, map},
     sequence::{pair, terminated},
 };
 
@@ -33,21 +33,27 @@ pub fn grouping<M>(input: Input<'_>) -> MatchResult<'_, M>
 where
     M: MatchOutput,
 {
-    left_paren(input)
+    begin_phrase(opt_nl(left_paren))(input)
         .and_then(|(input, open_paren)| {
-            right_paren(input)
-                .map(|(input, _)| (input, M::unit()))
-                .or_else(try_parser(terminated(match_, right_paren), input))
-                .map_err(grouping_match_error((
+            map(
+                terminated(opt(match_), into_parser(right_paren)),
+                |match_result| match match_result {
+                    Some(match_result) => match_result,
+                    None => M::unit(),
+                }
+            )(input)
+                .map_err(grouping_error(
                     open_paren.line(),
                     open_paren.column(),
-                )))
+                ))
         })
         .or_else(try_parser(
             |input| {
-                opt_nl(left_bracket)(input).and_then(|(input, open_bracket)| {
-                    terminated(opt_nl(match_), right_bracket)(input)
-                        .map(|(input, inner)| (input, M::boxed(inner)))
+                begin_phrase(opt_nl(left_bracket))(input).and_then(|(input, open_bracket)| {
+                    map(
+                        terminated(opt_nl(match_), into_parser(right_bracket)),
+                        |inner| M::boxed(inner)
+                    )(input)
                         .map_err(terminating_bracket_error((
                             open_bracket.line(),
                             open_bracket.column(),
@@ -63,22 +69,46 @@ fn atom<M>(input: Input<'_>) -> MatchResult<'_, M>
 where
     M: MatchOutput,
 {
-    alt((true_val, false_val, underscore, number, identifier))(input)
-        .map(|(new_input, token)| match token.into() {
-            "true" => (new_input, M::bool(true)),
-            "false" => (new_input, M::bool(false)),
-            "_" => (new_input, M::ignore()),
-            lexeme => {
-                if let Ok(i) = lexeme.parse::<i32>() {
-                    (new_input, M::int(i))
-                } else {
-                    (new_input, M::ident(lexeme))
-                }
-            }
-        })
-        .or_else(|_| string(input).map(|(input, s)| (input, M::string(s.into()))))
-        .or_else(|_| char(input).map(|(input, c)| (input, M::char(c))))
-        .map_err(basic_match_error)
+    map(
+        alt((true_val, false_val)),
+        |token| match token.into() {
+            "true" => M::bool(true),
+            "false" => M::bool(false),
+            _ => unreachable!(),
+        }
+    )(input)
+    .or_else(
+        try_parser(
+            map(underscore, |_| M::ignore()),
+            input
+        )
+    )
+    .map(|(input, _)| (input, M::ignore()))
+    .or_else(
+        try_parser(
+            map(number, |int| M::int(int)),
+            input
+        )
+    )
+    .or_else(
+        try_parser(
+            map(identifier, |lexeme| M::ident(lexeme.into())),
+            input
+        )
+    )
+    .or_else(
+        try_parser(
+            map(string, |s| M::string(s)),
+            input
+        )
+    )
+    .or_else(
+        try_parser(
+            map(char, |c| M::char(c)),
+            input
+        )
+    )
+    .map_err(basic_match_error)
 }
 
 pub fn variable<M>(input: Input<'_>) -> MatchResult<'_, M>
@@ -159,7 +189,7 @@ mod tests {
     parser_test! {
         string_test
         (match_): "\"a\"" =>
-            Match::string("a")
+            Match::string("a".into())
     }
     parser_test! {
         boxed_test
@@ -176,6 +206,32 @@ mod tests {
             parse_error("1".into(), 1, 1, ParseErrorKind::NoMatch);
         variable::<()>("if".into()) =>
             scan_error("if".into(), 1, 1, ScanErrorKind::KeywordIdentifier)
+    }
+
+    basic_test! {
+        atom_error_test
+        atom::<()>("".into()) =>
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        atom::<()>("$".into()) =>
+            parse_error("$".into(), 1, 1, ParseErrorKind::NoMatch)
+    }
+
+    basic_test! {
+        grouping_error_test
+        grouping::<()>("".into()) =>
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        grouping::<()>("(".into()) =>
+            parse_error("".into(), 2, 1, ParseErrorKind::TerminatingParen(1, 1));
+        grouping::<()>("(1, 2".into()) =>
+            parse_error("".into(), 6, 1, ParseErrorKind::TerminatingParen(1, 1));
+        grouping::<()>("(1, 2 => ".into()) =>
+            parse_error("=> ".into(), 7, 1, ParseErrorKind::TerminatingParen(1, 1));
+        grouping::<()>("[".into()) =>
+            parse_error("".into(), 2, 1, ParseErrorKind::TerminatingBracket(1, 1));
+        grouping::<()>("[1, 2".into()) =>
+            parse_error("".into(), 6, 1, ParseErrorKind::TerminatingBracket(1, 1));
+        grouping::<()>("[1, 2 => ".into()) =>
+            parse_error("=> ".into(), 7, 1, ParseErrorKind::TerminatingBracket(1, 1))
     }
 
     fn parse_error<O>(remaining: Input<'_>, column: usize, line: usize, kind: ParseErrorKind)

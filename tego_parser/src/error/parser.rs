@@ -1,5 +1,5 @@
 use crate::parsers::tokens::{newlines, token};
-use crate::{Input, ParseResult};
+use crate::{Input, ParseResult, ScanResult};
 use crate::error::scanner::{ScanError, ScanErrorKind};
 use std::fmt;
 use std::io;
@@ -294,20 +294,66 @@ macro_rules! error_type {
 
 // Error handlers
 
-// Try a different parser
-pub fn try_parser<'a, F, O>(
-    parser: F,
+/// Try a different scanner
+pub fn try_parser<'a, P, O, E>(
+    parser: P,
     input: Input<'a>,
-) -> impl Fn(nom::Err<(Input<'a>, ParseError)>) -> ParseResult<'a, O>
+) -> impl FnOnce(nom::Err<(Input<'a>, E)>) -> nom::IResult<Input<'a>, O, (Input<'a>, E)>
 where
-    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+    P: FnOnce(Input<'a>) -> nom::IResult<Input<'a>, O, (Input<'a>, E)>,
 {
     move |error| match error {
-        nom::Err::Error((input, error)) if !error.is_unhandled() => {
-            Err(nom::Err::Error((input, error)))
-        }
+        failure @ nom::Err::Failure((_, _)) => Err(failure),
+        incomplete @ nom::Err::Incomplete(_) => Err(incomplete),
         _ => parser(input),
     }
+}
+
+/// Begin a parse phrase (for parse phrases that begin
+/// with a keyword).
+/// 
+/// For example `if 1 == 2 then ...` begins with `if`.
+/// 
+/// Using the `if_` parser would return a failure
+/// if it doesn't match `if`, meaning parsing would terminate
+/// if an `if` expression isn't matched.
+/// 
+/// Normally, we would like to try to parse other expressions
+/// such as `match`, so we use `begin_phrase` to turn the failure into an
+/// error
+pub fn begin_phrase<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+where
+	F: Fn(Input<'a>) -> ScanResult<'a, O>,
+{
+	move |input|
+    parser(input).map_err(|err| match err {
+		nom::Err::Failure((input, error))
+			if matches!(error.kind(), ScanErrorKind::ExpectedKeyword { .. }) =>
+			nom::Err::Error((input, ParseError::new_from_kind(
+                input, ParseErrorKind::NoMatch,
+            ))),
+		nom::Err::Error((input, error)) => nom::Err::Error((input, error.into())),
+        nom::Err::Failure((input, error)) => nom::Err::Failure((input, error.into())),
+        nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+	})
+}
+
+/// Turn a scanner into a parser
+/// 
+/// A scanner produces `ScanErrors`, while
+/// a parser produces `ParseErrors`
+/// 
+/// This simply wraps ScanErrors into ParseErrors
+pub fn into_parser<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+where
+    F: Fn(Input<'a>) -> ScanResult<'a, O>
+{
+    move |input|
+    parser(input).map_err(|err| match err {
+        nom::Err::Error((input, error)) => nom::Err::Error((input, error.into())),
+        nom::Err::Failure((input, error)) => nom::Err::Failure((input, error.into())),
+        nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+    })
 }
 
 // Token Errors
@@ -383,8 +429,6 @@ pub fn ident_match_error(error: nom::Err<(Input, ScanError)>) -> nom::Err<(Input
 pub fn basic_match_error(error: nom::Err<(Input, ScanError)>) -> nom::Err<(Input, ParseError)> {
     match error {
         nom::Err::Error((input, error))
-            if error.is_partial_match() => nom::Err::Error((input, error.into())),
-        nom::Err::Error((input, error))
             if input.to_str().is_empty() => nom::Err::Error((input, ParseError::new_from_kind(input, ParseErrorKind::Eof))),
         nom::Err::Error((input, _)) => nom::Err::Error((input, ParseError::new_from_kind(input, ParseErrorKind::NoMatch))),
         nom::Err::Failure((input, error)) => nom::Err::Error((input, error.into())),
@@ -392,14 +436,29 @@ pub fn basic_match_error(error: nom::Err<(Input, ScanError)>) -> nom::Err<(Input
     }
 }
 
-error_type! {
-    starts_with [basic_match_error, ParseErrorKind::InvalidCharacter]
-    '"' => ParseErrorKind::String,
-    '\'' => ParseErrorKind::Char,
-    |c: char| c.is_digit(10) => ParseErrorKind::Number,
-    char::is_alphabetic => ParseErrorKind::Keyword
+pub fn grouping_error(line: usize, column: usize) -> impl Fn(nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+    move |error|
+    match error {
+        nom::Err::Failure((input, _)) => // The only possible error is a 'right_paren' error
+            nom::Err::Failure((
+                input,
+                ParseError::new_from_kind(input, ParseErrorKind::TerminatingParen(line, column))
+            )),
+        
+    }
 }
-error_type!(grouping_match_error, ParseErrorKind::TerminatingParen(open_paren_loc.0, open_paren_loc.1); open_paren_loc: (usize, usize));
+
+pub fn terminating_bracket_error(line: usize, column: usize) -> impl Fn(nom::Err<(Input, ScanError)>) -> nom::Err<(Input, ParseError)> {
+    move |error|
+    match error {
+        nom::Err::Failure((input, _)) => // The only possible error is a 'right_paren' error
+            nom::Err::Failure((
+                input,
+                ParseError::new_from_kind(input, ParseErrorKind::TerminatingBracket(line, column))
+            )),
+        
+    }
+}
 
 // Decl Errors
 error_type! {
