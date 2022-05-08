@@ -47,12 +47,15 @@ pub use crate::traits::ProgOutput;
 type Input<'a> = Span<'a>;
 type ParseResult<'a, O> = nom::IResult<Input<'a>, O, (Input<'a>, ParseError)>;
 
+#[allow(dead_code)]
 mod test {
+    use super::*;
+    use crate::error::parser::ParseErrorKind;
     use crate::span;
     pub use crate::Span;
     pub use crate::{DeclOutput, ExprOutput, MatchOutput, ProgOutput};
 
-    #[allow(dead_code)]
+    
     pub fn empty_span(input: Span<'_>) -> Span<'_> {
         let mut line = input.line();
         let mut column = input.column();
@@ -77,5 +80,23 @@ mod test {
         }
 
         span::span_at("", column, line, offset)
+    }
+
+    pub fn parse_error<O>(remaining: Input<'_>, column: usize, line: usize, kind: ParseErrorKind)
+        -> ParseResult<'_, O> {
+            Err(nom::Err::Error((remaining, ParseError::new(
+                column,
+                line,
+                kind
+            ))))
+    }
+
+    pub fn parse_failure<O>(remaining: Input<'_>, column: usize, line: usize, kind: ParseErrorKind)
+        -> ParseResult<'_, O> {
+            Err(nom::Err::Failure((remaining, ParseError::new(
+                column,
+                line,
+                kind
+            ))))
     }
 }

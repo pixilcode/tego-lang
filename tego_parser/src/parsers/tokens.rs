@@ -278,7 +278,7 @@ mod tests {
     use super::*;
     use crate::span::span_at;
     use crate::test::*;
-    use crate::error::parser::{ParseError, ParseErrorKind};
+    use crate::error::parser::ParseErrorKind;
 
     #[test]
     fn token_parser_test() {
@@ -383,46 +383,37 @@ mod tests {
     // Error tests
     basic_test! {
         char_error_tests
-        char("".into()) => scan_error("".into(), 1, 1, ParseErrorKind::NoMatch);
-        char("'".into()) => scan_error("'".into(), 1, 1, ParseErrorKind::CharUnclosed);
-        char("'a".into()) => scan_error("'a".into(), 1, 1, ParseErrorKind::CharUnclosed);
-        char("'ab'".into()) => scan_error("'ab'".into(), 1, 1, ParseErrorKind::CharUnclosed);
-        char("'\n'".into()) => scan_error("'\n'".into(), 1, 1, ParseErrorKind::InvalidChar);
-        char("'\t'".into()) => scan_error("'\t'".into(), 1, 1, ParseErrorKind::InvalidChar);
-        char("'\\'".into()) => scan_error("'\\'".into(), 1, 1, ParseErrorKind::InvalidEscapedChar);
-        char("'\\a'".into()) => scan_error("'\\a'".into(), 1, 1, ParseErrorKind::InvalidEscapedChar)
+        char("".into()) => parse_error("".into(), 1, 1, ParseErrorKind::NoMatch);
+        char("'".into()) => parse_error("'".into(), 1, 1, ParseErrorKind::CharUnclosed);
+        char("'a".into()) => parse_error("'a".into(), 1, 1, ParseErrorKind::CharUnclosed);
+        char("'ab'".into()) => parse_error("'ab'".into(), 1, 1, ParseErrorKind::CharUnclosed);
+        char("'\n'".into()) => parse_error("'\n'".into(), 1, 1, ParseErrorKind::InvalidChar);
+        char("'\t'".into()) => parse_error("'\t'".into(), 1, 1, ParseErrorKind::InvalidChar);
+        char("'\\'".into()) => parse_error("'\\'".into(), 1, 1, ParseErrorKind::InvalidEscapedChar);
+        char("'\\a'".into()) => parse_error("'\\a'".into(), 1, 1, ParseErrorKind::InvalidEscapedChar)
     }
     basic_test! {
         string_error_tests
-        string("".into()) => scan_error("".into(), 1, 1, ParseErrorKind::NoMatch);
-        string("\"".into()) => scan_error("\"".into(), 1, 1, ParseErrorKind::StringUnclosed);
-        string("\"a".into()) => scan_error("\"a".into(), 1, 1, ParseErrorKind::StringUnclosed);
-        string("\"a\\b\"".into()) => scan_error("\"a\\b\"".into(), 1, 1, ParseErrorKind::InvalidEscapedString)
+        string("".into()) => parse_error("".into(), 1, 1, ParseErrorKind::NoMatch);
+        string("\"".into()) => parse_error("\"".into(), 1, 1, ParseErrorKind::StringUnclosed);
+        string("\"a".into()) => parse_error("\"a".into(), 1, 1, ParseErrorKind::StringUnclosed);
+        string("\"a\\b\"".into()) => parse_error("\"a\\b\"".into(), 1, 1, ParseErrorKind::InvalidEscapedString)
     }
     basic_test! {
         number_error_tests
-        number("".into()) => scan_error("".into(), 1, 1, ParseErrorKind::NoMatch);
-        number("2147483648".into()) => scan_error("2147483648".into(), 1, 1, ParseErrorKind::NumberTooBig)
+        number("".into()) => parse_error("".into(), 1, 1, ParseErrorKind::NoMatch);
+        number("2147483648".into()) => parse_error("2147483648".into(), 1, 1, ParseErrorKind::NumberTooBig)
     }
     basic_test! {
         identifier_error_tests
-        identifier("".into()) => scan_error("".into(), 1, 1, ParseErrorKind::NoMatch);
-        identifier("true".into()) => scan_error("true".into(), 1, 1, ParseErrorKind::KeywordIdentifier)
+        identifier("".into()) => parse_error("".into(), 1, 1, ParseErrorKind::NoMatch);
+        identifier("true".into()) => parse_error("true".into(), 1, 1, ParseErrorKind::KeywordIdentifier)
     }
     basic_test! {
         comment_error_tests
-        inline_comment("{- \n -}".into()) => scan_error("{- \n -}".into(), 1, 1, ParseErrorKind::UnexpectedNewline);
-        inline_comment("{- unclosed inline".into()) => scan_error("{- unclosed inline".into(), 1, 1, ParseErrorKind::UnclosedComment);
-        multi_comment("{- unclosed multi".into()) => scan_error("{- unclosed multi".into(), 1, 1, ParseErrorKind::UnclosedComment)
-    }
-
-    fn scan_error<O>(remaining: Input<'_>, column: usize, line: usize, kind: ParseErrorKind)
-        -> ParseResult<'_, O> {
-            Err(nom::Err::Error((remaining, ParseError::new(
-                column,
-                line,
-                kind
-            ))))
+        inline_comment("{- \n -}".into()) => parse_error("{- \n -}".into(), 1, 1, ParseErrorKind::UnexpectedNewline);
+        inline_comment("{- unclosed inline".into()) => parse_error("{- unclosed inline".into(), 1, 1, ParseErrorKind::UnclosedComment);
+        multi_comment("{- unclosed multi".into()) => parse_error("{- unclosed multi".into(), 1, 1, ParseErrorKind::UnclosedComment)
     }
 }
             

@@ -250,22 +250,4 @@ mod tests {
         tuple::<()>("1, (2, )".into()) =>
             parse_failure(span_at(")", 8, 1, 7), 8, 1, ParseErrorKind::IncompleteTuple(1, 6))
     }
-
-    fn parse_error<O>(remaining: Input<'_>, column: usize, line: usize, kind: ParseErrorKind)
-        -> ParseResult<'_, O> {
-            Err(nom::Err::Error((remaining, ParseError::new(
-                column,
-                line,
-                kind
-            ))))
-    }
-
-    fn parse_failure<O>(remaining: Input<'_>, column: usize, line: usize, kind: ParseErrorKind)
-        -> ParseResult<'_, O> {
-            Err(nom::Err::Failure((remaining, ParseError::new(
-                column,
-                line,
-                kind
-            ))))
-    }
 }
