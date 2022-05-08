@@ -404,10 +404,11 @@ pub fn ident_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<
 	}
 }
 
-pub fn multi_comment_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ParseError)> {
+pub fn multi_comment_error<'a>(full_input: Input<'a>) -> impl Fn(nom::Err<(Input<'a>, nom::error::ErrorKind)>) -> nom::Err<(Input<'a>, ParseError)> + '_ {
+    move |error|
 	match error {
-		nom::Err::Error((input, nom::error::ErrorKind::Tag)) if !input.to_str().starts_with("{-") =>
-			ParseError::nom_failure(input, ParseErrorKind::UnclosedComment),
+		nom::Err::Error((_, nom::error::ErrorKind::TakeUntil)) =>
+			ParseError::nom_failure(full_input, ParseErrorKind::UnclosedComment),
 		nom::Err::Error((input, _)) =>
 			ParseError::nom_error(input, ParseErrorKind::NoMatch),
 		nom::Err::Failure((input, _)) =>
@@ -416,12 +417,13 @@ pub fn multi_comment_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> n
 	}
 }
 
-pub fn inline_comment_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ParseError)> {
+pub fn inline_comment_error<'a>(full_input: Input<'a>) -> impl Fn(nom::Err<(Input<'a>, nom::error::ErrorKind)>) -> nom::Err<(Input<'a>, ParseError)> + '_ {
+    move |error|
 	match error {
 		nom::Err::Error((input, nom::error::ErrorKind::Verify)) =>
 			ParseError::nom_failure(input, ParseErrorKind::UnexpectedNewline),
-		nom::Err::Error((input, nom::error::ErrorKind::Tag)) if !input.to_str().starts_with("{-") =>
-			ParseError::nom_failure(input, ParseErrorKind::UnclosedComment),
+		nom::Err::Error((_, nom::error::ErrorKind::TakeUntil)) =>
+			ParseError::nom_failure(full_input, ParseErrorKind::UnclosedComment),
 		nom::Err::Error((input, _)) =>
 			ParseError::nom_error(input, ParseErrorKind::NoMatch),
 		nom::Err::Failure((input, _)) =>

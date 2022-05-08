@@ -83,12 +83,12 @@ fn inline_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
         terminated(preceded(tag("{-"), take_until("-}")), tag("-}")),
         |s: &Input| !s.to_str().contains('\n'),
     )(input)
-    .map_err(inline_comment_error)
+    .map_err(inline_comment_error(input))
 }
 
 fn multi_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     terminated(preceded(tag("{-"), take_until("-}")), tag("-}"))(input)
-        .map_err(multi_comment_error)
+        .map_err(multi_comment_error(input))
 }
 
 pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
