@@ -187,9 +187,7 @@ impl fmt::Display for ParseError {
         
             // NO MATCH ERRORS
             ParseErrorKind::ExpectedKeyword {
-                keyword,
-                line,
-                column,
+                ..
             } => todo!("write this"),
 
             // Expr Errors
@@ -211,6 +209,9 @@ impl fmt::Display for ParseError {
             ParseErrorKind::EndOfExpr => "unexpected end of expr".into(),
             ParseErrorKind::DoIn => "missing 'in' in do expression".into(),
             ParseErrorKind::DoThen => "missing 'then' in do expression".into(),
+
+            // Match Errors
+            ParseErrorKind::IncompleteTuple(_, _) => todo!("write this"),
 
             // Decl Errors
             ParseErrorKind::DeclAssign => "missing '=' in expression declaration".into(),
@@ -404,7 +405,7 @@ pub fn ident_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<
 	}
 }
 
-pub fn multi_comment_error<'a>(full_input: Input<'a>) -> impl Fn(nom::Err<(Input<'a>, nom::error::ErrorKind)>) -> nom::Err<(Input<'a>, ParseError)> + '_ {
+pub fn multi_comment_error<'a>(full_input: Input<'a>) -> impl Fn(nom::Err<(Input<'a>, nom::error::ErrorKind)>) -> nom::Err<(Input<'a>, ParseError)> {
     move |error|
 	match error {
 		nom::Err::Error((_, nom::error::ErrorKind::TakeUntil)) =>
@@ -417,7 +418,7 @@ pub fn multi_comment_error<'a>(full_input: Input<'a>) -> impl Fn(nom::Err<(Input
 	}
 }
 
-pub fn inline_comment_error<'a>(full_input: Input<'a>) -> impl Fn(nom::Err<(Input<'a>, nom::error::ErrorKind)>) -> nom::Err<(Input<'a>, ParseError)> + '_ {
+pub fn inline_comment_error<'a>(full_input: Input<'a>) -> impl Fn(nom::Err<(Input<'a>, nom::error::ErrorKind)>) -> nom::Err<(Input<'a>, ParseError)> {
     move |error|
 	match error {
 		nom::Err::Error((input, nom::error::ErrorKind::Verify)) =>
@@ -521,23 +522,35 @@ error_type! {
 // Match Errors
 pub fn ident_match_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
     match error {
-        nom::Err::Error((input, error)) 
+        nom::Err::Error((input, _)) 
             if input.to_str().is_empty() => nom::Err::Error((
                 input, 
                 ParseError::new_from_kind(input, ParseErrorKind::Eof)
             )),
+        nom::Err::Error((input, error)) if error.kind == ParseErrorKind::KeywordIdentifier =>
+            nom::Err::Failure((input, error.into())),
         nom::Err::Error((input, error)) => nom::Err::Error((input, error.into())),
-        nom::Err::Failure((input, error)) => nom::Err::Error((input, error.into())),
+        nom::Err::Failure((input, error)) => nom::Err::Failure((input, error.into())),
         nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
     }
 }
 
 pub fn basic_match_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
     match error {
-        nom::Err::Error((input, error))
+        nom::Err::Error((input, _))
             if input.to_str().is_empty() => nom::Err::Error((input, ParseError::new_from_kind(input, ParseErrorKind::Eof))),
         nom::Err::Error((input, _)) => nom::Err::Error((input, ParseError::new_from_kind(input, ParseErrorKind::NoMatch))),
-        nom::Err::Failure((input, error)) => nom::Err::Error((input, error.into())),
+        nom::Err::Failure((input, error)) => nom::Err::Failure((input, error.into())),
+        nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
+    }
+}
+
+pub fn tuple_error<'a>(comma: Input<'a>) -> impl Fn(nom::Err<(Input<'a>, ParseError)>) -> nom::Err<(Input<'a>, ParseError)> {
+    move |error|
+    match error {
+        nom::Err::Error((input, _))
+            => nom::Err::Failure((input, ParseError::new_from_kind(input, ParseErrorKind::IncompleteTuple(comma.line(), comma.column())))),
+        nom::Err::Failure((input, error)) => nom::Err::Failure((input, error.into())),
         nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
     }
 }
@@ -545,7 +558,7 @@ pub fn basic_match_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Inpu
 pub fn terminating_paren_error(line: usize, column: usize) -> impl Fn(nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
     move |error|
     match error {
-        nom::Err::Failure((input, _)) => // The only possible error is a 'right_paren' error
+        nom::Err::Error((input, _)) =>
             nom::Err::Failure((
                 input,
                 ParseError::new_from_kind(input, ParseErrorKind::TerminatingParen(line, column))
@@ -557,7 +570,7 @@ pub fn terminating_paren_error(line: usize, column: usize) -> impl Fn(nom::Err<(
 pub fn terminating_bracket_error(line: usize, column: usize) -> impl Fn(nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
     move |error|
     match error {
-        nom::Err::Failure((input, _)) => // The only possible error is a 'right_paren' error
+        nom::Err::Error((input, _)) => // The only possible error is a 'right_bracket' error
             nom::Err::Failure((
                 input,
                 ParseError::new_from_kind(input, ParseErrorKind::TerminatingBracket(line, column))
@@ -605,8 +618,11 @@ pub enum ParseErrorKind {
 		column: usize,
 	},
 
-	// NOM ERRORS
-	
+    // Match Errors
+
+    IncompleteTuple(usize, usize),
+    
+    // OLD ERRORS
 
     Reserved(&'static str),
     Char,
@@ -660,6 +676,7 @@ impl From<ParseErrorKind> for u16 {
 }
 
 // Error code (between 1 and 100 for parse errors)
+// TODO: find the trait that can be derived to do this on it's own
 impl From<&ParseErrorKind> for u16 {
     fn from(error: &ParseErrorKind) -> Self {
         match error {
@@ -700,12 +717,11 @@ impl From<&ParseErrorKind> for u16 {
             ParseErrorKind::UnclosedComment => todo!("write this"),
             ParseErrorKind::ExpectedNewline => todo!("write this"),
             ParseErrorKind::ExpectedKeyword {
-                keyword,
-                line,
-                column,
+                ..
             } => todo!("write this"),
             ParseErrorKind::UnknownFailure => todo!("write this"),
             ParseErrorKind::NoMatch => todo!("write this"),
+            ParseErrorKind::IncompleteTuple(_, _) => todo!("write this"),
         }
     }
 }

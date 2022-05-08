@@ -24,7 +24,9 @@ where
     M: MatchOutput,
 {
     pair(grouping, opt(comma))(input).and_then(|(input, (a, comma))| match comma {
-        Some(_) => tuple(input).map(|(input, b)| (input, M::tuple(a, b))),
+        Some(comma) => tuple(input)
+            .map(|(input, b)| (input, M::tuple(a, b)))
+            .map_err(tuple_error(comma)),
         None => Ok((input, a)),
     })
 }
@@ -124,6 +126,7 @@ mod tests {
     use super::*;
     use crate::ast::Match;
     use crate::test::*;
+    use crate::span::span_at;
 
     parser_test! {
         ident_test
@@ -203,7 +206,7 @@ mod tests {
         variable::<()>("1".into()) =>
             parse_error("1".into(), 1, 1, ParseErrorKind::NoMatch);
         variable::<()>("if".into()) =>
-            parse_error("if".into(), 1, 1, ParseErrorKind::KeywordIdentifier)
+            parse_failure("if".into(), 1, 1, ParseErrorKind::KeywordIdentifier)
     }
 
     basic_test! {
@@ -219,22 +222,47 @@ mod tests {
         grouping::<()>("".into()) =>
             parse_error("".into(), 1, 1, ParseErrorKind::Eof);
         grouping::<()>("(".into()) =>
-            parse_error("".into(), 2, 1, ParseErrorKind::TerminatingParen(1, 1));
+            parse_failure(span_at("", 2, 1, 1), 2, 1, ParseErrorKind::TerminatingParen(1, 1));
+        grouping::<()>("(1".into()) =>
+            parse_failure(span_at("", 3, 1, 2), 3, 1, ParseErrorKind::TerminatingParen(1, 1));
         grouping::<()>("(1, 2".into()) =>
-            parse_error("".into(), 6, 1, ParseErrorKind::TerminatingParen(1, 1));
+            parse_failure(span_at("", 6, 1, 5), 6, 1, ParseErrorKind::TerminatingParen(1, 1));
         grouping::<()>("(1, 2 => ".into()) =>
-            parse_error("=> ".into(), 7, 1, ParseErrorKind::TerminatingParen(1, 1));
+            parse_failure(span_at("=> ", 7, 1, 6), 7, 1, ParseErrorKind::TerminatingParen(1, 1));
         grouping::<()>("[".into()) =>
-            parse_error("".into(), 2, 1, ParseErrorKind::TerminatingBracket(1, 1));
+            parse_failure(span_at("", 2, 1, 1), 2, 1, ParseErrorKind::TerminatingBracket(1, 1));
+        grouping::<()>("[1".into()) =>
+            parse_failure(span_at("", 3, 1, 2), 3, 1, ParseErrorKind::TerminatingBracket(1, 1));
         grouping::<()>("[1, 2".into()) =>
-            parse_error("".into(), 6, 1, ParseErrorKind::TerminatingBracket(1, 1));
+            parse_failure(span_at("", 6, 1, 5), 6, 1, ParseErrorKind::TerminatingBracket(1, 1));
         grouping::<()>("[1, 2 => ".into()) =>
-            parse_error("=> ".into(), 7, 1, ParseErrorKind::TerminatingBracket(1, 1))
+            parse_failure(span_at("=> ", 7, 1, 6), 7, 1, ParseErrorKind::TerminatingBracket(1, 1))
+    }
+
+    basic_test! {
+        tuple_error_test
+        tuple::<()>("".into()) =>
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        tuple::<()>("1, ".into()) =>
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::IncompleteTuple(1, 2));
+        tuple::<()>("1, 2, ".into()) =>
+            parse_failure(span_at("", 7, 1, 6), 7, 1, ParseErrorKind::IncompleteTuple(1, 5));
+        tuple::<()>("1, (2, )".into()) =>
+            parse_failure(span_at(")", 8, 1, 7), 8, 1, ParseErrorKind::IncompleteTuple(1, 6))
     }
 
     fn parse_error<O>(remaining: Input<'_>, column: usize, line: usize, kind: ParseErrorKind)
         -> ParseResult<'_, O> {
             Err(nom::Err::Error((remaining, ParseError::new(
+                column,
+                line,
+                kind
+            ))))
+    }
+
+    fn parse_failure<O>(remaining: Input<'_>, column: usize, line: usize, kind: ParseErrorKind)
+        -> ParseResult<'_, O> {
+            Err(nom::Err::Failure((remaining, ParseError::new(
                 column,
                 line,
                 kind
