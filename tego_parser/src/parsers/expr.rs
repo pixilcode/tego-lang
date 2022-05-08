@@ -521,4 +521,13 @@ mod tests {
         flat_join_test
         (expr): "1 ,, 2" => Expr::flat_join(Expr::int(1), Expr::int(2))
     }
+
+    // Error tests
+    basic_test! {
+        literal_error_test
+        literal::<()>("".into()) => 
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        literal::<()>("if".into()) =>
+            parse_error("if".into(), 1, 1, ParseErrorKind::KeywordIdentifier)
+    }
 }
