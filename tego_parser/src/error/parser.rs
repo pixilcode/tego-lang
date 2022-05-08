@@ -539,6 +539,8 @@ pub fn basic_match_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Inpu
     match error {
         nom::Err::Error((input, _))
             if input.to_str().is_empty() => nom::Err::Error((input, ParseError::new_from_kind(input, ParseErrorKind::Eof))),
+        nom::Err::Error((input, error)) if input.to_str().starts_with(char::is_alphabetic) => // TODO: check if it starts_with any of the keywords
+            nom::Err::Failure((input, error.into())),
         nom::Err::Error((input, _)) => nom::Err::Error((input, ParseError::new_from_kind(input, ParseErrorKind::NoMatch))),
         nom::Err::Failure((input, error)) => nom::Err::Failure((input, error.into())),
         nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
