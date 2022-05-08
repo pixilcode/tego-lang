@@ -263,8 +263,6 @@ reserved!(keyword to, "to");
 reserved!(bar, "|");
 reserved!(underscore, "_");
 reserved!(keyword delay, "delay");
-reserved!(single_quote, "'");
-reserved!(double_quote, "\"");
 reserved!(left_bracket, "[");
 reserved!(right_bracket, "]");
 reserved!(double_comma, ",,");
@@ -321,8 +319,6 @@ mod tests {
     parser_test!(bar_test (bar): "|" => "|".into());
     parser_test!(underscore_test (underscore): "_" => "_".into());
     parser_test!(delay_test (delay): "delay" => "delay".into());
-    parser_test!(single_quote_test (single_quote): "'" => "'".into());
-    parser_test!(double_quote_test (double_quote): "\"" => "\"".into());
     parser_test!(open_bracket_test (left_bracket): "[" => "[".into());
     parser_test!(close_bracket_test (right_bracket): "]" => "]".into());
     parser_test!(double_comma_test (double_comma): ",," => ",,".into());
