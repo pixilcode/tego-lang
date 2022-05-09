@@ -243,28 +243,31 @@ where
     )(input)
     .or_else(
         try_parser(
-            map(number, |int| E::int(int)),
-            input
-        )
-    )
-    .or_else(
-        try_parser(
             map(identifier, |lexeme| E::variable(lexeme.into())),
             input
         )
     )
     .or_else(
         try_parser(
+            map(number, |int| E::int(int)),
+            input
+        )
+    )
+    .map_err(num_expr_error)
+    .or_else(
+        try_parser(
             map(string, |s| E::string(s)),
             input
         )
     )
+    .map_err(string_expr_error)
     .or_else(
         try_parser(
             map(char, |c| E::char(c)),
             input
         )
     )
+    .map_err(char_expr_error)
     .map_err(literal_error)
 }
 
@@ -272,6 +275,7 @@ where
 mod tests {
     use super::*;
     use crate::ast::{Expr, Match};
+    use crate::span::span_at;
     use crate::test::*;
 
     parser_test! {
@@ -527,7 +531,49 @@ mod tests {
         literal_error_test
         literal::<()>("".into()) => 
             parse_error("".into(), 1, 1, ParseErrorKind::Eof);
-        literal::<()>("if".into()) =>
-            parse_error("if".into(), 1, 1, ParseErrorKind::KeywordIdentifier)
+        
+        // Char literals
+        literal::<()>("'".into()) => parse_failure("'".into(), 1, 1, ParseErrorKind::CharUnclosed);
+        literal::<()>("'a".into()) => parse_failure("'a".into(), 1, 1, ParseErrorKind::CharUnclosed);
+        literal::<()>("'ab'".into()) => parse_failure("'ab'".into(), 1, 1, ParseErrorKind::CharUnclosed);
+        literal::<()>("'\n'".into()) => parse_failure("'\n'".into(), 1, 1, ParseErrorKind::InvalidChar);
+        literal::<()>("'\t'".into()) => parse_failure("'\t'".into(), 1, 1, ParseErrorKind::InvalidChar);
+        literal::<()>("'\\'".into()) => parse_failure("'\\'".into(), 1, 1, ParseErrorKind::InvalidEscapedChar);
+        literal::<()>("'\\a'".into()) => parse_failure("'\\a'".into(), 1, 1, ParseErrorKind::InvalidEscapedChar);
+        
+        // String literals
+        literal::<()>("\"".into()) => parse_failure("\"".into(), 1, 1, ParseErrorKind::StringUnclosed);
+        literal::<()>("\"a".into()) => parse_failure("\"a".into(), 1, 1, ParseErrorKind::StringUnclosed);
+        literal::<()>("\"a\\b\"".into()) => parse_failure("\"a\\b\"".into(), 1, 1, ParseErrorKind::InvalidEscapedString);
+
+        // Number literals
+        literal::<()>("2147483648".into()) => parse_failure("2147483648".into(), 1, 1, ParseErrorKind::NumberTooBig)
+    }
+
+    basic_test! {
+        grouping_error_test
+        grouping::<()>("".into()) =>
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        grouping::<()>("(".into()) =>
+            parse_failure(span_at("", 2, 1, 1), 2, 1, ParseErrorKind::TerminatingParen(1, 1));
+        grouping::<()>("(1".into()) =>
+            parse_failure(span_at("", 3, 1, 2), 3, 1, ParseErrorKind::TerminatingParen(1, 1));
+        grouping::<()>("(1, 2".into()) =>
+            parse_failure(span_at("", 6, 1, 5), 6, 1, ParseErrorKind::TerminatingParen(1, 1));
+        grouping::<()>("(1, 2 => ".into()) =>
+            parse_failure(span_at("=> ", 7, 1, 6), 7, 1, ParseErrorKind::TerminatingParen(1, 1));
+        grouping::<()>("[".into()) =>
+            parse_failure(span_at("", 2, 1, 1), 2, 1, ParseErrorKind::TerminatingBracket(1, 1));
+        grouping::<()>("[1".into()) =>
+            parse_failure(span_at("", 3, 1, 2), 3, 1, ParseErrorKind::TerminatingBracket(1, 1));
+        grouping::<()>("[1, 2".into()) =>
+            parse_failure(span_at("", 6, 1, 5), 6, 1, ParseErrorKind::TerminatingBracket(1, 1));
+        grouping::<()>("[1, 2 => ".into()) =>
+            parse_failure(span_at("=> ", 7, 1, 6), 7, 1, ParseErrorKind::TerminatingBracket(1, 1))
+    }
+
+    basic_test! {
+        dot_expr_error_test
+        unimplemented!() => unimplemented!()
     }
 }

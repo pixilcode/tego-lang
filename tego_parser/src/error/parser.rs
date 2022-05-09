@@ -1,7 +1,5 @@
-use crate::parsers::tokens::{self, newlines};
+use crate::parsers::tokens;
 use crate::{Input, ParseResult};
-use nom::sequence::preceded;
-use nom::character::complete::space0;
 use std::fmt;
 use std::io;
 
@@ -472,12 +470,45 @@ pub fn reserved_error(keyword: &'static str) -> impl Fn(nom::Err<(Input<'_>, nom
 }
 
 // Expr Errors
-error_type! {
-    starts_with [literal_error, ParseErrorKind::InvalidCharacter]
-    '"' => ParseErrorKind::String,
-    '\'' => ParseErrorKind::Char,
-    |c: char| c.is_digit(10) => ParseErrorKind::Number,
-    char::is_alphabetic => ParseErrorKind::Keyword
+pub fn num_expr_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+    match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::NumberTooBig
+        ) => nom::Err::Failure((input, error)),
+        error => error
+    }
+}
+
+pub fn string_expr_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+    match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::StringUnclosed |
+            ParseErrorKind::InvalidEscapedString
+        ) => nom::Err::Failure((input, error)),
+        error => error
+    }
+}
+
+pub fn char_expr_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+    match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::CharUnclosed |
+            ParseErrorKind::InvalidChar |
+            ParseErrorKind::InvalidEscapedChar
+        ) => nom::Err::Failure((input, error)),
+        error => error
+    }
+}
+
+pub fn literal_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+    match error {
+        nom::Err::Error((input, _)) if input.to_str().is_empty() =>
+            nom::Err::Error((
+                input,
+                ParseError::new_from_kind(input, ParseErrorKind::Eof)
+            )),
+        error => error
+    }
 }
 
 error_type! {
