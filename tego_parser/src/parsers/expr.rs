@@ -599,4 +599,9 @@ mod tests {
         fn_expr::<()>("".into()) =>
             parse_error("".into(), 1, 1, ParseErrorKind::Eof)
     }
+
+    basic_test! {
+        comment_after_expr_test
+        opt_nl(expr::<Expr>)("1 -- ignore this".into()) => Ok((span_at("", 17, 1, 16), Expr::int(1)))
+    }
 }

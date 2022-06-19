@@ -13,9 +13,9 @@ use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, take_until, take_while1, escaped_transform},
     character::complete::{anychar, digit1, line_ending, multispace0, not_line_ending, space0},
-    combinator::{all_consuming, map, map_res, opt, peek, rest_len, verify},
+    combinator::{all_consuming, map, map_res, opt, peek, rest_len, verify, not as nom_not},
     multi::many0,
-    sequence::{preceded, terminated, tuple},
+    sequence::{preceded, terminated, tuple, pair},
 };
 
 const KEYWORDS: &[&str; 16] = &[
@@ -231,7 +231,15 @@ fn is_identifier_char(c: char) -> bool {
 
 reserved!(comma, ",");
 reserved!(plus, "+");
-reserved!(minus, "-");
+// Has to be done by hand because comments also start with '-'
+pub fn minus(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+    map(
+        pair(token(tag("-")), peek(nom_not(tag("-")))),
+        |(minus_op, _)| minus_op
+    )(input)
+    
+    .map_err(reserved_error("-"))
+}
 reserved!(star, "*");
 reserved!(slash, "/");
 reserved!(modulo, "%");
