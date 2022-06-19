@@ -415,9 +415,9 @@ mod tests {
     }
     basic_test! {
         comment_error_tests
-        inline_comment("{- \n -}".into()) => parse_failure("{- \n -}".into(), 1, 1, ParseErrorKind::UnexpectedNewline);
-        inline_comment("{- unclosed inline".into()) => parse_failure("{- unclosed inline".into(), 1, 1, ParseErrorKind::UnclosedComment);
-        multi_comment("{- unclosed multi".into()) => parse_failure("{- unclosed multi".into(), 1, 1, ParseErrorKind::UnclosedComment)
+        inline_comment("{- \n -}".into()) => parse_error("{- \n -}".into(), 1, 1, ParseErrorKind::UnexpectedNewline);
+        inline_comment("{- unclosed inline".into()) => parse_error("{- unclosed inline".into(), 1, 1, ParseErrorKind::UnclosedComment);
+        multi_comment("{- unclosed multi".into()) => parse_error("{- unclosed multi".into(), 1, 1, ParseErrorKind::UnclosedComment)
     }
 }
             

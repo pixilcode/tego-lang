@@ -410,7 +410,7 @@ pub fn multi_comment_error<'a>(full_input: Input<'a>) -> impl Fn(nom::Err<(Input
     move |error|
 	match error {
 		nom::Err::Error((_, nom::error::ErrorKind::TakeUntil)) =>
-			ParseError::nom_failure(full_input, ParseErrorKind::UnclosedComment),
+			ParseError::nom_error(full_input, ParseErrorKind::UnclosedComment),
 		nom::Err::Error((input, _)) =>
 			ParseError::nom_error(input, ParseErrorKind::NoMatch),
 		nom::Err::Failure((input, _)) =>
@@ -423,9 +423,9 @@ pub fn inline_comment_error<'a>(full_input: Input<'a>) -> impl Fn(nom::Err<(Inpu
     move |error|
 	match error {
 		nom::Err::Error((input, nom::error::ErrorKind::Verify)) =>
-			ParseError::nom_failure(input, ParseErrorKind::UnexpectedNewline),
+			ParseError::nom_error(input, ParseErrorKind::UnexpectedNewline),
 		nom::Err::Error((_, nom::error::ErrorKind::TakeUntil)) =>
-			ParseError::nom_failure(full_input, ParseErrorKind::UnclosedComment),
+			ParseError::nom_error(full_input, ParseErrorKind::UnclosedComment),
 		nom::Err::Error((input, _)) =>
 			ParseError::nom_error(input, ParseErrorKind::NoMatch),
 		nom::Err::Failure((input, _)) =>
