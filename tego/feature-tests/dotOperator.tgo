@@ -56,14 +56,13 @@ moveUp distance point = point.x, point.y + distance, point.z
 -- and it can be done in a way that is comfortable for programmers coming from
 -- imperative languages
 monkeyPatchA = 
-	(1, 2, 3).moveUp 3 == (1, 5, 3), -- This works
-	(1, 2, 3).moveUp(3) == (1, 5, 3) {- (because broken comments) -- This does too 
+	(1, 2, 3).moveUp 3 == (1, 5, 3) {- -- This works
+	(1, 2, 3).moveUp(3) == (1, 5, 3) -- This does too -}
 
 -- All that's necessary is to have the `self` or `this` param
 -- as the last argument to the function
 -- (Note: it is recommended to name it descriptively as done with `moveUp`, not just `this`;
 --  this example is just to demonstrate which param is the `this` object))
--}
 move (moveX, moveY) this = this.x + moveX, this.y + moveY, this.z
 
 monkeyPatchB =

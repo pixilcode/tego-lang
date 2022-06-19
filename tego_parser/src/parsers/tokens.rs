@@ -353,6 +353,10 @@ mod tests {
         (single_comment): "-- single" => span_at(" single", 3, 1, 2);
         (single_comment): "-- single\n" => span_at(" single", 3, 1, 2)
     }
+    basic_test! {
+        single_comment_ends_line_test
+        req_nl(char)("'a' -- single\n".into()) => Ok((span_at("", 1, 2, 14), 'a'))
+    }
     parser_test! {
         multi_comment_test
         (multi_comment): "{- multi\ncomment -}" => span_at(" multi\ncomment ", 3, 1, 2)
@@ -411,9 +415,9 @@ mod tests {
     }
     basic_test! {
         comment_error_tests
-        inline_comment("{- \n -}".into()) => parse_error("{- \n -}".into(), 1, 1, ParseErrorKind::UnexpectedNewline);
-        inline_comment("{- unclosed inline".into()) => parse_error("{- unclosed inline".into(), 1, 1, ParseErrorKind::UnclosedComment);
-        multi_comment("{- unclosed multi".into()) => parse_error("{- unclosed multi".into(), 1, 1, ParseErrorKind::UnclosedComment)
+        inline_comment("{- \n -}".into()) => parse_failure("{- \n -}".into(), 1, 1, ParseErrorKind::UnexpectedNewline);
+        inline_comment("{- unclosed inline".into()) => parse_failure("{- unclosed inline".into(), 1, 1, ParseErrorKind::UnclosedComment);
+        multi_comment("{- unclosed multi".into()) => parse_failure("{- unclosed multi".into(), 1, 1, ParseErrorKind::UnclosedComment)
     }
 }
             

@@ -49,7 +49,7 @@ impl ParseError {
     }
 
     fn nom_failure(input: Input<'_>, kind: ParseErrorKind) -> nom::Err<(Input<'_>, Self)> {
-        nom::Err::Error((input, Self::new_from_kind(input, kind)))
+        nom::Err::Failure((input, Self::new_from_kind(input, kind)))
     }
 
     pub fn verbose_from_source(&self, source: &str, writer: &mut impl io::Write) -> io::Result<()> {
@@ -187,6 +187,9 @@ impl fmt::Display for ParseError {
             ParseErrorKind::ExpectedKeyword {
                 ..
             } => todo!("write this"),
+
+            // OPERATOR ERRORS
+            ParseErrorKind::IncompleteDot => todo!("write this"),
 
             // Expr Errors
             ParseErrorKind::InvalidCharacter => "encountered invalid character".into(),
@@ -346,17 +349,17 @@ where
 // Token Errors
 
 pub fn char_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ParseError)> {
-	match error {
+    match error {
 		nom::Err::Error((input, _)) if !input.to_str().starts_with('\'') =>
 			ParseError::nom_error(input, ParseErrorKind::NoMatch),
 		nom::Err::Error((input, _)) => {
 			let c = input.to_str().chars().nth(1);
 			match c {
 				Some(c) if c == '\\' =>
-					ParseError::nom_failure(input, ParseErrorKind::InvalidEscapedChar),
+					ParseError::nom_error(input, ParseErrorKind::InvalidEscapedChar),
 				Some(c) if tokens::INVALID_CHARS.contains(&c) =>
-					ParseError::nom_failure(input, ParseErrorKind::InvalidChar),
-				_ => ParseError::nom_failure(input, ParseErrorKind::CharUnclosed)
+					ParseError::nom_error(input, ParseErrorKind::InvalidChar),
+				_ => ParseError::nom_error(input, ParseErrorKind::CharUnclosed)
 			}
 		},
 		nom::Err::Failure((input, _)) =>
@@ -370,9 +373,9 @@ pub fn string_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err
 		nom::Err::Error((input, _)) if !input.to_str().starts_with('"') =>
 			ParseError::nom_error(input, ParseErrorKind::NoMatch),
 		nom::Err::Error((input, nom::error::ErrorKind::Tag)) => // the last `"` match failed
-			ParseError::nom_failure(input, ParseErrorKind::StringUnclosed),
+			ParseError::nom_error(input, ParseErrorKind::StringUnclosed),
 		nom::Err::Error((input, _)) => // a 
-			ParseError::nom_failure(input, ParseErrorKind::InvalidEscapedString),
+			ParseError::nom_error(input, ParseErrorKind::InvalidEscapedString),
 		nom::Err::Failure((input, _)) =>
 			ParseError::nom_failure(input, ParseErrorKind::UnknownFailure),
 		nom::Err::Incomplete(needed) => nom::Err::Incomplete(needed),
@@ -382,7 +385,7 @@ pub fn string_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err
 pub fn number_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ParseError)> {
 	match error {
 		nom::Err::Error((input, nom::error::ErrorKind::MapRes)) =>
-			ParseError::nom_failure(input, ParseErrorKind::NumberTooBig),
+			ParseError::nom_error(input, ParseErrorKind::NumberTooBig),
 		nom::Err::Error((input, _)) =>
 			ParseError::nom_error(input, ParseErrorKind::NoMatch),
 		nom::Err::Failure((input, _)) =>
@@ -394,7 +397,7 @@ pub fn number_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err
 pub fn ident_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ParseError)> {
 	match error {
 		nom::Err::Error((input, nom::error::ErrorKind::Verify)) =>
-			ParseError::nom_failure(input, ParseErrorKind::KeywordIdentifier),
+			ParseError::nom_error(input, ParseErrorKind::KeywordIdentifier),
 		nom::Err::Error((input, _)) =>
 			ParseError::nom_error(input, ParseErrorKind::NoMatch),
 		nom::Err::Failure((input, _)) =>
@@ -458,7 +461,7 @@ pub fn reserved_error(keyword: &'static str) -> impl Fn(nom::Err<(Input<'_>, nom
 		nom::Err::Error((input, _)) if keyword == "true" || keyword == "false" =>
 			ParseError::nom_error(input, ParseErrorKind::NoMatch),
 		nom::Err::Error((input, _)) =>
-			ParseError::nom_failure(input, ParseErrorKind::ExpectedKeyword {
+			ParseError::nom_error(input, ParseErrorKind::ExpectedKeyword {
 				keyword,
 				line: input.line(),
 				column: input.column(),
@@ -470,6 +473,14 @@ pub fn reserved_error(keyword: &'static str) -> impl Fn(nom::Err<(Input<'_>, nom
 }
 
 // Expr Errors
+pub fn incomplete_dot_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+    match error {
+        nom::Err::Error((input, _)) =>
+            ParseError::nom_failure(input, ParseErrorKind::IncompleteDot),
+        error => error
+    }
+}
+
 pub fn num_expr_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
     match error {
         nom::Err::Error((input, error)) if matches!(error.kind,
@@ -651,6 +662,9 @@ pub enum ParseErrorKind {
 		column: usize,
 	},
 
+    // OPERATOR ERRORS
+    IncompleteDot,
+
     // Match Errors
 
     IncompleteTuple(usize, usize),
@@ -755,6 +769,7 @@ impl From<&ParseErrorKind> for u16 {
             ParseErrorKind::UnknownFailure => todo!("write this"),
             ParseErrorKind::NoMatch => todo!("write this"),
             ParseErrorKind::IncompleteTuple(_, _) => todo!("write this"),
+            ParseErrorKind::IncompleteDot => todo!("write this"),
         }
     }
 }

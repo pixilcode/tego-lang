@@ -184,18 +184,16 @@ where
 {
     pair(
         grouping,
-        opt(many1(pair(opt_nl(dot), fn_application))),
+        opt(opt_nl(dot))
     )(input)
-    .map(|(input, (a, other))| match other {
-        // Operators found (left to right)
-        Some(others) => (
-            input,
-            others
-                .into_iter()
-                .fold(a, |a, (_, b)| E::fn_app(b, a)),
-        ),
-        // No operators found
-        None => (input, a),
+    .and_then(|(input, (lhs, op))| match op {
+        // An operator is found
+        Some(_) => fn_application(input)
+            // The dot operator is reverse function application
+            .map(|(input, rhs)| (input, E::fn_app(rhs, lhs)))
+            .map_err(incomplete_dot_error),
+        // No operator is found
+        None => Ok((input, lhs))
     })
 }
 
@@ -525,6 +523,18 @@ mod tests {
         flat_join_test
         (expr): "1 ,, 2" => Expr::flat_join(Expr::int(1), Expr::int(2))
     }
+    parser_test! {
+        dot_expr_test
+        (expr): "a.b" => Expr::fn_app(Expr::variable("b"), Expr::variable("a"));
+        (expr): "a .\nb" => Expr::fn_app(Expr::variable("b"), Expr::variable("a"));
+        (expr): "a.b c" => Expr::fn_app(
+            Expr::fn_app(Expr::variable("b"), Expr::variable("c")),
+            Expr::variable("a")
+        );
+        (expr): "(a b).c" => Expr::fn_app(
+            Expr::variable("c"),
+            Expr::fn_app(Expr::variable("a"), Expr::variable("b")))
+    }
 
     // Error tests
     basic_test! {
@@ -569,11 +579,24 @@ mod tests {
         grouping::<()>("[1, 2".into()) =>
             parse_failure(span_at("", 6, 1, 5), 6, 1, ParseErrorKind::TerminatingBracket(1, 1));
         grouping::<()>("[1, 2 => ".into()) =>
-            parse_failure(span_at("=> ", 7, 1, 6), 7, 1, ParseErrorKind::TerminatingBracket(1, 1))
+            parse_failure(span_at("=> ", 7, 1, 6), 7, 1, ParseErrorKind::TerminatingBracket(1, 1));
+        grouping::<()>("[1, 2, 'a".into()) =>
+            parse_failure(span_at("'a", 8, 1, 7), 8, 1, ParseErrorKind::CharUnclosed)
     }
 
     basic_test! {
         dot_expr_error_test
-        unimplemented!() => unimplemented!()
+        dot_expr::<()>("".into()) =>
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        dot_expr::<()>("1 .".into()) =>
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::IncompleteDot);
+        dot_expr::<()>("1 . 'a".into()) =>
+            parse_failure(span_at("'a", 5, 1, 4), 5, 1, ParseErrorKind::CharUnclosed)
+    }
+
+    basic_test! {
+        fn_expr_error_test
+        fn_expr::<()>("".into()) =>
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof)
     }
 }
