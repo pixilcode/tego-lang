@@ -20,21 +20,14 @@ macro_rules! binary_expr {
         where
             E: ExprOutput,
         {
-            pair(
-                $next_precedence,
-                opt(many1(pair(opt_nl($op_func), $next_precedence))),
-            )(input)
-            .and_then(|(input, (a, other))| match other {
-                // Operators found (left to right)
-                Some(others) => Ok((
-                    input,
-                    others
-                        .into_iter()
-                        .fold(a, |a, (op, b)| E::binary(a, op.to_str(), b)),
-                )),
-                // No operators found
-                None => Ok((input, a)),
-            })
+            $next_precedence(input)
+            .and_then(|(input, lhs)|
+                fold_many0(
+                    pair(opt_nl($op_func), op_rhs($next_precedence)),
+                    lhs,
+                    |lhs, (op, rhs)| E::binary(lhs, op.to_str(), rhs)
+                )(input)
+            )
         }
     };
 }
@@ -45,7 +38,7 @@ macro_rules! unary_expr {
         where
             E: ExprOutput,
         {
-            pair($op_func, $name)(input)
+            pair($op_func, op_rhs($name))(input)
                 .and_then(|(input, (op, a))| Ok((input, E::unary(op.to_str(), a))))
                 .or_else(try_parser($next_precedence, input))
         }
@@ -191,7 +184,7 @@ where
         Some(_) => fn_application(input)
             // The dot operator is reverse function application
             .map(|(input, rhs)| (input, E::fn_app(rhs, lhs)))
-            .map_err(incomplete_dot_error),
+            .map_err(missing_rhs_error),
         // No operator is found
         None => Ok((input, lhs))
     })
@@ -299,10 +292,14 @@ mod tests {
     }
     parser_test! {
         plus_test
-        (expr): "1 +\n2" =>
+        (expr): "1 +\n2 + 3" =>
             Expr::plus(
-                Expr::int(1),
-                Expr::int(2))
+                Expr::plus(
+                    Expr::int(1),
+                    Expr::int(2)
+                ),
+                Expr::int(3)
+            )
     }
     parser_test! {
         minus_test
@@ -589,7 +586,7 @@ mod tests {
         dot_expr::<()>("".into()) =>
             parse_error("".into(), 1, 1, ParseErrorKind::Eof);
         dot_expr::<()>("1 .".into()) =>
-            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::IncompleteDot);
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::MissingRhs);
         dot_expr::<()>("1 . 'a".into()) =>
             parse_failure(span_at("'a", 5, 1, 4), 5, 1, ParseErrorKind::CharUnclosed)
     }
@@ -603,5 +600,52 @@ mod tests {
     basic_test! {
         comment_after_expr_test
         opt_nl(expr::<Expr>)("1 -- ignore this".into()) => Ok((span_at("", 17, 1, 16), Expr::int(1)))
+    }
+
+    // Note to self: Trying to figure out how to do binary operators with left hand associativity
+    // See the `binary_expr!` macro
+    basic_test! {
+        op_error_test
+        join_expr::<()>("".into()) =>
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        join_expr::<()>("1 ,".into()) =>
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::MissingRhs);
+        flat_join_expr::<()>("1 ,,".into()) =>
+            parse_failure(span_at("", 5, 1, 4), 5, 1, ParseErrorKind::MissingRhs);
+        or_expr::<()>("true or".into()) =>
+            parse_failure(span_at("", 8, 1, 7), 8, 1, ParseErrorKind::MissingRhs);
+        xor_expr::<()>("true xor".into()) =>
+            parse_failure(span_at("", 9, 1, 8), 9, 1, ParseErrorKind::MissingRhs);
+        and_expr::<()>("true and".into()) =>
+            parse_failure(span_at("", 9, 1, 8), 9, 1, ParseErrorKind::MissingRhs);
+        equal_expr::<()>("1 ==".into()) =>
+            parse_failure(span_at("", 5, 1, 4), 5, 1, ParseErrorKind::MissingRhs);
+        equal_expr::<()>("1 /=".into()) =>
+            parse_failure(span_at("", 5, 1, 4), 5, 1, ParseErrorKind::MissingRhs);
+        compare_expr::<()>("1 <=".into()) =>
+            parse_failure(span_at("", 5, 1, 4), 5, 1, ParseErrorKind::MissingRhs);
+        compare_expr::<()>("1 >=".into()) =>
+            parse_failure(span_at("", 5, 1, 4), 5, 1, ParseErrorKind::MissingRhs);
+        compare_expr::<()>("1 <".into()) =>
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::MissingRhs);
+        compare_expr::<()>("1 >".into()) =>
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::MissingRhs);
+        add_expr::<()>("1 +".into()) =>
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::MissingRhs);
+        add_expr::<()>("1 -".into()) =>
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::MissingRhs);
+        mult_expr::<()>("1 *".into()) =>
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::MissingRhs);
+        mult_expr::<()>("1 /".into()) =>
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::MissingRhs);
+        mult_expr::<()>("1 %".into()) =>
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::MissingRhs);
+        negate_expr::<()>("-".into()) =>
+            parse_failure(span_at("", 2, 1, 1), 2, 1, ParseErrorKind::MissingRhs);
+        not_expr::<()>("not".into()) =>
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::MissingRhs);
+        
+        join_expr::<()>("1 , >".into()) =>
+            parse_failure(span_at(">", 5, 1, 4), 5, 1, ParseErrorKind::MissingRhs)
     }
 }

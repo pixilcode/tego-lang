@@ -241,7 +241,15 @@ pub fn minus(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     .map_err(reserved_error("-"))
 }
 reserved!(star, "*");
-reserved!(slash, "/");
+// Has to be done by hand because 'not_equal' also start with '/'
+pub fn slash(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+    map(
+        pair(token(tag("/")), peek(nom_not(tag("=")))),
+        |(slash_op, _)| slash_op
+    )(input)
+    
+    .map_err(reserved_error("-"))
+}
 reserved!(modulo, "%");
 reserved!(keyword and, "and");
 reserved!(keyword or, "or");

@@ -189,7 +189,7 @@ impl fmt::Display for ParseError {
             } => todo!("write this"),
 
             // OPERATOR ERRORS
-            ParseErrorKind::IncompleteDot => todo!("write this"),
+            ParseErrorKind::MissingRhs => todo!("write this"),
 
             // Expr Errors
             ParseErrorKind::InvalidCharacter => "encountered invalid character".into(),
@@ -346,6 +346,23 @@ where
 	})
 }
 
+/// Indicate that this is the right hand side (rhs) of an operator
+/// 
+/// If the rhs doesn't match anything, alert that the rhs is missing
+pub fn op_rhs<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+where
+    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+{
+    move |input|
+    parser(input).map_err(|error| match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::NoMatch | ParseErrorKind::Eof
+        ) =>
+            ParseError::nom_failure(input, ParseErrorKind::MissingRhs),
+        error => error
+    })
+}
+
 // Token Errors
 
 pub fn char_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(Input, ParseError)> {
@@ -473,10 +490,10 @@ pub fn reserved_error(keyword: &'static str) -> impl Fn(nom::Err<(Input<'_>, nom
 }
 
 // Expr Errors
-pub fn incomplete_dot_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+pub fn missing_rhs_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input<'_>, ParseError)> {
     match error {
         nom::Err::Error((input, _)) =>
-            ParseError::nom_failure(input, ParseErrorKind::IncompleteDot),
+            ParseError::nom_failure(input, ParseErrorKind::MissingRhs),
         error => error
     }
 }
@@ -663,7 +680,7 @@ pub enum ParseErrorKind {
 	},
 
     // OPERATOR ERRORS
-    IncompleteDot,
+    MissingRhs,
 
     // Match Errors
 
@@ -769,7 +786,7 @@ impl From<&ParseErrorKind> for u16 {
             ParseErrorKind::UnknownFailure => todo!("write this"),
             ParseErrorKind::NoMatch => todo!("write this"),
             ParseErrorKind::IncompleteTuple(_, _) => todo!("write this"),
-            ParseErrorKind::IncompleteDot => todo!("write this"),
+            ParseErrorKind::MissingRhs => todo!("write this"),
         }
     }
 }
