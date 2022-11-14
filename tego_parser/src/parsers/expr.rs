@@ -123,6 +123,7 @@ where
                     many1(preceding_opt_nl(match_arm))(input)
                         .map(|(input, patterns)| (input, E::match_(val, patterns)))
                 })
+                .map_err(match_arms_error)
         })
         .or_else(try_parser(join_expr, input))
 }
@@ -673,6 +674,25 @@ mod tests {
         match_arm::<()>("| _ -> 'a".into()) =>
             parse_failure(span_at("'a", 8, 1, 7), 8, 1, ParseErrorKind::CharUnclosed);
         match_expr::<()>("".into()) =>
-            parse_error("".into(), 1, 1, ParseErrorKind::Eof)
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        match_expr::<()>("if".into()) =>
+            parse_error("if".into(), 1, 1, ParseErrorKind::NoMatch);
+        match_expr::<()>("match".into()) =>
+            parse_failure(span_at("", 6, 1, 5), 6, 1, ParseErrorKind::ExpectedExpr);
+        match_expr::<()>("match 1".into()) =>
+            parse_failure(span_at("", 8, 1, 7), 8, 1, ParseErrorKind::MatchTo);
+        match_expr::<()>("match 1 to".into()) =>
+            parse_failure(span_at("", 11, 1, 10), 11, 1, ParseErrorKind::MatchBar);
+        match_expr::<()>(
+            "match 1 to\n\
+             | -> 1".into()
+        ) =>
+            parse_failure(span_at("-> 1", 3, 2, 13), 3, 2, ParseErrorKind::ExpectedMatch);
+        match_expr::<()>(
+            "match 1 to\n\
+                | _ -> 1\n\
+                | _ 2".into()
+        ) =>
+            parse_failure(span_at("2", 5, 3, 24), 5, 3, ParseErrorKind::MatchArrow)
     }
 }

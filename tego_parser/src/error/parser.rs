@@ -510,7 +510,6 @@ pub fn match_pattern_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(In
 
 pub fn match_arm_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
     match error {
-        
         nom::Err::Error((input, error)) if matches!(error.kind,
             ParseErrorKind::ExpectedKeyword {
                 keyword: "->",
@@ -521,6 +520,31 @@ pub fn match_arm_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input,
         nom::Err::Error((input, error)) if matches!(error.kind,
             ParseErrorKind::NoMatch | ParseErrorKind::Eof
         ) => ParseError::nom_failure(input, ParseErrorKind::ExpectedExpr),
+        error => error
+    }
+}
+
+pub fn match_head_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+    match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::ExpectedKeyword {
+                keyword: "to",
+                line: _,
+                column: _,
+            }
+        ) => ParseError::nom_failure(input, ParseErrorKind::MatchTo),
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::NoMatch | ParseErrorKind::Eof
+        ) => ParseError::nom_failure(input, ParseErrorKind::ExpectedExpr),
+        error => error
+    }
+}
+
+pub fn match_arms_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+    match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::MatchBar
+        ) => ParseError::nom_failure(input, ParseErrorKind::MatchBar),
         error => error
     }
 }
@@ -577,10 +601,6 @@ pub fn literal_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, P
 error_type! {
     token [fn_expr_error]
     "->" => ParseErrorKind::FnArrow
-}
-error_type! {
-    token [match_head_error]
-    "to" => ParseErrorKind::MatchTo
 }
 error_type! {
     token [if_cond_error]
