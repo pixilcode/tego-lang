@@ -690,8 +690,8 @@ mod tests {
             parse_failure(span_at("-> 1", 3, 2, 13), 3, 2, ParseErrorKind::ExpectedMatch);
         match_expr::<()>(
             "match 1 to\n\
-                | _ -> 1\n\
-                | _ 2".into()
+             | _ -> 1\n\
+             | _ 2".into()
         ) =>
             parse_failure(span_at("2", 5, 3, 24), 5, 3, ParseErrorKind::MatchArrow)
     }
