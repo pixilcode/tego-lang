@@ -1,4 +1,4 @@
-pub trait MatchOutput {
+pub trait MatchOutput: Sized + Clone {
     fn tuple(a: Self, b: Self) -> Self;
     fn unit() -> Self;
     fn boxed(a: Self) -> Self;

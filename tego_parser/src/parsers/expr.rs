@@ -131,7 +131,16 @@ pub fn match_arm<E>(input: Input<'_>) -> ParseResult<'_, (E::Match, E)>
 where
     E: ExprOutput,
 {
-    preceded(bar, separated_pair(match_, opt_nl(arrow), expr))(input).map_err(match_arm_error)
+    preceded(bar, match_::<E::Match>)(input)
+        .map_err(match_pattern_error)
+        .and_then(|(input, pattern)| {
+            map(
+                preceded(opt_nl(arrow), expr),
+                |arm_expr: E| (pattern.clone(), arm_expr)
+            )(input).map_err(match_arm_error)
+        })
+    
+    // preceded(bar, separated_pair(match_, opt_nl(arrow), expr))(input).map_err(match_arm_error)
 }
 
 binary_expr!(join_expr, comma, flat_join_expr);
@@ -602,8 +611,6 @@ mod tests {
         opt_nl(expr::<Expr>)("1 -- ignore this".into()) => Ok((span_at("", 17, 1, 16), Expr::int(1)))
     }
 
-    // Note to self: Trying to figure out how to do binary operators with left hand associativity
-    // See the `binary_expr!` macro
     basic_test! {
         op_error_test
         join_expr::<()>("".into()) =>
@@ -647,5 +654,25 @@ mod tests {
         
         join_expr::<()>("1 , >".into()) =>
             parse_failure(span_at(">", 5, 1, 4), 5, 1, ParseErrorKind::MissingRhs)
+    }
+
+    basic_test! {
+        match_error_test
+        match_arm::<()>("".into()) =>
+            parse_error("".into(), 1, 1, ParseErrorKind::MatchBar);
+        match_arm::<()>("| ".into()) =>
+            parse_failure(span_at("", 3, 1, 2), 3, 1, ParseErrorKind::ExpectedMatch);
+        match_arm::<()>("| 'a".into()) =>
+            parse_failure(span_at("'a", 3, 1, 2), 3, 1, ParseErrorKind::CharUnclosed);
+        match_arm::<()>("| ->".into()) =>
+            parse_failure(span_at("->", 3, 1, 2), 3, 1, ParseErrorKind::ExpectedMatch);
+        match_arm::<()>("| _ ".into()) =>
+            parse_failure(span_at("", 5, 1, 4), 5, 1, ParseErrorKind::MatchArrow);
+        match_arm::<()>("| _ -> ".into()) =>
+            parse_failure(span_at("", 8, 1, 7), 8, 1, ParseErrorKind::ExpectedExpr);
+        match_arm::<()>("| _ -> 'a".into()) =>
+            parse_failure(span_at("'a", 8, 1, 7), 8, 1, ParseErrorKind::CharUnclosed);
+        match_expr::<()>("".into()) =>
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof)
     }
 }

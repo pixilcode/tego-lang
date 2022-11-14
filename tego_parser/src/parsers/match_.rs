@@ -87,28 +87,31 @@ where
     )
     .or_else(
         try_parser(
-            map(number, |int| M::int(int)),
-            input
-        )
-    )
-    .or_else(
-        try_parser(
             map(identifier, |lexeme| M::ident(lexeme.into())),
             input
         )
     )
     .or_else(
         try_parser(
+            map(number, |int| M::int(int)),
+            input
+        )
+    )
+    .map_err(num_expr_error)
+    .or_else(
+        try_parser(
             map(string, |s| M::string(s)),
             input
         )
     )
+    .map_err(string_expr_error)
     .or_else(
         try_parser(
             map(char, |c| M::char(c)),
             input
         )
     )
+    .map_err(char_expr_error)
     .map_err(basic_match_error)
 }
 

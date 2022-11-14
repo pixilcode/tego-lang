@@ -161,36 +161,36 @@ impl fmt::Display for ParseError {
             ParseErrorKind::String => "error parsing string literal".into(),
             ParseErrorKind::Number => "error parsing number literal".into(),
             ParseErrorKind::Keyword => "found keyword where an identifier was expected".into(),
-
+            
             ParseErrorKind::CharUnclosed => todo!("write this"),
             ParseErrorKind::InvalidChar => todo!("write this"),
             ParseErrorKind::InvalidEscapedChar => todo!("write this"),
-        
+            
             // STRING ERRORS
             ParseErrorKind::StringUnclosed => todo!("write this"),
             ParseErrorKind::InvalidEscapedString => todo!("write this"),
-        
+            
             // NUMBER ERRORS
             ParseErrorKind::NumberTooBig => todo!("write this"),
-        
+            
             // IDENTIFIER ERRORS
             ParseErrorKind::KeywordIdentifier => todo!("write this"),
-        
+            
             // COMMENT ERRORS
             ParseErrorKind::UnexpectedNewline => todo!("write this"),
             ParseErrorKind::UnclosedComment => todo!("write this"),
-        
+            
             // WHITESPACE ERRORS
             ParseErrorKind::ExpectedNewline => todo!("write this"),
-        
+            
             // NO MATCH ERRORS
             ParseErrorKind::ExpectedKeyword {
                 ..
             } => todo!("write this"),
-
+            
             // OPERATOR ERRORS
             ParseErrorKind::MissingRhs => todo!("write this"),
-
+            
             // Expr Errors
             ParseErrorKind::InvalidCharacter => "encountered invalid character".into(),
             ParseErrorKind::TerminatingParen(_, _) => "missing closing parenthesis".into(),
@@ -210,7 +210,9 @@ impl fmt::Display for ParseError {
             ParseErrorKind::EndOfExpr => "unexpected end of expr".into(),
             ParseErrorKind::DoIn => "missing 'in' in do expression".into(),
             ParseErrorKind::DoThen => "missing 'then' in do expression".into(),
-
+            ParseErrorKind::ExpectedMatch => todo!("write this"),
+            ParseErrorKind::ExpectedExpr => todo!("write this"),
+            
             // Match Errors
             ParseErrorKind::IncompleteTuple(_, _) => todo!("write this"),
 
@@ -490,6 +492,39 @@ pub fn reserved_error(keyword: &'static str) -> impl Fn(nom::Err<(Input<'_>, nom
 }
 
 // Expr Errors
+pub fn match_pattern_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+    match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::ExpectedKeyword {
+                keyword: "|",
+                line: _,
+                column: _,
+            }
+        ) => ParseError::nom_error(input, ParseErrorKind::MatchBar),
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::NoMatch | ParseErrorKind::Eof
+        ) => ParseError::nom_failure(input, ParseErrorKind::ExpectedMatch),
+        error => error
+    }
+}
+
+pub fn match_arm_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+    match error {
+        
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::ExpectedKeyword {
+                keyword: "->",
+                line: _,
+                column: _,
+            }
+        ) => ParseError::nom_failure(input, ParseErrorKind::MatchArrow),
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::NoMatch | ParseErrorKind::Eof
+        ) => ParseError::nom_failure(input, ParseErrorKind::ExpectedExpr),
+        error => error
+    }
+}
+
 pub fn missing_rhs_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input<'_>, ParseError)> {
     match error {
         nom::Err::Error((input, _)) =>
@@ -542,11 +577,6 @@ pub fn literal_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, P
 error_type! {
     token [fn_expr_error]
     "->" => ParseErrorKind::FnArrow
-}
-error_type! {
-    token [match_arm_error]
-    "|" => ParseErrorKind::MatchBar,
-    "->" => ParseErrorKind::MatchArrow
 }
 error_type! {
     token [match_head_error]
@@ -679,8 +709,14 @@ pub enum ParseErrorKind {
 		column: usize,
 	},
 
+    // Expr Errors
+
     // OPERATOR ERRORS
     MissingRhs,
+
+    // EXPECTED AST ERRORS
+    ExpectedExpr,
+    ExpectedMatch,
 
     // Match Errors
 
@@ -787,6 +823,8 @@ impl From<&ParseErrorKind> for u16 {
             ParseErrorKind::NoMatch => todo!("write this"),
             ParseErrorKind::IncompleteTuple(_, _) => todo!("write this"),
             ParseErrorKind::MissingRhs => todo!("write this"),
+            ParseErrorKind::ExpectedMatch => todo!("write this"),
+            ParseErrorKind::ExpectedExpr => todo!("write this"),
         }
     }
 }
