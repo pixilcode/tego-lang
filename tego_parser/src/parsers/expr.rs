@@ -74,19 +74,32 @@ where
     alt((let_, delay))(input)
         .and_then(|(input, let_token)| match let_token.into() {
             "let" => {
-                separated_pair(separated_pair(match_, assign, if_expr), opt_nl(in_), expr)(input)
-                    .map_err(let_assign_error)
-                    .map(|(input, ((ident, value), inner))| {
-                        (input, E::let_expr(ident, value, inner))
-                    })
+                separated_pair(
+                    separated_pair(
+                        expect_match(match_),
+                        expect_keyword(assign, ParseErrorKind::LetAssign),
+                        expect_expr(if_expr)
+                    ),
+                    opt_nl(expect_keyword(in_, ParseErrorKind::LetIn)),
+                    expect_expr(expr)
+                )(input)
+                .map(|(input, ((ident, value), inner))| {
+                    (input, E::let_expr(ident, value, inner))
+                })
             }
-            "delay" => separated_pair(
-                separated_pair(variable, assign, join_expr),
-                opt_nl(in_),
-                expr,
-            )(input)
-            .map_err(delay_assign_error)
-            .map(|(input, ((ident, value), inner))| (input, E::delayed(ident, value, inner))),
+            "delay" =>
+                separated_pair(
+                    separated_pair(
+                        expect_variable(variable),
+                        expect_keyword(assign, ParseErrorKind::DelayAssign),
+                        expect_expr(join_expr)
+                    ),
+                    opt_nl(expect_keyword(in_, ParseErrorKind::DelayIn)),
+                    expect_expr(expr),
+                )(input)
+                .map(|(input, ((ident, value), inner))|
+                    (input, E::delayed(ident, value, inner))
+                ),
             _ => unreachable!(),
         })
         .or_else(try_parser(if_expr, input))
@@ -717,5 +730,37 @@ mod tests {
             parse_failure(span_at("let", 13, 1, 12), 13, 1, ParseErrorKind::Else);
         if_expr::<()>("if 1 then 2 else".into()) =>
             parse_failure(span_at("", 17, 1, 16), 17, 1, ParseErrorKind::ExpectedExpr)
+    }
+
+    basic_test! {
+        let_error_test
+        let_expr::<()>("".into()) =>
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        let_expr::<()>("*".into()) =>
+            parse_error("*".into(), 1, 1, ParseErrorKind::NoMatch);
+        let_expr::<()>("let".into()) =>
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::ExpectedMatch);
+        let_expr::<()>("delay".into()) =>
+            parse_failure(span_at("", 6, 1, 5), 6, 1, ParseErrorKind::ExpectedVariable);
+        let_expr::<()>("let _".into()) =>
+            parse_failure(span_at("", 6, 1, 5), 6, 1, ParseErrorKind::LetAssign);
+        let_expr::<()>("delay a".into()) =>
+            parse_failure(span_at("", 8, 1, 7), 8, 1, ParseErrorKind::DelayAssign);
+        let_expr::<()>("let _ =".into()) =>
+            parse_failure(span_at("", 8, 1, 7), 8, 1, ParseErrorKind::ExpectedExpr);
+        let_expr::<()>("delay a =".into()) =>
+            parse_failure(span_at("", 10, 1, 9), 10, 1, ParseErrorKind::ExpectedExpr);
+        let_expr::<()>("let _ = 1".into()) =>
+            parse_failure(span_at("", 10, 1, 9), 10, 1, ParseErrorKind::LetIn);
+        let_expr::<()>("delay a = 1".into()) =>
+            parse_failure(span_at("", 12, 1, 11), 12, 1, ParseErrorKind::DelayIn);
+        let_expr::<()>("let _ = 1 in".into()) =>
+            parse_failure(span_at("", 13, 1, 12), 13, 1, ParseErrorKind::ExpectedExpr);
+        let_expr::<()>("delay a = 1 in".into()) =>
+            parse_failure(span_at("", 15, 1, 14), 15, 1, ParseErrorKind::ExpectedExpr);
+        let_expr::<()>("let _ = 1 in 'a".into()) =>
+            parse_failure(span_at("'a", 14, 1, 13), 14, 1, ParseErrorKind::CharUnclosed);
+        let_expr::<()>("delay a = 1 in 'a".into()) =>
+            parse_failure(span_at("'a", 16, 1, 15), 16, 1, ParseErrorKind::CharUnclosed)
     }
 }

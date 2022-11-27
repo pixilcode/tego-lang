@@ -226,6 +226,7 @@ impl fmt::Display for ParseError {
             ParseErrorKind::UnhandledNomError => "unknown error from parsing".into(),
             ParseErrorKind::UnknownFailure => todo!("write this"),
             ParseErrorKind::NoMatch => todo!("write this"),
+            _ => todo!("write this"),
         };
         write!(
             f,
@@ -361,6 +362,66 @@ where
             ParseErrorKind::NoMatch | ParseErrorKind::Eof
         ) =>
             ParseError::nom_failure(input, ParseErrorKind::MissingRhs),
+        error => error
+    })
+}
+
+/// Indicate that this match pattern is expected
+pub fn expect_match<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+where
+    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+{
+    move |input|
+    parser(input).map_err(|error| match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::NoMatch | ParseErrorKind::Eof
+        ) =>
+            ParseError::nom_failure(input, ParseErrorKind::ExpectedMatch),
+        error => error
+    })
+}
+
+/// Indicate that this expression is expected
+pub fn expect_expr<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+where
+    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+{
+    move |input|
+    parser(input).map_err(|error| match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::NoMatch | ParseErrorKind::Eof
+        ) =>
+            ParseError::nom_failure(input, ParseErrorKind::ExpectedExpr),
+        error => error
+    })
+}
+
+/// Indicate that a variable identifier is expected
+pub fn expect_variable<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+where
+    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+{
+    move |input|
+    parser(input).map_err(|error| match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::NoMatch | ParseErrorKind::Eof
+        ) =>
+            ParseError::nom_failure(input, ParseErrorKind::ExpectedVariable),
+        error => error
+    })
+}
+
+/// Indicate that the given token is expected
+pub fn expect_keyword<'a, F, O>(parser: F, kind: ParseErrorKind) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+where
+    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+{
+    move |input|
+    parser(input).map_err(|error| match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::ExpectedKeyword { .. }
+        ) =>
+            ParseError::nom_failure(input, kind),
         error => error
     })
 }
@@ -768,6 +829,7 @@ pub enum ParseErrorKind {
     // EXPECTED AST ERRORS
     ExpectedExpr,
     ExpectedMatch,
+    ExpectedVariable,
 
     // Match Errors
 
@@ -876,6 +938,7 @@ impl From<&ParseErrorKind> for u16 {
             ParseErrorKind::MissingRhs => todo!("write this"),
             ParseErrorKind::ExpectedMatch => todo!("write this"),
             ParseErrorKind::ExpectedExpr => todo!("write this"),
+            _ => todo!("write this"),
         }
     }
 }
