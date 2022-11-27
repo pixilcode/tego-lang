@@ -492,13 +492,56 @@ pub fn reserved_error(keyword: &'static str) -> impl Fn(nom::Err<(Input<'_>, nom
 }
 
 // Expr Errors
+
+pub fn if_cond_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+    match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::NoMatch | ParseErrorKind::Eof
+        ) => ParseError::nom_failure(input, ParseErrorKind::ExpectedExpr),
+        error => error
+    }
+}
+
+pub fn then_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+    match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::ExpectedKeyword {
+                keyword: "then",
+                ..
+            } |
+            ParseErrorKind::ExpectedKeyword {
+                keyword: "?",
+                ..
+            }
+        ) => ParseError::nom_failure(input, ParseErrorKind::Then),
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::NoMatch | ParseErrorKind::Eof
+        ) => ParseError::nom_failure(input, ParseErrorKind::ExpectedExpr),
+        error => error
+    }
+}
+
+pub fn else_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
+    match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::ExpectedKeyword {
+                keyword: "else",
+                ..
+            }
+        ) => ParseError::nom_failure(input, ParseErrorKind::Else),
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::NoMatch | ParseErrorKind::Eof
+        ) => ParseError::nom_failure(input, ParseErrorKind::ExpectedExpr),
+        error => error
+    }
+}
+
 pub fn match_pattern_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
     match error {
         nom::Err::Error((input, error)) if matches!(error.kind,
             ParseErrorKind::ExpectedKeyword {
                 keyword: "|",
-                line: _,
-                column: _,
+                ..
             }
         ) => ParseError::nom_error(input, ParseErrorKind::MatchBar),
         nom::Err::Error((input, error)) if matches!(error.kind,
@@ -513,8 +556,7 @@ pub fn match_arm_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input,
         nom::Err::Error((input, error)) if matches!(error.kind,
             ParseErrorKind::ExpectedKeyword {
                 keyword: "->",
-                line: _,
-                column: _,
+                ..
             }
         ) => ParseError::nom_failure(input, ParseErrorKind::MatchArrow),
         nom::Err::Error((input, error)) if matches!(error.kind,
@@ -529,8 +571,7 @@ pub fn match_head_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input
         nom::Err::Error((input, error)) if matches!(error.kind,
             ParseErrorKind::ExpectedKeyword {
                 keyword: "to",
-                line: _,
-                column: _,
+                ..
             }
         ) => ParseError::nom_failure(input, ParseErrorKind::MatchTo),
         nom::Err::Error((input, error)) if matches!(error.kind,
@@ -601,16 +642,6 @@ pub fn literal_error(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, P
 error_type! {
     token [fn_expr_error]
     "->" => ParseErrorKind::FnArrow
-}
-error_type! {
-    token [if_cond_error]
-    "then" => ParseErrorKind::Then,
-    "?" => ParseErrorKind::Then
-}
-error_type! {
-    token [if_body_error]
-    "else" => ParseErrorKind::Else,
-    ":" => ParseErrorKind::Else
 }
 error_type! {
     token [let_assign_error]

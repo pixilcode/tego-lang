@@ -98,12 +98,17 @@ where
 {
     if_(input)
         .and_then(|(input, _)| {
-            terminated(join_expr, opt_nl(alt((then, q_mark))))(input)
+            join_expr(input)
                 .map_err(if_cond_error)
                 .and_then(|(input, cond)| {
-                    separated_pair(opt_nl(expr), opt_nl(else_), expr)(input)
-                        .map_err(if_body_error)
-                        .map(|(input, (t, f))| (input, E::if_expr(cond, t, f)))
+                    preceded(opt_nl(alt((then, q_mark))), opt_nl(expr))(input)
+                        .map_err(then_error)
+                        .and_then(|(input, t)| {
+                            preceded(opt_nl(else_), expr)(input)
+                                .map(|(input, f)| (input, E::if_expr(cond, t, f)))
+                                .map_err(else_error)
+                                
+                        })
                 })
         })
         .or_else(try_parser(match_expr, input))
@@ -694,5 +699,23 @@ mod tests {
              | _ 2".into()
         ) =>
             parse_failure(span_at("2", 5, 3, 24), 5, 3, ParseErrorKind::MatchArrow)
+    }
+
+    basic_test! {
+        if_error_test
+        if_expr::<()>("".into()) =>
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        if_expr::<()>("let".into()) =>
+            parse_error("let".into(), 1, 1, ParseErrorKind::NoMatch);
+        if_expr::<()>("if".into()) =>
+            parse_failure(span_at("", 3, 1, 2), 3, 1, ParseErrorKind::ExpectedExpr);
+        if_expr::<()>("if then".into()) =>
+            parse_failure(span_at("then", 4, 1, 3), 4, 1, ParseErrorKind::ExpectedExpr);
+        if_expr::<()>("if 1 then else".into()) =>
+            parse_failure(span_at("else", 11, 1, 10), 11, 1, ParseErrorKind::ExpectedExpr);
+        if_expr::<()>("if 1 then 2 let".into()) =>
+            parse_failure(span_at("let", 13, 1, 12), 13, 1, ParseErrorKind::Else);
+        if_expr::<()>("if 1 then 2 else".into()) =>
+            parse_failure(span_at("", 17, 1, 16), 17, 1, ParseErrorKind::ExpectedExpr)
     }
 }
