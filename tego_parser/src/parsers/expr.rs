@@ -23,7 +23,7 @@ macro_rules! binary_expr {
             $next_precedence(input)
             .and_then(|(input, lhs)|
                 fold_many0(
-                    pair(opt_nl($op_func), op_rhs($next_precedence)),
+                    pair(opt_nl($op_func), expect_rhs($next_precedence)),
                     lhs,
                     |lhs, (op, rhs)| E::binary(lhs, op.to_str(), rhs)
                 )(input)
@@ -38,7 +38,7 @@ macro_rules! unary_expr {
         where
             E: ExprOutput,
         {
-            pair($op_func, op_rhs($name))(input)
+            pair($op_func, expect_rhs($name))(input)
                 .and_then(|(input, (op, a))| Ok((input, E::unary(op.to_str(), a))))
                 .or_else(try_parser($next_precedence, input))
         }
@@ -71,95 +71,101 @@ pub fn let_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
 where
     E: ExprOutput,
 {
-    alt((let_, delay))(input)
-        .and_then(|(input, let_token)| match let_token.into() {
-            "let" => {
-                separated_pair(
-                    separated_pair(
-                        expect_match(match_),
-                        expect_keyword(assign, ParseErrorKind::LetAssign),
-                        expect_expr(if_expr)
-                    ),
-                    opt_nl(expect_keyword(in_, ParseErrorKind::LetIn)),
-                    expect_expr(expr)
-                )(input)
-                .map(|(input, ((ident, value), inner))| {
-                    (input, E::let_expr(ident, value, inner))
-                })
-            }
-            "delay" =>
-                separated_pair(
-                    separated_pair(
-                        expect_variable(variable),
-                        expect_keyword(assign, ParseErrorKind::DelayAssign),
-                        expect_expr(join_expr)
-                    ),
-                    opt_nl(expect_keyword(in_, ParseErrorKind::DelayIn)),
-                    expect_expr(expr),
-                )(input)
-                .map(|(input, ((ident, value), inner))|
-                    (input, E::delayed(ident, value, inner))
-                ),
-            _ => unreachable!(),
-        })
-        .or_else(try_parser(if_expr, input))
+    alt((
+        |input|
+        alt((let_, delay))(input)
+            .and_then(|(input, let_token)| match let_token.into() {
+                "let" =>
+                    map(
+                        tuple((
+                            expect_match(match_),
+                            expect_keyword(assign, ParseErrorKind::LetAssign),
+                            expect_expr(if_expr),
+                            opt_nl(expect_keyword(in_, ParseErrorKind::LetIn)),
+                            expect_expr(expr)
+                        )),
+                        |(ident, _, value, _, inner)| E::let_expr(ident, value, inner)
+                    )(input),
+                "delay" =>
+                    map(
+                        tuple((
+                            expect_variable(variable),
+                            expect_keyword(assign, ParseErrorKind::DelayAssign),
+                            expect_expr(join_expr),
+                            opt_nl(expect_keyword(in_, ParseErrorKind::DelayIn)),
+                            expect_expr(expr)
+                        )),
+                        |(ident, _, value, _, inner)| E::delayed(ident, value, inner)
+                    )(input),
+                _ => unreachable!(),
+            }),
+
+        if_expr
+    ))(input)
 }
 
 pub fn if_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
 where
     E: ExprOutput,
 {
-    if_(input)
-        .and_then(|(input, _)| {
-            join_expr(input)
-                .map_err(if_cond_error)
-                .and_then(|(input, cond)| {
-                    preceded(opt_nl(alt((then, q_mark))), opt_nl(expr))(input)
-                        .map_err(then_error)
-                        .and_then(|(input, t)| {
-                            preceded(opt_nl(else_), expr)(input)
-                                .map(|(input, f)| (input, E::if_expr(cond, t, f)))
-                                .map_err(else_error)
-                                
-                        })
-                })
-        })
-        .or_else(try_parser(match_expr, input))
+    alt((
+        map(
+            tuple((
+                if_,
+                expect_expr(join_expr),
+                preceded(
+                    opt_nl(expect_keyword(alt((then, q_mark)), ParseErrorKind::Then)),
+                    opt_nl(expect_expr(expr))
+                ),
+                preceded(
+                    opt_nl(expect_keyword(else_, ParseErrorKind::Else)),
+                    expect_expr(expr)
+                )
+            )),
+            |(_, cond, t, f)| E::if_expr(cond, t, f)
+        ),
+
+        match_expr
+    ))(input)
 }
 
 pub fn match_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
 where
     E: ExprOutput,
 {
-    match_kw(input)
-        .and_then(|(input, _)| {
-            terminated(join_expr, to)(input)
-                .map_err(match_head_error)
-                .and_then(|(input, val)| {
-                    // nl has to be preceding so as not to conflict with
-                    // the `req_nl` parser that likely directly follows the match expr
-                    many1(preceding_opt_nl(match_arm))(input)
-                        .map(|(input, patterns)| (input, E::match_(val, patterns)))
-                })
-                .map_err(match_arms_error)
-        })
-        .or_else(try_parser(join_expr, input))
+    alt((
+        map(
+            tuple((
+                match_kw,
+                terminated(
+                    expect_expr(join_expr),
+                    expect_keyword(to, ParseErrorKind::MatchTo)
+                ),
+                // nl has to be preceding so as not to conflict with
+                // the `req_nl` parser that likely directly follows the match expr
+                expect_match_arms(many1(preceding_opt_nl(match_arm)))
+            )),
+            |(_, val, patterns)| E::match_(val, patterns)
+        ),
+
+        join_expr
+    ))(input)
 }
 
 pub fn match_arm<E>(input: Input<'_>) -> ParseResult<'_, (E::Match, E)>
 where
     E: ExprOutput,
 {
-    preceded(bar, match_::<E::Match>)(input)
-        .map_err(match_pattern_error)
-        .and_then(|(input, pattern)| {
-            map(
-                preceded(opt_nl(arrow), expr),
-                |arm_expr: E| (pattern.clone(), arm_expr)
-            )(input).map_err(match_arm_error)
-        })
-    
-    // preceded(bar, separated_pair(match_, opt_nl(arrow), expr))(input).map_err(match_arm_error)
+    tuple((
+        preceded(
+            bar,
+            expect_match(match_)
+        ),
+        preceded(
+            opt_nl(expect_keyword(arrow, ParseErrorKind::MatchArrow)),
+            expect_expr(expr)
+        )
+    ))(input)
 }
 
 binary_expr!(join_expr, comma, flat_join_expr);
@@ -183,13 +189,21 @@ fn fn_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
 where
     E: ExprOutput,
 {
-    fn_(input)
-        .and_then(|(input, _)| {
-            separated_pair(match_, opt_nl(arrow), expr)(input)
-                .map_err(fn_expr_error)
-                .map(|(input, (param, body))| (input, E::fn_expr(param, body)))
-        })
-        .or_else(try_parser(fn_application, input))
+    alt((
+        map(
+            preceded(
+                fn_,
+                separated_pair(
+                    expect_match(match_),
+                    opt_nl(expect_keyword(arrow, ParseErrorKind::FnArrow)),
+                    expect_expr(expr)
+                )
+            ),
+            |(param, body)| E::fn_expr(param, body)
+        ),
+
+        fn_application
+    ))(input)
 }
 
 fn fn_application<E>(input: Input<'_>) -> ExprResult<'_, E>
@@ -678,7 +692,11 @@ mod tests {
     basic_test! {
         match_error_test
         match_arm::<()>("".into()) =>
-            parse_error("".into(), 1, 1, ParseErrorKind::MatchBar);
+            parse_error("".into(), 1, 1, ParseErrorKind::ExpectedKeyword {
+                keyword: "|",
+                line: 1,
+                column: 1
+            });
         match_arm::<()>("| ".into()) =>
             parse_failure(span_at("", 3, 1, 2), 3, 1, ParseErrorKind::ExpectedMatch);
         match_arm::<()>("| 'a".into()) =>
@@ -762,5 +780,9 @@ mod tests {
             parse_failure(span_at("'a", 14, 1, 13), 14, 1, ParseErrorKind::CharUnclosed);
         let_expr::<()>("delay a = 1 in 'a".into()) =>
             parse_failure(span_at("'a", 16, 1, 15), 16, 1, ParseErrorKind::CharUnclosed)
+    }
+
+    basic_test! {
+
     }
 }

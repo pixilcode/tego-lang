@@ -352,7 +352,7 @@ where
 /// Indicate that this is the right hand side (rhs) of an operator
 /// 
 /// If the rhs doesn't match anything, alert that the rhs is missing
-pub fn op_rhs<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+pub fn expect_rhs<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
 where
     F: Fn(Input<'a>) -> ParseResult<'a, O>,
 {
@@ -422,6 +422,24 @@ where
             ParseErrorKind::ExpectedKeyword { .. }
         ) =>
             ParseError::nom_failure(input, kind),
+        error => error
+    })
+}
+
+/// Indicate that at least one match arm is expected
+pub fn expect_match_arms<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+where
+    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+{
+    move |input|
+    parser(input).map_err(|error| match error {
+        nom::Err::Error((input, error)) if matches!(error.kind,
+            ParseErrorKind::ExpectedKeyword {
+                keyword: "|",
+                ..
+            }
+        ) =>
+            ParseError::nom_failure(input, ParseErrorKind::MatchBar),
         error => error
     })
 }
