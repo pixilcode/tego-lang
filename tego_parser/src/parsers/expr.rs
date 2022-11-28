@@ -56,15 +56,29 @@ pub fn do_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
 where
     E: ExprOutput,
 {
-    do_(input)
-        .and_then(|(input, _)|
-            tuple((let_expr, opt(preceded(in_, match_)), opt_nl(then), expr))(input)
-            .map_err(do_error)
-            .map(|(input, (command, command_match, _, body))|
-                (input, E::do_expr(command, command_match.unwrap_or_else(E::Match::ignore), body))
-            )
-        )
-        .or_else(try_parser(let_expr, input))
+    alt((
+        map(
+            tuple((
+                preceded(
+                    do_,
+                    expect_expr(expr),
+                ),
+                opt(preceded(
+                    in_,
+                    expect_match(match_)
+                )),
+                preceded(
+                    opt_nl(expect_keyword(then, ParseErrorKind::DoThen)),
+                    expect_expr(expr)
+                )
+            )),
+
+            |(command, command_match, body)|
+                E::do_expr(command, command_match.unwrap_or_else(E::Match::ignore), body)
+        ),
+
+        let_expr
+    ))(input)
 }
 
 pub fn let_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
@@ -783,6 +797,20 @@ mod tests {
     }
 
     basic_test! {
-
+        do_expr_error_test
+        do_expr::<()>("".into()) =>
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        do_expr::<()>("*".into()) =>
+            parse_error("*".into(), 1, 1, ParseErrorKind::NoMatch);
+        do_expr::<()>("do".into()) =>
+            parse_failure(span_at("", 3, 1, 2), 3, 1, ParseErrorKind::ExpectedExpr);
+        do_expr::<()>("do 1".into()) =>
+            parse_failure(span_at("", 5, 1, 4), 5, 1, ParseErrorKind::DoThen);
+        do_expr::<()>("do 1 in".into()) =>
+            parse_failure(span_at("", 8, 1, 7), 8, 1, ParseErrorKind::ExpectedMatch);
+        do_expr::<()>("do 1 in _".into()) =>
+            parse_failure(span_at("", 10, 1, 9), 10, 1, ParseErrorKind::DoThen);
+        do_expr::<()>("do 1 then".into()) =>
+            parse_failure(span_at("", 10, 1, 9), 10, 1, ParseErrorKind::ExpectedExpr)
     }
 }
