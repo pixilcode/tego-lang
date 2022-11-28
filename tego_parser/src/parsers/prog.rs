@@ -3,7 +3,7 @@ use crate::parsers::tokens::newlines;
 use crate::Input;
 use crate::ParseResult;
 use crate::{DeclOutput, ProgOutput};
-use nom::combinator::all_consuming;
+use nom::combinator::{all_consuming, map};
 use nom::sequence::preceded;
 
 type ProgResult<'a, P> = ParseResult<'a, P>;
@@ -12,29 +12,32 @@ pub fn prog<P>(input: Input<'_>) -> ProgResult<'_, P>
 where
     P: ProgOutput,
 {
-    all_consuming(parse_prog)(input).map(|(input, (main, decl))| match main {
-        Some(main) => (input, P::binary(main, decl)),
-        None => (input, P::library(decl)),
-    })
+    map(
+        all_consuming(parse_prog),
+        |(main, decls)| match main {
+            Some(main) => P::binary(main, decls),
+            None => P::library(decls),
+        }
+    )(input)
 }
 
 fn parse_prog<D>(input: Input<'_>) -> ParseResult<'_, (Option<<D as DeclOutput>::Expr>, Vec<D>)>
 where
     D: DeclOutput,
 {
-    let decl_res = preceded(newlines(false), decl)(input);
-    decl_res.and_then(|(input, decl): (Input, D)| {
-        let (input, (main, mut decls)) = if input.to_str().is_empty() {
-            (input, (None, vec![]))
-        } else {
-            parse_prog(input)?
-        };
+    preceded(newlines(true), decl::<D>)(input)
+        .and_then(|(input, decl)| {
+            let (input, (main, mut decls)) = if input.to_str().is_empty() {
+                (input, (None, vec![]))
+            } else {
+                parse_prog(input)?
+            };
 
-        let main = main.or_else(|| decl.to_main("main"));
+            let main = main.or_else(|| decl.to_main("main"));
 
-        decls.insert(0, decl);
-        Ok((input, (main, decls)))
-    })
+            decls.insert(0, decl);
+            Ok((input, (main, decls)))
+        })
 }
 
 #[cfg(test)]
