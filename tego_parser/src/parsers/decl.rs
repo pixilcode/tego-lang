@@ -7,7 +7,11 @@ use crate::ExprOutput;
 use crate::Input;
 use crate::ParseResult;
 
-use nom::{multi::many0, sequence::tuple};
+use nom::{
+    combinator::map,
+    multi::many0,
+    sequence::{tuple, preceded}
+};
 
 type DeclResult<'a, D> = ParseResult<'a, D>;
 
@@ -22,20 +26,23 @@ fn expression<D>(input: Input<'_>) -> DeclResult<'_, D>
 where
     D: DeclOutput,
 {
-    tuple((identifier, many0(match_), opt_nl(assign), expr))(input)
-        .map_err(decl_expr_error)
-        .map(|(input, (ident, params, _, body))| {
-            (
-                input,
-                D::expression(
-                    ident.to_str(),
-                    params
-                        .into_iter()
-                        .rev()
-                        .fold(body, |body, param| D::Expr::fn_expr(param, body)),
-                ),
+    map(
+        tuple((
+            identifier,
+            many0(match_),
+            preceded(
+                opt_nl(expect_keyword(assign, ParseErrorKind::DeclAssign)),
+                expect_expr(expr)
             )
-        })
+        )),
+        |(ident, params, body)| D::expression(
+            ident.to_str(),
+            params
+                .into_iter()
+                .rev()
+                .fold(body, |body, param| D::Expr::fn_expr(param, body))
+        )
+    )(input)
 }
 
 #[cfg(test)]
@@ -44,6 +51,7 @@ mod tests {
     use crate::ast::{Decl, Expr, Match};
     use crate::test::*;
     use crate::Span;
+    use crate::span::span_at;
 
     parser_test! {
         expression_test
@@ -74,5 +82,17 @@ mod tests {
                 "val",
                 Expr::int(1)
             )
+    }
+    
+    basic_test! {
+        expression_error_test
+        expression::<()>("".into()) =>
+            parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        expression::<()>("*".into()) =>
+            parse_error("*".into(), 1, 1, ParseErrorKind::NoMatch);
+        expression::<()>("a".into()) =>
+            parse_failure(span_at("", 2, 1, 1), 2, 1, ParseErrorKind::DeclAssign);
+        expression::<()>("a =".into()) =>
+            parse_failure(span_at("", 4, 1, 3), 4, 1, ParseErrorKind::ExpectedExpr)
     }
 }

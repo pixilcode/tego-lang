@@ -35,7 +35,7 @@ pub fn grouping<M>(input: Input<'_>) -> MatchResult<'_, M>
 where
     M: MatchOutput,
 {
-    begin_phrase(opt_nl(left_paren))(input)
+    opt_nl(left_paren)(input)
         .and_then(|(input, open_paren)| {
             map(
                 terminated(opt(match_), right_paren),
@@ -51,7 +51,7 @@ where
         })
         .or_else(try_parser(
             |input| {
-                begin_phrase(opt_nl(left_bracket))(input).and_then(|(input, open_bracket)| {
+                opt_nl(left_bracket)(input).and_then(|(input, open_bracket)| {
                     map(
                         terminated(opt_nl(match_), right_bracket),
                         |inner| M::boxed(inner)

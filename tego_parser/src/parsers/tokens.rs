@@ -426,7 +426,8 @@ mod tests {
     }
     basic_test! {
         identifier_error_tests
-        identifier("".into()) => parse_error("".into(), 1, 1, ParseErrorKind::NoMatch);
+        identifier("".into()) => parse_error("".into(), 1, 1, ParseErrorKind::Eof);
+        identifier("*".into()) => parse_error("*".into(), 1, 1, ParseErrorKind::NoMatch);
         identifier("true".into()) => parse_error("true".into(), 1, 1, ParseErrorKind::KeywordIdentifier)
     }
     basic_test! {

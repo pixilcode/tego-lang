@@ -322,33 +322,6 @@ where
     }
 }
 
-/// Begin a parse phrase (for parse phrases that begin
-/// with a keyword).
-/// 
-/// For example `if 1 == 2 then ...` begins with `if`.
-/// 
-/// Using the `if_` parser would return a failure
-/// if it doesn't match `if`, meaning parsing would terminate
-/// if an `if` expression isn't matched.
-/// 
-/// Normally, we would like to try to parse other expressions
-/// such as `match`, so we use `begin_phrase` to turn the failure into an
-/// error
-pub fn begin_phrase<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
-where
-	F: Fn(Input<'a>) -> ParseResult<'a, O>,
-{
-	move |input|
-    parser(input).map_err(|err| match err {
-		nom::Err::Failure((input, error))
-			if matches!(error.kind, ParseErrorKind::ExpectedKeyword { .. }) =>
-			nom::Err::Error((input, ParseError::new_from_kind(
-                input, ParseErrorKind::NoMatch,
-            ))),
-		error => error,
-	})
-}
-
 /// Indicate that this is the right hand side (rhs) of an operator
 /// 
 /// If the rhs doesn't match anything, alert that the rhs is missing
@@ -496,6 +469,8 @@ pub fn ident_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<
 	match error {
 		nom::Err::Error((input, nom::error::ErrorKind::Verify)) =>
 			ParseError::nom_error(input, ParseErrorKind::KeywordIdentifier),
+        nom::Err::Error((input, _)) if input.to_str().is_empty() =>
+            ParseError::nom_error(input, ParseErrorKind::Eof),
 		nom::Err::Error((input, _)) =>
 			ParseError::nom_error(input, ParseErrorKind::NoMatch),
 		nom::Err::Failure((input, _)) =>
