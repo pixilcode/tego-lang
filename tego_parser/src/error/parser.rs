@@ -11,17 +11,6 @@ pub struct ParseError {
 }
 
 impl ParseError {
-    fn is_unhandled(&self) -> bool {
-        matches!(self.kind, 
-            ParseErrorKind::Reserved(_)
-            | ParseErrorKind::Char
-            | ParseErrorKind::String
-            | ParseErrorKind::Number
-            | ParseErrorKind::Keyword
-            | ParseErrorKind::UnhandledNomError
-        )
-    }
-
     pub fn new(column: usize, line: usize, kind: ParseErrorKind) -> Self {
         Self {
             column, line, kind,
@@ -34,14 +23,6 @@ impl ParseError {
             line: input.line(),
             kind,
         }
-    }
-
-    fn new_from_deprecated(input: Input<'_>, error: Self, kind: ParseErrorKind) -> nom::Err<(Input<'_>, Self)> {
-        nom::Err::Error((input, ParseError { kind, ..error }))
-    }
-
-    fn new_with(input: Input<'_>, error: Self) -> nom::Err<(Input<'_>, Self)> {
-        nom::Err::Error((input, error))
     }
 
     fn nom_error(input: Input<'_>, kind: ParseErrorKind) -> nom::Err<(Input<'_>, Self)> {
@@ -240,70 +221,6 @@ impl fmt::Display for ParseError {
 }
 
 impl std::error::Error for ParseError {}
-
-macro_rules! error_type {
-    ( $name:ident, $kind:expr ) => {
-        pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
-            match error {
-                nom::Err::Error((input, error)) if error.is_unhandled() => ParseError::new_from_deprecated(input, error, $kind),
-                e => e
-            }
-        }
-    };
-
-    ( $name:ident, $kind:expr; $param_name:ident : $param_type:ty ) => {
-        pub fn $name($param_name: $param_type) -> impl Fn(nom::Err<(Input<'_>, ParseError)>) -> nom::Err<(Input<'_>, ParseError)> {
-            move |error|
-            match error {
-                nom::Err::Error((input, error)) if error.is_unhandled() => ParseError::new_from_deprecated(input, error, $kind),
-                e => e
-            }
-        }
-    };
-
-
-    ( [ $name:ident ] $( $error:pat $( if $cond:expr )? => $result:expr ),+ ) => {
-        #[allow(unreachable_patterns)]
-        pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
-            match error {
-                $( $error $( if $cond:expr )? => $result, )+
-                nom::Err::Error((input, error)) if error.is_unhandled() => ParseError::new_from_deprecated(input, error, ParseErrorKind::UnhandledError),
-                e => e
-            }
-        }
-    };
-
-    ( token [ $name:ident ] $( $reserved:literal => $kind:expr ),+ ) => {
-        #[allow(unreachable_patterns)]
-        pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
-            match error {
-                nom::Err::Error((input, error)) if error.is_unhandled() =>
-                    match error.kind {
-                        $( ParseErrorKind::Reserved($reserved) => ParseError::new_from_deprecated(input, error, $kind), )+
-                        _ => ParseError::new_with(input, error)
-                    },
-                e => e
-            }
-        }
-    };
-
-    ( starts_with [ $name:ident $( , $default_kind:expr)? ] $( $pattern:expr => $kind:expr ),+ ) => {
-        #[allow(unreachable_patterns)]
-        pub fn $name(error: nom::Err<(Input, ParseError)>) -> nom::Err<(Input, ParseError)> {
-            match error {
-                nom::Err::Error((input, error))
-                    if input.to_str().is_empty() || preceded(space0, newlines(true))(input).is_ok() =>
-                        ParseError::new_from_deprecated(input, error, ParseErrorKind::EndOfExpr),
-                $( nom::Err::Error((input, error))
-                    if error.is_unhandled() && input.to_str().starts_with($pattern) =>
-                        ParseError::new_from_deprecated(input, error, $kind), )+
-                $( nom::Err::Error((input, error)) if error.is_unhandled() =>
-                    ParseError::new_from_deprecated(input, error, $default_kind), )?
-                e => e
-            }
-        }
-    }
-}
 
 // Error handlers
 
@@ -656,12 +573,6 @@ pub fn terminating_bracket_error(line: usize, column: usize) -> impl Fn(nom::Err
             )),
         error => error,
     }
-}
-
-// Decl Errors
-error_type! {
-    token [decl_expr_error]
-    "=" => ParseErrorKind::DeclAssign
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
