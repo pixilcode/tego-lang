@@ -143,35 +143,6 @@ impl fmt::Display for ParseError {
             ParseErrorKind::Number => "error parsing number literal".into(),
             ParseErrorKind::Keyword => "found keyword where an identifier was expected".into(),
             
-            ParseErrorKind::CharUnclosed => todo!("write this"),
-            ParseErrorKind::InvalidChar => todo!("write this"),
-            ParseErrorKind::InvalidEscapedChar => todo!("write this"),
-            
-            // STRING ERRORS
-            ParseErrorKind::StringUnclosed => todo!("write this"),
-            ParseErrorKind::InvalidEscapedString => todo!("write this"),
-            
-            // NUMBER ERRORS
-            ParseErrorKind::NumberTooBig => todo!("write this"),
-            
-            // IDENTIFIER ERRORS
-            ParseErrorKind::KeywordIdentifier => todo!("write this"),
-            
-            // COMMENT ERRORS
-            ParseErrorKind::UnexpectedNewline => todo!("write this"),
-            ParseErrorKind::UnclosedComment => todo!("write this"),
-            
-            // WHITESPACE ERRORS
-            ParseErrorKind::ExpectedNewline => todo!("write this"),
-            
-            // NO MATCH ERRORS
-            ParseErrorKind::ExpectedKeyword {
-                ..
-            } => todo!("write this"),
-            
-            // OPERATOR ERRORS
-            ParseErrorKind::MissingRhs => todo!("write this"),
-            
             // Expr Errors
             ParseErrorKind::InvalidCharacter => "encountered invalid character".into(),
             ParseErrorKind::TerminatingParen(_, _) => "missing closing parenthesis".into(),
@@ -191,11 +162,6 @@ impl fmt::Display for ParseError {
             ParseErrorKind::EndOfExpr => "unexpected end of expr".into(),
             ParseErrorKind::DoIn => "missing 'in' in do expression".into(),
             ParseErrorKind::DoThen => "missing 'then' in do expression".into(),
-            ParseErrorKind::ExpectedMatch => todo!("write this"),
-            ParseErrorKind::ExpectedExpr => todo!("write this"),
-            
-            // Match Errors
-            ParseErrorKind::IncompleteTuple(_, _) => todo!("write this"),
 
             // Decl Errors
             ParseErrorKind::DeclAssign => "missing '=' in expression declaration".into(),
@@ -205,8 +171,6 @@ impl fmt::Display for ParseError {
             ParseErrorKind::Eof => "reached end of file before parsing was completed".into(),
             ParseErrorKind::Incomplete => "incomplete information found".into(),
             ParseErrorKind::UnhandledNomError => "unknown error from parsing".into(),
-            ParseErrorKind::UnknownFailure => todo!("write this"),
-            ParseErrorKind::NoMatch => todo!("write this"),
             _ => todo!("write this"),
         };
         write!(
@@ -676,7 +640,6 @@ impl From<ParseErrorKind> for u16 {
 }
 
 // Error code (between 1 and 100 for parse errors)
-// TODO: find the trait that can be derived to do this on it's own
 impl From<&ParseErrorKind> for u16 {
     fn from(error: &ParseErrorKind) -> Self {
         match error {
@@ -706,25 +669,6 @@ impl From<&ParseErrorKind> for u16 {
             ParseErrorKind::Incomplete => 24,
             ParseErrorKind::DoIn => 25,
             ParseErrorKind::DoThen => 26,
-            ParseErrorKind::CharUnclosed => todo!("write this"),
-            ParseErrorKind::InvalidChar => todo!("write this"),
-            ParseErrorKind::InvalidEscapedChar => todo!("write this"),
-            ParseErrorKind::StringUnclosed => todo!("write this"),
-            ParseErrorKind::InvalidEscapedString => todo!("write this"),
-            ParseErrorKind::NumberTooBig => todo!("write this"),
-            ParseErrorKind::KeywordIdentifier => todo!("write this"),
-            ParseErrorKind::UnexpectedNewline => todo!("write this"),
-            ParseErrorKind::UnclosedComment => todo!("write this"),
-            ParseErrorKind::ExpectedNewline => todo!("write this"),
-            ParseErrorKind::ExpectedKeyword {
-                ..
-            } => todo!("write this"),
-            ParseErrorKind::UnknownFailure => todo!("write this"),
-            ParseErrorKind::NoMatch => todo!("write this"),
-            ParseErrorKind::IncompleteTuple(_, _) => todo!("write this"),
-            ParseErrorKind::MissingRhs => todo!("write this"),
-            ParseErrorKind::ExpectedMatch => todo!("write this"),
-            ParseErrorKind::ExpectedExpr => todo!("write this"),
             _ => todo!("write this"),
         }
     }
