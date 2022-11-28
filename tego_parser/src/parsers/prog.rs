@@ -25,7 +25,7 @@ fn parse_prog<D>(input: Input<'_>) -> ParseResult<'_, (Option<<D as DeclOutput>:
 where
     D: DeclOutput,
 {
-    preceded(newlines(true), decl::<D>)(input)
+    preceded(newlines(false), decl::<D>)(input)
         .and_then(|(input, decl)| {
             let (input, (main, mut decls)) = if input.to_str().is_empty() {
                 (input, (None, vec![]))
