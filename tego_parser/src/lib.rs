@@ -32,10 +32,9 @@ pub use crate::parsers::decl::decl;
 pub use crate::parsers::expr::expr;
 pub use crate::parsers::match_::match_;
 pub use crate::parsers::prog::prog;
-pub use nom::combinator::all_consuming as complete;
 
 // Utilities
-pub use crate::error::parser::ParseError;
+pub use crate::error::ParseError;
 pub use crate::span::Span;
 
 // Traits for parser output
@@ -50,7 +49,7 @@ type ParseResult<'a, O> = nom::IResult<Input<'a>, O, (Input<'a>, ParseError)>;
 #[allow(dead_code)]
 mod test {
     use super::*;
-    use crate::error::parser::ParseErrorKind;
+    use crate::error::ParseErrorKind;
     use crate::span;
     pub use crate::Span;
     pub use crate::{DeclOutput, ExprOutput, MatchOutput, ProgOutput};

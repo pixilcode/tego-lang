@@ -1,4 +1,4 @@
-use crate::error::parser::*;
+use crate::error::*;
 use crate::parsers::match_::*;
 use crate::parsers::tokens::*;
 use crate::{ExprOutput, MatchOutput};

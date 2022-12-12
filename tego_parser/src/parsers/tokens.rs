@@ -1,5 +1,5 @@
-use crate::error::err_retain_all;
-use crate::error::parser::{
+use crate::error::{
+    err_retain_all,
     char_error, string_error,
     number_error, ident_error,
     multi_comment_error,
@@ -294,7 +294,7 @@ mod tests {
     use super::*;
     use crate::span::span_at;
     use crate::test::*;
-    use crate::error::parser::ParseErrorKind;
+    use crate::error::ParseErrorKind;
 
     #[test]
     fn token_parser_test() {
