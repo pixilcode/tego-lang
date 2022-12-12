@@ -137,39 +137,57 @@ impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let error = match self.kind {
             // Token Errors
-            ParseErrorKind::TerminatingParen(_, _) => "missing closing parenthesis".into(),
-            ParseErrorKind::TerminatingBracket(_, _) => "missing closing bracket".into(),
+            ParseErrorKind::CharUnclosed => "unclosed character",
+            ParseErrorKind::InvalidChar => "invalid character",
+            ParseErrorKind::InvalidEscapedChar => "invalid escaped character",
+            ParseErrorKind::StringUnclosed => "unclosed string",
+            ParseErrorKind::InvalidEscapedString => "invalid escaped string",
+            ParseErrorKind::NumberTooBig => "number out of range - must be between -2,147,483,647 and 2,147,483,647",
+            ParseErrorKind::KeywordIdentifier => "found a keyword where an identifier was expected",
+            ParseErrorKind::UnexpectedNewline => "encountered an unexpected new line",
+            ParseErrorKind::UnclosedComment => "unclosed comment",
+            ParseErrorKind::ExpectedNewline => "expected newline",
+            ParseErrorKind::ExpectedKeyword { .. } => "expected keyword",
+            
+            // Expr Errors
+            ParseErrorKind::TerminatingParen(_, _) => "missing closing parenthesis",
+            ParseErrorKind::TerminatingBracket(_, _) => "missing closing bracket",
             ParseErrorKind::FnArrow => {
-                "missing '->' between function parameters and function body".into()
+                "missing '->' between function parameters and function body"
             }
-            ParseErrorKind::MatchBar => "missing '|' before match arm".into(),
-            ParseErrorKind::MatchArrow => "missing '->' between match pattern and match body".into(),
-            ParseErrorKind::MatchTo => "missing 'to' between match head and body".into(),
-            ParseErrorKind::Then => "missing 'then' or '?' after if condition".into(),
-            ParseErrorKind::Else => "missing 'else' in if expression".into(),
-            ParseErrorKind::LetAssign => "missing '=' in let assignment".into(),
-            ParseErrorKind::LetIn => "missing 'in' in let expression".into(),
-            ParseErrorKind::DelayAssign => "missing '=' in delay assignment".into(),
-            ParseErrorKind::DelayIn => "missing 'in' in delay expression".into(),
-            ParseErrorKind::DoIn => "missing 'in' in do expression".into(),
-            ParseErrorKind::DoThen => "missing 'then' in do expression".into(),
+            ParseErrorKind::MatchBar => "missing '|' before match arm",
+            ParseErrorKind::MatchArrow => "missing '->' between match pattern and match body",
+            ParseErrorKind::MatchTo => "missing 'to' between match head and body",
+            ParseErrorKind::Then => "missing 'then' or '?' after if condition",
+            ParseErrorKind::Else => "missing 'else' in if expression",
+            ParseErrorKind::LetAssign => "missing '=' in let assignment",
+            ParseErrorKind::LetIn => "missing 'in' in let expression",
+            ParseErrorKind::DelayAssign => "missing '=' in delay assignment",
+            ParseErrorKind::DelayIn => "missing 'in' in delay expression",
+            ParseErrorKind::DoIn => "missing 'in' in do expression",
+            ParseErrorKind::DoThen => "missing 'then' in do expression",
+            ParseErrorKind::ExpectedExpr => "expected expression",
+            ParseErrorKind::ExpectedMatch => "expected match",
+            ParseErrorKind::ExpectedVariable => "expected variable identifier",
+            ParseErrorKind::IncompleteTuple(_, _) => "incomplete match (missing tuple right hand side)",
+            ParseErrorKind::MissingRhs => "missing operator right hand side",
 
             // Decl Errors
-            ParseErrorKind::DeclAssign => "missing '=' in expression declaration".into(),
+            ParseErrorKind::DeclAssign => "missing '=' in expression declaration",
 
             // Other Errors
-            ParseErrorKind::Eof => "reached end of file before parsing was completed".into(),
-            ParseErrorKind::Incomplete => "incomplete information found".into(),
-            ParseErrorKind::UnhandledNomError => "unknown error from parsing".into(),
-            // _ => todo!("write this"),
+            ParseErrorKind::Eof => "reached end of file before parsing was completed",
+            ParseErrorKind::Incomplete => "incomplete information found",
+            ParseErrorKind::UnhandledNomError => "unknown error from parsing",
+            ParseErrorKind::UnknownFailure => "unknown parsing failure",
+            ParseErrorKind::NoMatch => "no parser match",
         };
         write!(
             f,
-            "error[E{:04}]: {} (found on line {}, column {})",
-            u16::from(self.kind),
-            error,
+            "error[line {}, column {}]: {}",
             self.line,
-            self.column
+            self.column,
+            error,
         )
     }
 }
@@ -603,39 +621,6 @@ impl From<nom::error::ErrorKind> for ParseErrorKind {
         match error {
             nom::error::ErrorKind::Eof => ParseErrorKind::Eof,
             _ => ParseErrorKind::UnhandledNomError,
-        }
-    }
-}
-
-impl From<ParseErrorKind> for u16 {
-    fn from(error: ParseErrorKind) -> Self {
-        u16::from(&error)
-    }
-}
-
-// Error code (between 1 and 100 for parse errors)
-impl From<&ParseErrorKind> for u16 {
-    fn from(error: &ParseErrorKind) -> Self {
-        match error {
-            ParseErrorKind::TerminatingParen(_, _) => 7,
-            ParseErrorKind::FnArrow => 8,
-            ParseErrorKind::MatchBar => 9,
-            ParseErrorKind::MatchArrow => 10,
-            ParseErrorKind::MatchTo => 11,
-            ParseErrorKind::Then => 12,
-            ParseErrorKind::Else => 13,
-            ParseErrorKind::LetAssign => 14,
-            ParseErrorKind::LetIn => 15,
-            ParseErrorKind::DelayAssign => 16,
-            ParseErrorKind::DelayIn => 17,
-            ParseErrorKind::DeclAssign => 18,
-            ParseErrorKind::Eof => 20,
-            ParseErrorKind::UnhandledNomError => 21,
-            ParseErrorKind::TerminatingBracket(_, _) => 23,
-            ParseErrorKind::Incomplete => 24,
-            ParseErrorKind::DoIn => 25,
-            ParseErrorKind::DoThen => 26,
-            // _ => todo!("write this"),
         }
     }
 }
