@@ -1,4 +1,22 @@
-use crate::error::*;
+use crate::error::{
+    ParseErrorKind,
+    handlers::{
+        try_parser,
+        expect_rhs,
+        expect_keyword,
+        expect_match,
+        expect_match_arms,
+        expect_expr,
+        expect_variable,
+        missing_rhs_error,
+        terminating_paren_error,
+        terminating_bracket_error,
+        num_expr_error,
+        string_expr_error,
+        char_expr_error,
+        literal_error,
+    }
+};
 use crate::parsers::match_::*;
 use crate::parsers::tokens::*;
 use crate::{ExprOutput, MatchOutput};

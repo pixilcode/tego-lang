@@ -1,4 +1,7 @@
-use crate::error::*;
+use crate::error::{
+    ParseErrorKind,
+    handlers::{expect_expr, expect_keyword}
+};
 use crate::expr;
 use crate::match_;
 use crate::parsers::tokens::*;

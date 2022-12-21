@@ -1,4 +1,16 @@
-use crate::error::*;
+use crate::error::{
+    handlers::{
+        tuple_error,
+        terminating_paren_error,
+        terminating_bracket_error,
+        try_parser,
+        num_expr_error,
+        string_expr_error,
+        char_expr_error,
+        basic_match_error,
+        ident_match_error,
+    }
+};
 use crate::parsers::tokens::*;
 use crate::Input;
 use crate::MatchOutput;
@@ -130,6 +142,7 @@ mod tests {
     use crate::ast::Match;
     use crate::test::*;
     use crate::span::span_at;
+    use crate::error::ParseErrorKind;
 
     parser_test! {
         ident_test
