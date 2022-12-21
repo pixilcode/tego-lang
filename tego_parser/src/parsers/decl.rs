@@ -1,6 +1,6 @@
 use crate::error::{
     ParseErrorKind,
-    handlers::{expect_expr, expect_keyword}
+    parse_handlers::{expect_expr, expect_keyword}
 };
 use crate::expr;
 use crate::match_;

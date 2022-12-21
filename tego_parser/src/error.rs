@@ -4,7 +4,7 @@ use std::io;
 use std::ops::Deref;
 
 /// Error handlers
-pub mod handlers;
+pub mod parse_handlers;
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct ParseError {
