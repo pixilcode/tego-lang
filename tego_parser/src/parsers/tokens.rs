@@ -8,7 +8,7 @@ use crate::error::parse_handlers::{
     newline_error,
     reserved_error,
 };
-use crate::{Input, ParseResult};
+use crate::{Input, ParseInternalResult};
 use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, take_until, take_while1, escaped_transform},
@@ -36,7 +36,7 @@ const ESCAPE_CHARS_MAP: &[(char, char)] = &[
 
 pub fn newlines<'a>(
     is_req: bool,
-) -> impl Fn(Input<'a>) -> ParseResult<'a, (Vec<Input<'a>>, Option<Input<'a>>, Vec<Input<'a>>)> {
+) -> impl Fn(Input<'a>) -> ParseInternalResult<'a, (Vec<Input<'a>>, Option<Input<'a>>, Vec<Input<'a>>)> {
     move |input| {
         map_res(
             tuple((
@@ -54,7 +54,7 @@ pub fn newlines<'a>(
     }
 }
 
-pub fn comment0(input: Input<'_>) -> ParseResult<'_, Vec<Input<'_>>> {
+pub fn comment0(input: Input<'_>) -> ParseInternalResult<'_, Vec<Input<'_>>> {
     terminated(
         many0(
             preceded(space0, inline_comment)
@@ -63,14 +63,14 @@ pub fn comment0(input: Input<'_>) -> ParseResult<'_, Vec<Input<'_>>> {
     )(input)
 }
 
-pub fn multicomment0(input: Input<'_>) -> ParseResult<'_, Vec<Input<'_>>> {
+pub fn multicomment0(input: Input<'_>) -> ParseInternalResult<'_, Vec<Input<'_>>> {
     terminated(
         many0(preceded(multispace0, alt((single_comment, multi_comment)))),
         multispace0,
     )(input)
 }
 
-fn single_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+fn single_comment(input: Input<'_>) -> ParseInternalResult<'_, Input<'_>> {
     preceded(
         tag("--"),
         alt((terminated(not_line_ending, line_ending), not_line_ending)),
@@ -78,7 +78,7 @@ fn single_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     .map_err(single_comment_error)
 }
 
-fn inline_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+fn inline_comment(input: Input<'_>) -> ParseInternalResult<'_, Input<'_>> {
     verify(
         terminated(preceded(tag("{-"), take_until("-}")), tag("-}")),
         |s: &Input| !s.to_str().contains('\n'),
@@ -86,28 +86,28 @@ fn inline_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
     .map_err(inline_comment_error(input))
 }
 
-fn multi_comment(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+fn multi_comment(input: Input<'_>) -> ParseInternalResult<'_, Input<'_>> {
     terminated(preceded(tag("{-"), take_until("-}")), tag("-}"))(input)
         .map_err(multi_comment_error(input))
 }
 
-pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+pub fn opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseInternalResult<'a, O>
 where
-    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+    F: Fn(Input<'a>) -> ParseInternalResult<'a, O>,
 {
     terminated(parser, newlines(false))
 }
 
-pub fn preceding_opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+pub fn preceding_opt_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseInternalResult<'a, O>
 where
-    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+    F: Fn(Input<'a>) -> ParseInternalResult<'a, O>,
 {
     preceded(newlines(false), parser)
 }
 
-pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseResult<'a, O>
+pub fn req_nl<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseInternalResult<'a, O>
 where
-    F: Fn(Input<'a>) -> ParseResult<'a, O>,
+    F: Fn(Input<'a>) -> ParseInternalResult<'a, O>,
 {
     terminated(
         parser,
@@ -127,7 +127,7 @@ where
 
 macro_rules! reserved {
     (keyword $lexeme:ident, $lexeme_str:literal) => {
-        pub fn $lexeme(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+        pub fn $lexeme(input: Input<'_>) -> ParseInternalResult<'_, Input<'_>> {
             token(terminated(
                 tag($lexeme_str),
                 alt((
@@ -146,13 +146,13 @@ macro_rules! reserved {
     };
 
     ($lexeme:ident, $lexeme_str:literal) => {
-        pub fn $lexeme(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+        pub fn $lexeme(input: Input<'_>) -> ParseInternalResult<'_, Input<'_>> {
             token(tag($lexeme_str))(input).map_err(reserved_error($lexeme_str))
         }
     };
 }
 
-pub fn char(input: Input<'_>) -> ParseResult<'_, char> {
+pub fn char(input: Input<'_>) -> ParseInternalResult<'_, char> {
     token(preceded(
         tag("'"),
         terminated(
@@ -182,7 +182,7 @@ where E: nom::error::ParseError<Input<'a>> {
     )(input)
 }
 
-pub fn string(input: Input<'_>) -> ParseResult<'_, String> {
+pub fn string(input: Input<'_>) -> ParseInternalResult<'_, String> {
     token(preceded(
         tag("\""),
         terminated(
@@ -211,14 +211,14 @@ where E: nom::error::ParseError<Input<'a>> {
     )(input)
 }
 
-pub fn number(input: Input<'_>) -> ParseResult<'_, i32> {
+pub fn number(input: Input<'_>) -> ParseInternalResult<'_, i32> {
     map_res(
         token(digit1),
         |i| i.to_str().parse::<i32>()
     )(input).map_err(number_error)
 }
 
-pub fn identifier(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+pub fn identifier(input: Input<'_>) -> ParseInternalResult<'_, Input<'_>> {
     token(verify(take_while1(is_identifier_char), |id: &Input| {
         !is_keyword(id.to_str()) && !id.to_str().starts_with('\'')
     }))(input)
@@ -232,7 +232,7 @@ fn is_identifier_char(c: char) -> bool {
 reserved!(comma, ",");
 reserved!(plus, "+");
 // Has to be done by hand because comments also start with '-'
-pub fn minus(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+pub fn minus(input: Input<'_>) -> ParseInternalResult<'_, Input<'_>> {
     map(
         pair(token(tag("-")), peek(nom_not(tag("-")))),
         |(minus_op, _)| minus_op
@@ -242,7 +242,7 @@ pub fn minus(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
 }
 reserved!(star, "*");
 // Has to be done by hand because 'not_equal' also start with '/'
-pub fn slash(input: Input<'_>) -> ParseResult<'_, Input<'_>> {
+pub fn slash(input: Input<'_>) -> ParseInternalResult<'_, Input<'_>> {
     map(
         pair(token(tag("/")), peek(nom_not(tag("=")))),
         |(slash_op, _)| slash_op

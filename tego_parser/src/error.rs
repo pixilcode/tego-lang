@@ -1,4 +1,4 @@
-use crate::{Input, ParseResult};
+use crate::{Input, ParseInternalResult};
 use std::fmt;
 use std::io;
 use std::ops::Deref;
@@ -200,8 +200,8 @@ impl std::error::Error for ParseError {}
 struct ParseErrorOutput<O>(Result<O, ParseError>); 
 
 /// Convert a nom error to a ParseErrorOutput for use outside of the crate
-impl<'a, O> From<ParseResult<'a, O>> for ParseErrorOutput<O> {
-	fn from(error: ParseResult<'a, O>) -> Self {
+impl<'a, O> From<ParseInternalResult<'a, O>> for ParseErrorOutput<O> {
+	fn from(error: ParseInternalResult<'a, O>) -> Self {
 		match error {
 			Ok((_, result)) => ParseErrorOutput(Ok(result)),
 			Err(nom::Err::Error((_, error))) |

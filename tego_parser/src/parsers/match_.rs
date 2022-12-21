@@ -14,7 +14,7 @@ use crate::error::{
 use crate::parsers::tokens::*;
 use crate::Input;
 use crate::MatchOutput;
-use crate::ParseResult;
+use crate::ParseInternalResult;
 use nom::branch::alt;
 
 use nom::{
@@ -22,7 +22,7 @@ use nom::{
     sequence::{pair, terminated},
 };
 
-type MatchResult<'a, M> = ParseResult<'a, M>;
+type MatchResult<'a, M> = ParseInternalResult<'a, M>;
 
 pub fn match_<M>(input: Input<'_>) -> MatchResult<'_, M>
 where

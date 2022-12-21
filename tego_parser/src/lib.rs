@@ -44,7 +44,7 @@ pub use crate::traits::MatchOutput;
 pub use crate::traits::ProgOutput;
 
 type Input<'a> = Span<'a>;
-type ParseResult<'a, O> = nom::IResult<Input<'a>, O, (Input<'a>, ParseError)>;
+type ParseInternalResult<'a, O> = nom::IResult<Input<'a>, O, (Input<'a>, ParseError)>;
 
 #[allow(dead_code)]
 mod test {
@@ -82,7 +82,7 @@ mod test {
     }
 
     pub fn parse_error<O>(remaining: Input<'_>, column: usize, line: usize, kind: ParseErrorKind)
-        -> ParseResult<'_, O> {
+        -> ParseInternalResult<'_, O> {
             Err(nom::Err::Error((remaining, ParseError::new(
                 column,
                 line,
@@ -91,7 +91,7 @@ mod test {
     }
 
     pub fn parse_failure<O>(remaining: Input<'_>, column: usize, line: usize, kind: ParseErrorKind)
-        -> ParseResult<'_, O> {
+        -> ParseInternalResult<'_, O> {
             Err(nom::Err::Failure((remaining, ParseError::new(
                 column,
                 line,

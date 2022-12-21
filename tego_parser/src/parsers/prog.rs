@@ -1,12 +1,12 @@
 use crate::decl;
 use crate::parsers::tokens::newlines;
 use crate::Input;
-use crate::ParseResult;
+use crate::ParseInternalResult;
 use crate::{DeclOutput, ProgOutput};
 use nom::combinator::{all_consuming, map};
 use nom::sequence::preceded;
 
-type ProgResult<'a, P> = ParseResult<'a, P>;
+type ProgResult<'a, P> = ParseInternalResult<'a, P>;
 
 pub fn prog<P>(input: Input<'_>) -> ProgResult<'_, P>
 where
@@ -21,7 +21,7 @@ where
     )(input)
 }
 
-fn parse_prog<D>(input: Input<'_>) -> ParseResult<'_, (Option<<D as DeclOutput>::Expr>, Vec<D>)>
+fn parse_prog<D>(input: Input<'_>) -> ParseInternalResult<'_, (Option<<D as DeclOutput>::Expr>, Vec<D>)>
 where
     D: DeclOutput,
 {

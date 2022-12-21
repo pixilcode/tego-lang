@@ -8,7 +8,7 @@ use crate::parsers::tokens::*;
 use crate::DeclOutput;
 use crate::ExprOutput;
 use crate::Input;
-use crate::ParseResult;
+use crate::ParseInternalResult;
 
 use nom::{
     combinator::map,
@@ -16,7 +16,7 @@ use nom::{
     sequence::{tuple, preceded}
 };
 
-type DeclResult<'a, D> = ParseResult<'a, D>;
+type DeclResult<'a, D> = ParseInternalResult<'a, D>;
 
 pub fn decl<D>(input: Input<'_>) -> DeclResult<'_, D>
 where
