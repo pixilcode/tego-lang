@@ -116,6 +116,10 @@ impl ParseError {
         writeln!(writer)?;
         Ok(())
     }
+
+    pub fn is_no_match(&self) -> bool {
+        matches!(self.kind, ParseErrorKind::NoMatch)
+    }
 }
 
 impl<'a> nom::error::ParseError<Input<'a>> for (Input<'a>, ParseError) {

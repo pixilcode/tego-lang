@@ -45,29 +45,37 @@ fn repl_loop(
         return Ok(());
     }
 
-    let (env, decls) = if let Ok(d) = parser::decl(code.into()) {
-        decls.push(d);
-        (None, decls)
-    } else {
-        match parser::expr(code.into()) {
-            Ok(expr) => {
-                let env = env.unwrap_or_else(|| {
-                    let decl_env = interpreter::env_from_decls(&decls);
-                    interpreter::import_prelude(&decl_env)
-                });
-                let result = interpreter::eval_expr(expr, &env);
-                if result.is_error() {
-                    writeln!(stdout, "{}", result)?;
-                } else if result.run().is_err() {
-                    writeln!(stdout, "{} : {}", result, result.type_())?;
-                } else {
-                    // Command was run
+
+    let (env, decls) = match parser::decl(code.into()) {
+        Ok(decl) => {
+            decls.push(decl);
+            (None, decls)
+        },
+        Err(error) if !error.is_no_match() => {
+            error.verbose_from_source(code, &mut stderr)?;
+            (env, decls)
+        },
+        Err(_) => {
+            match parser::expr(code.into()) {
+                Ok(expr) => {
+                    let env = env.unwrap_or_else(|| {
+                        let decl_env = interpreter::env_from_decls(&decls);
+                        interpreter::import_prelude(&decl_env)
+                    });
+                    let result = interpreter::eval_expr(expr, &env);
+                    if result.is_error() {
+                        writeln!(stdout, "{}", result)?;
+                    } else if result.run().is_err() {
+                        writeln!(stdout, "{} : {}", result, result.type_())?;
+                    } else {
+                        // Command was run
+                    }
+                    (Some(env), decls)
                 }
-                (Some(env), decls)
-            }
-            Err(error) => {
-                error.verbose_from_source(code, &mut stderr)?;
-                (env, decls)
+                Err(error) => {
+                    error.verbose_from_source(code, &mut stderr)?;
+                    (env, decls)
+                }
             }
         }
     };
