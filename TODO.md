@@ -20,6 +20,8 @@
   5. Match functions
      * `fn[ a, true -> a + 1 | a, false -> a ]`
      * Creates a function that has a match expression built in
+* Clean up `tego` module
+* Clean up verbose parse error printing code
 * Build compiler (maybe use craftinginterpreters.com?)
 * Add documentation to all functions/enums/structs
 * Values become Rc's?

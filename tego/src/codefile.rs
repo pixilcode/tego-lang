@@ -15,10 +15,9 @@ pub fn run<P: AsRef<Path>>(path: P) -> io::Result<()> {
         }
     };
     let program = match parser::prog(file.as_str().into()) {
-        Ok((_, prog)) => prog,
+        Ok(prog) => prog,
         Err(err) => {
-            println!("{:?}", err);
-            todo!(); //parser::ParseError::from(err).verbose_from_source(&file, &mut stderr)?;
+            parser::ParseError::from(err).verbose_from_source(&file, &mut stderr)?;
             return wrap_up(stderr, stdout);
         }
     };
