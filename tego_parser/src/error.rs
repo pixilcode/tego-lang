@@ -51,7 +51,7 @@ impl ParseError {
                     writer,
                     "    | {:>1$} error found here",
                     "^",
-                    self.column - 1
+                    self.column
                 )?;
                 writeln!(writer)?;
                 writeln!(writer, "    |")?;
@@ -65,7 +65,7 @@ impl ParseError {
                     writer,
                     "    | {:>1$} opening parenthesis found here",
                     "^",
-                    column - 1
+                    column
                 )?;
             }
             ParseErrorKind::TerminatingBracket(line, column) => {
@@ -80,7 +80,7 @@ impl ParseError {
                     writer,
                     "    | {:>1$} error found here",
                     "^",
-                    self.column - 1
+                    self.column
                 )?;
                 writeln!(writer)?;
                 writeln!(writer, "    |")?;
@@ -94,7 +94,7 @@ impl ParseError {
                     writer,
                     "    | {:>1$} opening bracket found here",
                     "^",
-                    column - 1
+                    column
                 )?;
             }
             _ => {
@@ -109,7 +109,7 @@ impl ParseError {
                     writer,
                     "    | {:>1$} error found here",
                     "^",
-                    self.column - 1
+                    self.column
                 )?;
             }
         }
