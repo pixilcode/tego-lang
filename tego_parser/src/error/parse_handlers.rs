@@ -1,4 +1,4 @@
-use crate::{Input, ParseInternalResult, ParseResult};
+use crate::{Input, InternalParseResult, ParseResult};
 use crate::error::{ParseError, ParseErrorKind};
 use crate::parsers::is_valid_char;
 
@@ -43,9 +43,9 @@ where
 pub fn try_parser<'a, P, O>(
 	parser: P,
 	input: Input<'a>,
-) -> impl Fn(nom::Err<(Input<'a>, ParseError)>) -> ParseInternalResult<'a, O>
+) -> impl Fn(nom::Err<(Input<'a>, ParseError)>) -> InternalParseResult<'a, O>
 where
-	P: Fn(Input<'a>) -> ParseInternalResult<'a, O>,
+	P: Fn(Input<'a>) -> InternalParseResult<'a, O>,
 {
 	move |error| match error {
 		failure @ nom::Err::Failure((_, _)) => Err(failure),
@@ -57,9 +57,9 @@ where
 /// Indicate that this is the right hand side (rhs) of an operator
 /// 
 /// If the rhs doesn't match anything, alert that the rhs is missing
-pub fn expect_rhs<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseInternalResult<'a, O>
+pub fn expect_rhs<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> InternalParseResult<'a, O>
 where
-	F: Fn(Input<'a>) -> ParseInternalResult<'a, O>,
+	F: Fn(Input<'a>) -> InternalParseResult<'a, O>,
 {
 	move |input|
 	parser(input).map_err(|error| match error {
@@ -72,9 +72,9 @@ where
 }
 
 /// Indicate that this match pattern is expected
-pub fn expect_match<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseInternalResult<'a, O>
+pub fn expect_match<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> InternalParseResult<'a, O>
 where
-	F: Fn(Input<'a>) -> ParseInternalResult<'a, O>,
+	F: Fn(Input<'a>) -> InternalParseResult<'a, O>,
 {
 	move |input|
 	parser(input).map_err(|error| match error {
@@ -87,9 +87,9 @@ where
 }
 
 /// Indicate that this expression is expected
-pub fn expect_expr<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseInternalResult<'a, O>
+pub fn expect_expr<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> InternalParseResult<'a, O>
 where
-	F: Fn(Input<'a>) -> ParseInternalResult<'a, O>,
+	F: Fn(Input<'a>) -> InternalParseResult<'a, O>,
 {
 	move |input|
 	parser(input).map_err(|error| match error {
@@ -102,9 +102,9 @@ where
 }
 
 /// Indicate that a variable identifier is expected
-pub fn expect_variable<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseInternalResult<'a, O>
+pub fn expect_variable<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> InternalParseResult<'a, O>
 where
-	F: Fn(Input<'a>) -> ParseInternalResult<'a, O>,
+	F: Fn(Input<'a>) -> InternalParseResult<'a, O>,
 {
 	move |input|
 	parser(input).map_err(|error| match error {
@@ -117,9 +117,9 @@ where
 }
 
 /// Indicate that the given token is expected
-pub fn expect_keyword<'a, F, O>(parser: F, kind: ParseErrorKind) -> impl Fn(Input<'a>) -> ParseInternalResult<'a, O>
+pub fn expect_keyword<'a, F, O>(parser: F, kind: ParseErrorKind) -> impl Fn(Input<'a>) -> InternalParseResult<'a, O>
 where
-	F: Fn(Input<'a>) -> ParseInternalResult<'a, O>,
+	F: Fn(Input<'a>) -> InternalParseResult<'a, O>,
 {
 	move |input|
 	parser(input).map_err(|error| match error {
@@ -132,9 +132,9 @@ where
 }
 
 /// Indicate that at least one match arm is expected
-pub fn expect_match_arms<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> ParseInternalResult<'a, O>
+pub fn expect_match_arms<'a, F, O>(parser: F) -> impl Fn(Input<'a>) -> InternalParseResult<'a, O>
 where
-	F: Fn(Input<'a>) -> ParseInternalResult<'a, O>,
+	F: Fn(Input<'a>) -> InternalParseResult<'a, O>,
 {
 	move |input|
 	parser(input).map_err(|error| match error {

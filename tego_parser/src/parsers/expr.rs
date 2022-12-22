@@ -21,7 +21,7 @@ use crate::parsers::match_::*;
 use crate::parsers::tokens::*;
 use crate::{ExprOutput, MatchOutput};
 use crate::Input;
-use crate::ParseInternalResult;
+use crate::InternalParseResult;
 
 use nom::{
     branch::alt,
@@ -30,7 +30,7 @@ use nom::{
     sequence::{pair, preceded, separated_pair, terminated, tuple},
 };
 
-type ExprResult<'a, E> = ParseInternalResult<'a, E>;
+type ExprResult<'a, E> = InternalParseResult<'a, E>;
 
 macro_rules! binary_expr {
     ($name:ident, $op_func:expr, $next_precedence:ident) => {
@@ -184,7 +184,7 @@ where
     ))(input)
 }
 
-pub fn match_arm<E>(input: Input<'_>) -> ParseInternalResult<'_, (E::Match, E)>
+pub fn match_arm<E>(input: Input<'_>) -> InternalParseResult<'_, (E::Match, E)>
 where
     E: ExprOutput,
 {
