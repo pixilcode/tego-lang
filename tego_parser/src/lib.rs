@@ -28,10 +28,10 @@ mod span;
 mod traits;
 
 // Parsers
-pub use crate::parsers::decl::decl;
-pub use crate::parsers::expr::expr;
-pub use crate::parsers::match_::match_;
-pub use crate::parsers::prog::prog;
+pub use crate::parsers::decl;
+pub use crate::parsers::expr;
+pub use crate::parsers::match_;
+pub use crate::parsers::prog;
 
 // Utilities
 pub use crate::error::ParseError;
