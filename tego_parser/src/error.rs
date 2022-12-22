@@ -1,7 +1,6 @@
-use crate::{Input, ParseInternalResult};
+use crate::Input;
 use std::fmt;
 use std::io;
-use std::ops::Deref;
 
 /// Error handlers
 pub mod parse_handlers;
@@ -179,6 +178,7 @@ impl fmt::Display for ParseError {
             ParseErrorKind::DeclAssign => "missing '=' in expression declaration",
 
             // Other Errors
+            ParseErrorKind::ExpectedEof => "expected to reach end of file",
             ParseErrorKind::Eof => "reached end of file before parsing was completed",
             ParseErrorKind::Incomplete => "incomplete information found",
             ParseErrorKind::UnhandledNomError => "unknown error from parsing",
@@ -196,33 +196,6 @@ impl fmt::Display for ParseError {
 }
 
 impl std::error::Error for ParseError {}
-
-struct ParseErrorOutput<O>(Result<O, ParseError>); 
-
-/// Convert a nom error to a ParseErrorOutput for use outside of the crate
-impl<'a, O> From<ParseInternalResult<'a, O>> for ParseErrorOutput<O> {
-	fn from(error: ParseInternalResult<'a, O>) -> Self {
-		match error {
-			Ok((_, result)) => ParseErrorOutput(Ok(result)),
-			Err(nom::Err::Error((_, error))) |
-				Err(nom::Err::Failure((_, error))) => ParseErrorOutput(Err(error)),
-			
-			// The parsers shouldn't ever encounter an `Incomplete` since they
-			// don't use streaming parsers
-			Err(nom::Err::Incomplete(_)) => unreachable!("parser doesn't use 'streaming' parsers"),
-		}
-	}
-}
-
-/// Allow for `ParseErrorOutput` to be dereffed as a Result (allows for implementations
-/// of traits on the specialized `Result` type)
-impl<O> Deref for ParseErrorOutput<O> {
-	type Target = Result<O, ParseError>;
-
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
-}
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum ParseErrorKind {
@@ -286,6 +259,7 @@ pub enum ParseErrorKind {
     DeclAssign,
 
     // Other Errors
+    ExpectedEof,
     UnknownFailure,
 	UnhandledNomError,
     Eof,

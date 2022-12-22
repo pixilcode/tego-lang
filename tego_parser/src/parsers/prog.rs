@@ -1,4 +1,4 @@
-use crate::decl;
+use crate::parsers::decl::decl;
 use crate::parsers::tokens::newlines;
 use crate::Input;
 use crate::ParseInternalResult;

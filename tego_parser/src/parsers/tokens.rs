@@ -27,6 +27,10 @@ pub const INVALID_CHARS: &[char] = &[
     '\n', '\t', '\\'
 ];
 
+pub fn is_valid_char(c: char) ->bool {
+    !INVALID_CHARS.contains(&c)
+}
+
 const ESCAPE_CHARS_MAP: &[(char, char)] = &[
     ('n', '\n'),
     ('t', '\t'),
@@ -164,7 +168,7 @@ pub fn char(input: Input<'_>) -> ParseInternalResult<'_, char> {
 
 fn valid_char<'a, E>(input: Input<'a>) -> nom::IResult<Input<'a>, char, E>
 where E: nom::error::ParseError<Input<'a>> {
-    verify(anychar, |c| !INVALID_CHARS.contains(c))(input)
+    verify(anychar, |c| is_valid_char(*c))(input)
 }
 
 fn escaped_char<'a, E>(input: Input<'a>) -> nom::IResult<Input<'a>, char, E>

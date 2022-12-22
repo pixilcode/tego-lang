@@ -2,8 +2,8 @@ use crate::error::{
     ParseErrorKind,
     parse_handlers::{expect_expr, expect_keyword}
 };
-use crate::expr;
-use crate::match_;
+use crate::parsers::expr::expr;
+use crate::parsers::match_::match_;
 use crate::parsers::tokens::*;
 use crate::DeclOutput;
 use crate::ExprOutput;

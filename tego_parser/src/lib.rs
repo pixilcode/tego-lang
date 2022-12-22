@@ -45,6 +45,7 @@ pub use crate::traits::ProgOutput;
 
 type Input<'a> = Span<'a>;
 type ParseInternalResult<'a, O> = nom::IResult<Input<'a>, O, (Input<'a>, ParseError)>;
+pub type ParseResult<O> = Result<O, ParseError>;
 
 #[allow(dead_code)]
 mod test {

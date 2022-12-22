@@ -1,5 +1,7 @@
-pub mod decl;
-pub mod expr;
-pub mod match_;
-pub mod prog;
-pub mod tokens;
+mod decl;
+mod expr;
+mod match_;
+mod prog;
+mod tokens;
+
+pub use tokens::is_valid_char;
