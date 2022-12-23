@@ -37,23 +37,6 @@ where
 	})
 }
 
-
-/// Try a different scanner
-// TODO: Get rid of this, just use `alt` instead
-pub fn try_parser<'a, P, O>(
-	parser: P,
-	input: Input<'a>,
-) -> impl Fn(nom::Err<(Input<'a>, ParseError)>) -> InternalParseResult<'a, O>
-where
-	P: Fn(Input<'a>) -> InternalParseResult<'a, O>,
-{
-	move |error| match error {
-		failure @ nom::Err::Failure((_, _)) => Err(failure),
-		incomplete @ nom::Err::Incomplete(_) => Err(incomplete),
-		_ => parser(input),
-	}
-}
-
 /// Indicate that this is the right hand side (rhs) of an operator
 /// 
 /// If the rhs doesn't match anything, alert that the rhs is missing

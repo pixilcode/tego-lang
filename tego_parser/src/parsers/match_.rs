@@ -3,7 +3,6 @@ use crate::error::{
         tuple_error,
         terminating_paren_error,
         terminating_bracket_error,
-        try_parser,
         num_expr_error,
         string_expr_error,
         char_expr_error,
@@ -47,83 +46,76 @@ pub fn grouping<M>(input: Input<'_>) -> MatchResult<'_, M>
 where
     M: MatchOutput,
 {
-    opt_nl(left_paren)(input)
-        .and_then(|(input, open_paren)| {
+    alt((
+        |input|
+        opt_nl(left_paren)(input)
+        .and_then(|(input, open_paren)|
             map(
                 terminated(opt(match_), right_paren),
-                |match_result| match match_result {
-                    Some(match_result) => match_result,
-                    None => M::unit(),
-                }
+                |match_result| match_result.unwrap_or_else(M::unit)
             )(input)
-                .map_err(terminating_paren_error(
-                    open_paren.line(),
-                    open_paren.column(),
-                ))
-        })
-        .or_else(try_parser(
-            |input| {
-                opt_nl(left_bracket)(input).and_then(|(input, open_bracket)| {
-                    map(
-                        terminated(opt_nl(match_), right_bracket),
-                        |inner| M::boxed(inner)
-                    )(input)
-                        .map_err(terminating_bracket_error(
-                            open_bracket.line(),
-                            open_bracket.column(),
-                        ))
-                })
-            },
-            input,
-        ))
-        .or_else(try_parser(atom, input))
+            .map_err(terminating_paren_error(
+                open_paren.line(),
+                open_paren.column(),
+            ))
+        ),
+
+        |input|
+        opt_nl(left_bracket)(input)
+        .and_then(|(input, open_bracket)| {
+            map(
+                terminated(opt_nl(match_), right_bracket),
+                |inner| M::boxed(inner)
+            )(input)
+            .map_err(terminating_bracket_error(
+                open_bracket.line(),
+                open_bracket.column(),
+            ))
+        }),
+
+        atom
+    ))(input)
 }
 
 fn atom<M>(input: Input<'_>) -> MatchResult<'_, M>
 where
     M: MatchOutput,
 {
-    map(
-        alt((true_val, false_val)),
-        |token| match token.into() {
-            "true" => M::bool(true),
-            "false" => M::bool(false),
-            _ => unreachable!(),
-        }
-    )(input)
-    .or_else(
-        try_parser(
-            map(underscore, |_| M::ignore()),
-            input
+    alt((
+        map(
+            alt((true_val, false_val)),
+            |token| match token.into() {
+                "true" => M::bool(true),
+                "false" => M::bool(false),
+                _ => unreachable!(),
+            }
+        ),
+
+        map(
+            underscore,
+            |_| M::ignore()
+        ),
+
+        map(
+            identifier,
+            |lexeme| M::ident(lexeme.into())
+        ),
+
+        map(
+            |input| number(input).map_err(num_expr_error),
+            M::int
+        ),
+
+        map(
+            |input| string(input).map_err(string_expr_error),
+            M::string
+        ),
+
+        map(
+            |input| char(input).map_err(char_expr_error),
+            M::char
         )
-    )
-    .or_else(
-        try_parser(
-            map(identifier, |lexeme| M::ident(lexeme.into())),
-            input
-        )
-    )
-    .or_else(
-        try_parser(
-            map(number, |int| M::int(int)),
-            input
-        )
-    )
-    .map_err(num_expr_error)
-    .or_else(
-        try_parser(
-            map(string, |s| M::string(s)),
-            input
-        )
-    )
-    .map_err(string_expr_error)
-    .or_else(
-        try_parser(
-            map(char, |c| M::char(c)),
-            input
-        )
-    )
-    .map_err(char_expr_error)
+    ))(input)
     .map_err(basic_match_error)
 }
 

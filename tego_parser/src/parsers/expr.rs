@@ -1,7 +1,6 @@
 use crate::error::{
     ParseErrorKind,
     parse_handlers::{
-        try_parser,
         expect_rhs,
         expect_keyword,
         expect_match,
@@ -56,9 +55,14 @@ macro_rules! unary_expr {
         where
             E: ExprOutput,
         {
-            pair($op_func, expect_rhs($name))(input)
-                .and_then(|(input, (op, a))| Ok((input, E::unary(op.to_str(), a))))
-                .or_else(try_parser($next_precedence, input))
+            alt((
+                map(
+                    pair($op_func, expect_rhs($name)),
+                    |(op, a)| E::unary(op.to_str(), a)
+                ),
+
+                $next_precedence
+            ))(input)
         }
     };
 }
@@ -268,72 +272,71 @@ fn grouping<E>(input: Input<'_>) -> ExprResult<'_, E>
 where
     E: ExprOutput,
 {
-    opt_nl(left_paren)(input)
+    alt((
+        |input|
+        opt_nl(left_paren)(input)
         .and_then(|(input, open_paren)| {
-            right_paren(input)
-                .map(|(input, _)| (input, E::unit()))
-                .or_else(try_parser(terminated(opt_nl(expr), right_paren), input))
-                .map_err(terminating_paren_error(
-                    open_paren.line(),
-                    open_paren.column(),
-                ))
-        })
-        .or_else(try_parser(
-            |input| {
-                opt_nl(left_bracket)(input).and_then(|(input, open_bracket)| {
-                    terminated(opt_nl(expr), right_bracket)(input)
-                        .map(|(input, inner)| (input, E::boxed(inner)))
-                        .map_err(terminating_bracket_error(
-                            open_bracket.line(),
-                            open_bracket.column(),
-                        ))
-                })
-            },
-            input,
-        ))
-        .or_else(try_parser(literal, input))
+            map(
+                terminated(opt(opt_nl(expr)), right_paren),
+                |expr_result| expr_result.unwrap_or_else(E::unit)
+            )(input)
+            .map_err(terminating_paren_error(
+                open_paren.line(),
+                open_paren.column(),
+            ))
+        }),
+
+        |input|
+        opt_nl(left_bracket)(input)
+        .and_then(|(input, open_bracket)| {
+            map(
+                terminated(opt_nl(expr), right_bracket),
+                |inner| E::boxed(inner)
+            )(input)
+            .map_err(terminating_bracket_error(
+                open_bracket.line(),
+                open_bracket.column(),
+            ))
+        }),
+
+        literal
+    ))(input)
 }
 
 fn literal<E>(input: Input<'_>) -> ExprResult<'_, E>
 where
     E: ExprOutput,
 {
-    map(
-        alt((true_val, false_val)),
-        |token| match token.into() {
-            "true" => E::bool(true),
-            "false" => E::bool(false),
-            _ => unreachable!(),
-        }
-    )(input)
-    .or_else(
-        try_parser(
-            map(identifier, |lexeme| E::variable(lexeme.into())),
-            input
+    alt((
+        map(
+            alt((true_val, false_val)),
+            |token| match token.into() {
+                "true" => E::bool(true),
+                "false" => E::bool(false),
+                _ => unreachable!(),
+            }
+        ),
+
+        map(
+            identifier,
+            |lexeme| E::variable(lexeme.into())
+        ),
+
+        map(
+            |input| number(input).map_err(num_expr_error),
+            E::int
+        ),
+
+        map(
+            |input| string(input).map_err(string_expr_error),
+            E::string
+        ),
+
+        map(
+            |input| char(input).map_err(char_expr_error),
+            E::char
         )
-    )
-    .or_else(
-        try_parser(
-            map(number, |int| E::int(int)),
-            input
-        )
-    )
-    .map_err(num_expr_error)
-    .or_else(
-        try_parser(
-            map(string, |s| E::string(s)),
-            input
-        )
-    )
-    .map_err(string_expr_error)
-    .or_else(
-        try_parser(
-            map(char, |c| E::char(c)),
-            input
-        )
-    )
-    .map_err(char_expr_error)
-    .map_err(literal_error)
+    ))(input).map_err(literal_error)
 }
 
 #[cfg(test)]
