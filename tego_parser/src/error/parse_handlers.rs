@@ -273,7 +273,7 @@ pub fn char_error(error: nom::Err<(Input, nom::error::ErrorKind)>) -> nom::Err<(
 			match c {
 				Some(c) if c == '\\' =>
 					ParseError::nom_error(input, ParseErrorKind::InvalidEscapedChar),
-				Some(c) if is_valid_char(c) =>
+				Some(c) if !is_valid_char(c) =>
 					ParseError::nom_error(input, ParseErrorKind::InvalidChar),
 				_ => ParseError::nom_error(input, ParseErrorKind::CharUnclosed)
 			}
