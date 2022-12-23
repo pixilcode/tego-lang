@@ -66,3 +66,7 @@
   * Can be used to create types w/o type declaration
   * Can be used for 'user keywords'
   * Can be statically checked
+* The 'flat join' operator should be changed to a 'map join' operator for boxed
+  values
+  * Instead of unwrapping and joining: unwrap, join, then wrap again
+  * `[1] ,, [2]` => `[1, 2]`
