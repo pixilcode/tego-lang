@@ -149,7 +149,7 @@ identifier_alpha ::= ('a' - 'z') | ('A' - 'Z')
 
 identifier_char ::= identifier_alpha | '\''
 
-identifier ::= identifier_alpha identifier_char*
+identifier ::= (identifier_alpha identifier_char*) - keywords
 
 (* *** Integers *)
 integer ::= '0' | ('1' - '9') ('0' - '9')*
@@ -195,7 +195,7 @@ let_expression ::= let opt_nl pattern opt_nl assign opt_nl expression opt_nl in 
 if_expression ::= if opt_nl expression opt_nl (then | q_mark) opt_nl expression opt_nl else opt_nl expression
                 | match_expression
 
-match_expression ::= match opt_nl expression opt_nl with opt_nl match_arm (opt_nl match_arm)*
+match_expression ::= match opt_nl expression opt_nl to opt_nl match_arm (opt_nl match_arm)*
                    | join_expression
 
 match_arm ::= bar opt_nl pattern opt_nl arrow opt_nl expression
@@ -226,9 +226,11 @@ multiplicative_expression ::= (multiplicative_expression opt_nl (star | slash | 
 
 (* *** Unary Operators *)
 
-negate_expression ::= (minus opt_nl)? not_expression
+negate_expression ::= minus opt_nl negate_expression
+                    | not_expression
 
-not_expression ::= (not opt_nl)? function_expression
+not_expression ::= not opt_nl not_expression
+                  | function_expression
 
 (* *** Functions *)
 
