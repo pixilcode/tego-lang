@@ -4,3 +4,4 @@ Cargo.lock
 /release/
 **/*#*
 launch.json
+.vscode/

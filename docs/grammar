@@ -1,0 +1,257 @@
+(* * TOKENS *)
+
+(*
+  NOTES:
+  - in rules that use multiple tokens (such as 'let_expression'), an 'opt_nl'
+    is used in between parts of the rule, anywhere where it is clear that the
+    structure is not complete. In other words, just don't start or end a rule
+    with an 'opt_nl'
+  - the rules are generally written in order of precedence, with the lowest
+    precedence at the top and the highest at the bottom
+  - the rules are also written generally in order of dependence, with the most
+    dependent rules at the top and the least dependent at the bottom
+*)
+
+(* ** Whitespace and Comments *)
+inline_whitespace ::= ' ' | '\t' | '\r'
+
+newline_whitespace ::= '\n'
+
+single_line_comment ::= '--' (<any> - newline_whitespace)* newline_whitespace
+
+inline_comment ::= '{-' (<any> - ('-}' | newline_whitespace))* '-}'
+
+multiline_comment ::= '{-' (<any> - '-}')* newline_whitespace (<any> - '-}')* '-}'
+
+inline_ignored ::= inline_whitespace | inline_comment
+
+newline_ignored ::= newline_whitespace | single_line_comment | multiline_comment
+
+(* *** Abbreviations *)
+sp ::= inline_ignored* (* space *)
+
+nl ::= newline_ignored* (* newline *)
+
+opt_nl ::= sp (nl sp)* (* optional newline *)
+
+req_nl ::= sp (nl sp)+ (* required newline *)
+
+(* ** Keywords *)
+and ::= 'and'
+
+or ::= 'or'
+
+xor ::= 'xor'
+
+not ::= 'not'
+
+true ::= 'true'
+
+false ::= 'false'
+
+if ::= 'if'
+
+then ::= 'then'
+
+else ::= 'else'
+
+let ::= 'let'
+
+in ::= 'in'
+
+fn ::= 'fn'
+
+match ::= 'match'
+
+to ::= 'to'
+
+delay ::= 'delay'
+
+do ::= 'do'
+
+def ::= 'def'
+
+keywords ::= and
+		       | or
+           | xor
+           | not
+           | true
+           | false
+           | if
+           | then
+           | else
+           | let
+           | in
+           | fn
+           | match
+           | to
+           | delay
+           | do
+           | def
+
+(* ** Operators
+
+	  NOTE: when parsing, be careful that a single-line comment (--) is not
+	        confused with a minus operator (-) and a not equal operator (/=) is
+	        not confused with a division operator (/) 
+*)
+
+comma ::= ','
+
+plus ::= '+'
+
+minus ::= '-'
+
+star ::= '*'
+
+slash ::= '/'
+
+modulo ::= '%'
+
+equal ::= '=='
+
+not_equal ::= '/='
+
+less_than ::= '<'
+
+greater_than ::= '>'
+
+less_than_equal ::= '<='
+
+greater_than_equal ::= '>='
+
+left_paren ::= '('
+
+right_paren ::= ')'
+
+q_mark ::= '?'
+
+assign ::= '='
+
+arrow ::= '->'
+
+bar ::= '|'
+
+underscore ::= '_'
+
+left_bracket ::= '['
+
+right_bracket ::= ']'
+
+double_comma ::= ',,'
+
+dot ::= '.'
+
+(* ** Literals *)
+
+(* *** Identifiers *)
+identifier_alpha ::= ('a' - 'z') | ('A' - 'Z')
+
+identifier_char ::= identifier_alpha | '\''
+
+identifier ::= identifier_alpha identifier_char*
+
+(* *** Integers *)
+integer ::= '0' | ('1' - '9') ('0' - '9')*
+
+(* *** Strings and Chars *)
+escape_char ::= '\\' ('n' | 't' | '"' | '\'' | '\\')
+
+inner_string ::= (<any> - ('"' | "\\") | escape_char)*
+
+string ::= '"' inner_string '"'
+
+inner_char ::= (<any> - ("'" | "\\") | escape_char)
+
+char ::= '\'' inner_char '\''
+
+(* *** Boolean *)
+boolean ::= true | false
+
+(* * MATCH *)
+
+pattern ::= list
+
+list ::= grouping (opt_nl comma opt_nl list)?
+
+grouping ::= left_paren opt_nl pattern? opt_nl right_paren
+           | left_bracket opt_nl pattern opt_nl right_bracket
+           | atom
+
+atom ::= boolean | underscore | identifier | integer | string | char
+
+variable ::= identifier
+
+(* * EXPRESSIONS *)
+expression ::= do_expression
+
+do_expression ::= do opt_nl expression opt_nl in opt_nl pattern optn_nl then opt_nl expression
+                | let_expression
+
+let_expression ::= let opt_nl pattern opt_nl assign opt_nl expression opt_nl in opt_nl expression
+                 | delay opt_nl variable opt_nl assign opt_nl expression opt_nl in opt_nl expression
+                 | if_expression
+
+if_expression ::= if opt_nl expression opt_nl (then | q_mark) opt_nl expression opt_nl else opt_nl expression
+                | match_expression
+
+match_expression ::= match opt_nl expression opt_nl with opt_nl match_arm (opt_nl match_arm)*
+                   | join_expression
+
+match_arm ::= bar opt_nl pattern opt_nl arrow opt_nl expression
+
+(* ** Operators *)
+
+(* *** Right Recursive Binary Operators *)
+
+join_expression ::= flat_join_expression (opt_nl comma opt_nl join_expression)?
+
+flat_join_expression ::= or_expression (opt_nl double_comma opt_nl flat_join_expression)?
+
+(* *** Left Recursive Binary Operators *)
+
+or_expression ::= (or_expression opt_nl or opt_nl)? xor_expression
+
+xor_expression ::= (xor_expression opt_nl xor opt_nl)? and_expression
+
+and_expression ::= (and_expression opt_nl and opt_nl)? equality_expression
+
+equality_expression ::= (equality_expression opt_nl (equal | not_equal) opt_nl)? relational_expression
+
+relational_expression ::= (relational_expression opt_nl (less_than | greater_than | less_than_equal | greater_than_equal) opt_nl)? additive_expression
+
+additive_expression ::= (additive_expression opt_nl (plus | minus) opt_nl)? multiplicative_expression
+
+multiplicative_expression ::= (multiplicative_expression opt_nl (star | slash | modulo) opt_nl)? negate_expression
+
+(* *** Unary Operators *)
+
+negate_expression ::= (minus opt_nl)? not_expression
+
+not_expression ::= (not opt_nl)? function_expression
+
+(* *** Functions *)
+
+function_expression ::= fn opt_nl pattern opt_nl arrow opt_nl expression
+                      | function_application_expression
+
+function_application_expression ::= (function_application_expression opt_nl) dot_expression
+
+dot_expression ::= (dot_expression opt_nl dot opt_nl)? grouping_expression
+
+(* *** Grouping and Literals *)
+grouping_expression ::= left_paren opt_nl expression opt_nl right_paren
+                      | left_bracket opt_nl expression opt_nl right_bracket
+                      | literal_expression
+
+literal_expression ::= boolean | identifier | integer | string | char
+
+(* * DECLARATIONS *)
+
+declaration ::= expression_declaration
+
+expression_declaration ::= def opt_nl identifier (opt_nl pattern)* opt_nl assign opt_nl expression req_nl
+
+(* * PROGRAM *)
+
+program ::= opt_nl (declaration)* opt_nl

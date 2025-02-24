@@ -31,6 +31,7 @@ pub fn is_valid_char(c: char) ->bool {
     !INVALID_CHARS.contains(&c)
 }
 
+// TODO: add '\' escape character to match grammar
 const ESCAPE_CHARS_MAP: &[(char, char)] = &[
     ('n', '\n'),
     ('t', '\t'),
@@ -38,6 +39,7 @@ const ESCAPE_CHARS_MAP: &[(char, char)] = &[
     ('\'', '\'')
 ];
 
+// TODO: ensure that whitespace parsing matches the grammar
 pub fn newlines<'a>(
     is_req: bool,
 ) -> impl Fn(Input<'a>) -> InternalParseResult<'a, (Vec<Input<'a>>, Option<Input<'a>>, Vec<Input<'a>>)> {
@@ -215,6 +217,7 @@ where E: nom::error::ParseError<Input<'a>> {
     )(input)
 }
 
+// TODO: match the written grammar - don't allow nonzero values to start with '0'
 pub fn number(input: Input<'_>) -> InternalParseResult<'_, i32> {
     map_res(
         token(digit1),

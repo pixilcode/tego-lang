@@ -81,6 +81,7 @@ where
     alt((
         map(
             tuple((
+                // TODO: fix the following parsers to match the grammar
                 preceded(
                     do_,
                     expect_expr(expr),
@@ -204,6 +205,7 @@ where
     ))(input)
 }
 
+// TODO: make 'join_expr' and 'flat_join_expr' right associative to match the grammar
 binary_expr!(join_expr, comma, flat_join_expr);
 binary_expr!(flat_join_expr, double_comma, or_expr);
 binary_expr!(or_expr, or, xor_expr);
@@ -249,6 +251,7 @@ where
     dot_expr(input).and_then(|(input, val)| fold_many0(dot_expr, val, E::fn_app)(input))
 }
 
+// TODO: fix this to match the grammar
 fn dot_expr<E>(input: Input<'_>) -> ExprResult<'_, E>
 where
     E: ExprOutput,
