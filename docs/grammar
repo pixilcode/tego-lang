@@ -252,8 +252,10 @@ literal_expression ::= boolean | identifier | integer | string | char
 
 declaration ::= expression_declaration
 
-expression_declaration ::= def opt_nl identifier (opt_nl pattern)* opt_nl assign opt_nl expression req_nl
+expression_declaration ::= def opt_nl identifier (opt_nl pattern)* opt_nl assign opt_nl expression
 
 (* * PROGRAM *)
 
-program ::= opt_nl (declaration)* opt_nl
+declaration_terminator ::= req_nl | opt_nl <EOF>
+
+program ::= opt_nl (declaration declaration_terminator)* opt_nl
